@@ -154,6 +154,7 @@ public class GymManagementApp extends Application {
         menu.setPadding(new javafx.geometry.Insets(0, 10, 0, 10));
 
         String[][] items = {
+            {"👤", "Admin Profile", "admin-profile"},
             {"⚙", "Settings", "settings"},
             {"❓", "Help", "help"},
             {"ℹ", "About", "about"}
@@ -226,7 +227,9 @@ public class GymManagementApp extends Application {
             case "equipment" -> new AddEquipmentScreen().buildContent();
             case "pos" -> new POSScreen().buildContent();
             case "reports" -> new ReportsScreen().buildContent();
-            case "settings", "help", "about" -> new SettingsScreen().buildContent();
+            case "admin-profile" -> new AdminProfileScreen().buildContent();
+            case "settings", "about" -> new SettingsScreen().buildContent();
+            case "help" -> new HelpScreen().buildContent();
             default -> new DashboardScreen().buildDashboardContent();
         };
 
