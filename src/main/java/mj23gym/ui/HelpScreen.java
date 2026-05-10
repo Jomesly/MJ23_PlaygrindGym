@@ -281,11 +281,11 @@ public class HelpScreen extends Application {
             },
             {
                 "How do I change my password?",
-                "Go to Settings (or Admin Profile), find the 'Change Password' section, enter your current password and your new password, then click 'Update Password'."
+                "Go to Profile, find the 'Change Password' section, enter your current password and your new password, then click 'Update Password'."
             },
             {
                 "How do I add a new staff account?",
-                "Go to Admin Profile or Settings > Access Control. Click '＋ Add Staff Account' or '＋ Register New Staff Account', fill in the staff details and assign a role, then save."
+                "Go to Settings > Access Control. Click '＋ Add Staff Account', fill in the staff details and assign a role, then save."
             },
             {
                 "What payment methods are supported?",

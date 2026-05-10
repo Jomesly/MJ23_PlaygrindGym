@@ -1,6 +1,7 @@
 package mj23gym.ui;
 
 import javafx.application.Application;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -35,9 +36,12 @@ public class GymManagementApp extends Application {
     private BorderPane rootPane;
     private StackPane contentArea;
     private String currentScreen = "dashboard";
+    private Stage primaryStage;
 
     @Override
     public void start(Stage primaryStage) {
+        this.primaryStage = primaryStage;
+
         // Initialize database connection
         System.out.println("[APP] Initializing database connection...");
         DatabaseConnection.initialize();
@@ -54,6 +58,7 @@ public class GymManagementApp extends Application {
         primaryStage.setHeight(720);
         primaryStage.setMinWidth(1000);
         primaryStage.setMinHeight(650);
+        primaryStage.setResizable(true);
 
         // Create root layout
         rootPane = new BorderPane();
@@ -109,8 +114,8 @@ public class GymManagementApp extends Application {
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        sidebar.getChildren().addAll(topAccent, logo, new Separator(), navMenu, 
-                                     new Separator(), sysMenu, spacer);
+        sidebar.getChildren().addAll(topAccent, logo, new Separator(), navMenu,
+                                     new Separator(), sysMenu, spacer, createUserFooter());
         return sidebar;
     }
 
@@ -154,7 +159,7 @@ public class GymManagementApp extends Application {
         menu.setPadding(new javafx.geometry.Insets(0, 10, 0, 10));
 
         String[][] items = {
-            {"👤", "Admin Profile", "admin-profile"},
+            {"👤", "Profile", "profile"},
             {"⚙", "Settings", "settings"},
             {"❓", "Help", "help"},
             {"ℹ", "About", "about"}
@@ -166,6 +171,75 @@ public class GymManagementApp extends Application {
         }
 
         return menu;
+    }
+
+    private VBox createUserFooter() {
+        AppSession.User user = AppSession.currentUser();
+
+        VBox footer = new VBox(10);
+        footer.setPadding(new Insets(14, 14, 16, 14));
+        footer.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-border-color: rgba(255,255,255,0.08) transparent transparent transparent;" +
+            "-fx-border-width: 1 0 0 0;"
+        );
+
+        HBox accountRow = new HBox(10);
+        accountRow.setAlignment(Pos.CENTER_LEFT);
+
+        StackPane avatar = new StackPane();
+        avatar.setPrefSize(34, 34);
+        Rectangle avatarBg = new Rectangle(34, 34);
+        avatarBg.setArcWidth(10);
+        avatarBg.setArcHeight(10);
+        avatarBg.setFill(Color.web(ACCENT));
+        Text avatarInitial = new Text(user.initial());
+        avatarInitial.setFont(Font.font("Verdana", FontWeight.BOLD, 13));
+        avatarInitial.setFill(Color.web(TEXT_WHITE));
+        avatar.getChildren().addAll(avatarBg, avatarInitial);
+
+        VBox accountText = new VBox(2);
+        Text name = new Text(user.displayName());
+        name.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
+        name.setFill(Color.web(TEXT_WHITE));
+        Text role = new Text(user.role());
+        role.setFont(Font.font("Verdana", 10));
+        role.setFill(Color.web(TEXT_MUTED));
+        accountText.getChildren().addAll(name, role);
+
+        accountRow.getChildren().addAll(avatar, accountText);
+
+        Button logoutButton = new Button("Logout");
+        logoutButton.setMaxWidth(Double.MAX_VALUE);
+        styleLogoutButton(logoutButton, false);
+        logoutButton.setOnMouseEntered(e -> styleLogoutButton(logoutButton, true));
+        logoutButton.setOnMouseExited(e -> styleLogoutButton(logoutButton, false));
+        logoutButton.setOnAction(e -> logout());
+
+        footer.getChildren().addAll(accountRow, logoutButton);
+        return footer;
+    }
+
+    private void styleLogoutButton(Button button, boolean hovered) {
+        button.setStyle(
+            "-fx-background-color: " + (hovered ? ACCENT : "transparent") + ";" +
+            "-fx-border-color: " + ACCENT + ";" +
+            "-fx-border-radius: 8;" +
+            "-fx-background-radius: 8;" +
+            "-fx-text-fill: " + (hovered ? "white" : ACCENT) + ";" +
+            "-fx-font: bold 12 Verdana;" +
+            "-fx-padding: 9 12;" +
+            "-fx-cursor: hand;"
+        );
+    }
+
+    private void logout() {
+        AppSession.logout();
+        try {
+            new LoginScreen().start(primaryStage);
+        } catch (Exception ex) {
+            System.err.println("[APP ERROR] Could not return to login screen: " + ex.getMessage());
+        }
     }
 
     private Button createNavButton(String icon, String label, String screenId) {
@@ -227,7 +301,7 @@ public class GymManagementApp extends Application {
             case "equipment" -> new AddEquipmentScreen().buildContent();
             case "pos" -> new POSScreen().buildContent();
             case "reports" -> new ReportsScreen().buildContent();
-            case "admin-profile" -> new AdminProfileScreen().buildContent();
+            case "profile" -> new AdminProfileScreen().buildContent();
             case "settings", "about" -> new SettingsScreen().buildContent();
             case "help" -> new HelpScreen().buildContent();
             default -> new DashboardScreen().buildDashboardContent();

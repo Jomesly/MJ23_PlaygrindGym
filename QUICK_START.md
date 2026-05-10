@@ -115,7 +115,7 @@ Expected output:
 
 ### Method 2: Using Java Directly
 ```bash
-mvn compile exec:java -Dexec.mainClass="mj23gym.ui.GymManagementApp"
+mvn compile exec:java -Dexec.mainClass="mj23gym.ui.LoginScreen"
 ```
 
 ### Method 3: Create and Run JAR

@@ -236,6 +236,7 @@ public class LoginScreen extends Application {
             } else if (u.equals("admin") && p.equals("admin123")) {
                 showMsg(msgLbl, "✔   Login successful! Loading dashboard...", true);
                 try {
+                    AppSession.login(AppSession.User.admin(u));
                     new GymManagementApp().start(stage);
                 } catch (Exception ex) {
                     showMsg(msgLbl, "⚠   Could not load dashboard: " + ex.getMessage(), false);

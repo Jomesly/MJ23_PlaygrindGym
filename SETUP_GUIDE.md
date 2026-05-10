@@ -221,7 +221,7 @@ java -jar target/gym-management-system-1.0.0.jar
 
 ### Using Java Directly
 ```bash
-mvn compile exec:java -Dexec.mainClass="mj23gym.ui.GymManagementApp"
+mvn compile exec:java -Dexec.mainClass="mj23gym.ui.LoginScreen"
 ```
 
 ---

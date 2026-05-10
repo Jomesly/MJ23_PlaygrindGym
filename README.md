@@ -103,7 +103,7 @@ Create a `pom.xml` file in the project directory:
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>mj23gym.ui.GymManagementApp</mainClass>
+                    <mainClass>mj23gym.ui.LoginScreen</mainClass>
                 </configuration>
             </plugin>
         </plugins>
@@ -126,7 +126,7 @@ mvn clean javafx:run
    ```
    --module-path /path/to/javafx-sdk/lib --add-modules javafx.controls,javafx.fxml
    ```
-6. Run GymManagementApp.java
+6. Run LoginScreen.java
 
 ## File Structure
 ```
@@ -175,7 +175,7 @@ All screens are accessible from the left sidebar. Each screen has:
 ## Notes for Developers
 
 - Package: `mj23gym.ui`
-- Main class: `GymManagementApp`
+- Main class: `LoginScreen`
 - JavaFX framework is required for all GUI components
 - All screens extend `Application` but GymManagementApp handles the UI switching
 

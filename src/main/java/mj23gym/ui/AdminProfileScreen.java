@@ -29,9 +29,9 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 /**
- * MJ23 Playgrind Gym – Admin Profile Screen
- * Displays admin info, editable profile fields,
- * password management, and register new admin account.
+ * MJ23 Playgrind Gym - Profile Screen
+ * Displays the logged-in user's account info, editable profile fields,
+ * and password management.
  */
 public class AdminProfileScreen extends Application {
 
@@ -51,7 +51,7 @@ public class AdminProfileScreen extends Application {
 
     @Override
     public void start(Stage stage) {
-        stage.setTitle("MJ23 Playgrind Gym – Admin Profile");
+        stage.setTitle("MJ23 Playgrind Gym - Profile");
         BorderPane root = new BorderPane();
         root.setPrefSize(1200, 720);
         root.setStyle("-fx-background-color: " + BG_MAIN + ";");
@@ -115,12 +115,13 @@ public class AdminProfileScreen extends Application {
             "-fx-border-color: " + BORDER + " transparent transparent transparent;" +
             "-fx-border-width: 1 0 0 0;"
         );
+        AppSession.User user = AppSession.currentUser();
         Circle avatar = new Circle(18); avatar.setFill(Color.web(ACCENT));
-        Text avTxt = new Text("A"); avTxt.setFont(Font.font("Verdana", FontWeight.BOLD, 13)); avTxt.setFill(Color.WHITE);
+        Text avTxt = new Text(user.initial()); avTxt.setFont(Font.font("Verdana", FontWeight.BOLD, 13)); avTxt.setFill(Color.WHITE);
         StackPane avStack = new StackPane(avatar, avTxt); avStack.setPrefSize(36, 36);
         VBox userInfo = new VBox(2);
-        Text uName = new Text("Admin"); uName.setFont(Font.font("Verdana", FontWeight.BOLD, 12)); uName.setFill(Color.web(TEXT_WHITE));
-        Text uRole = new Text("Administrator"); uRole.setFont(Font.font("Verdana", 10)); uRole.setFill(Color.web(ACCENT));
+        Text uName = new Text(user.displayName()); uName.setFont(Font.font("Verdana", FontWeight.BOLD, 12)); uName.setFill(Color.web(TEXT_WHITE));
+        Text uRole = new Text(user.role()); uRole.setFont(Font.font("Verdana", 10)); uRole.setFill(Color.web(ACCENT));
         userInfo.getChildren().addAll(uName, uRole);
         HBox.setHgrow(userInfo, Priority.ALWAYS);
         userBox.getChildren().addAll(avStack, userInfo);
@@ -161,8 +162,11 @@ public class AdminProfileScreen extends Application {
     // MAIN CONTENT
     // ══════════════════════════════════════════════════════════════
     public VBox buildContent() {
+        AppSession.User user = AppSession.currentUser();
+
         VBox content = new VBox(0);
         content.setStyle("-fx-background-color: " + BG_MAIN + ";");
+        content.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 
         // Top bar
         HBox topBar = new HBox();
@@ -173,10 +177,10 @@ public class AdminProfileScreen extends Application {
             "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
             "-fx-border-width: 0 0 1 0;");
         VBox pg = new VBox(2);
-        Text t1 = new Text("Admin Profile");
+        Text t1 = new Text("Profile");
         t1.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
         t1.setFill(Color.web(TEXT_WHITE));
-        Text t2 = new Text("Manage your account details, password, and staff accounts");
+        Text t2 = new Text("Manage your account details and password");
         t2.setFont(Font.font("Verdana", 11));
         t2.setFill(Color.web(TEXT_MUTED));
         pg.getChildren().addAll(t1, t2);
@@ -187,10 +191,13 @@ public class AdminProfileScreen extends Application {
         scroll.setFitToWidth(true);
         scroll.setStyle("-fx-background: " + BG_MAIN + "; -fx-background-color: " + BG_MAIN + ";");
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
 
         VBox body = new VBox(22);
         body.setPadding(new Insets(26, 28, 26, 28));
         body.setStyle("-fx-background-color: " + BG_MAIN + ";");
+        body.setFillWidth(true);
+        body.setMaxWidth(Double.MAX_VALUE);
 
         // ── Profile Header Card ────────────────────────────────────
         VBox profileHeaderCard = new VBox(0);
@@ -203,10 +210,16 @@ public class AdminProfileScreen extends Application {
         DropShadow ds1 = new DropShadow(); ds1.setColor(Color.web("#000", 0.3)); ds1.setRadius(12); ds1.setOffsetY(4);
         profileHeaderCard.setEffect(ds1);
 
-        // Red banner
-        Rectangle banner = new Rectangle(); banner.setHeight(80); banner.setFill(Color.web(ACCENT));
-        banner.setArcWidth(12); banner.setArcHeight(12);
-        banner.widthProperty().bind(profileHeaderCard.widthProperty());
+        // Red banner. Use a resizable Region instead of binding a Rectangle
+        // to its parent width, which can create an endless layout resize loop.
+        Region banner = new Region();
+        banner.setPrefHeight(80);
+        banner.setMinHeight(80);
+        banner.setMaxHeight(80);
+        banner.setMaxWidth(Double.MAX_VALUE);
+        banner.setStyle(
+            "-fx-background-color: " + ACCENT + ";" +
+            "-fx-background-radius: 12 12 0 0;");
 
         // Avatar + name overlay
         HBox profileInfo = new HBox(22);
@@ -222,18 +235,18 @@ public class AdminProfileScreen extends Application {
         bigCircle.setFill(Color.web(BG_SIDEBAR));
         bigCircle.setStroke(Color.web(ACCENT));
         bigCircle.setStrokeWidth(3);
-        Text bigInitial = new Text("A");
+        Text bigInitial = new Text(user.initial());
         bigInitial.setFont(Font.font("Georgia", FontWeight.BOLD, 34));
         bigInitial.setFill(Color.web(TEXT_WHITE));
         bigAvatar.getChildren().addAll(bigCircle, bigInitial);
 
         VBox nameInfo = new VBox(4);
         nameInfo.setTranslateY(-10);
-        Text adminName = new Text("Administrator");
+        Text adminName = new Text(user.displayName());
         adminName.setFont(Font.font("Georgia", FontWeight.BOLD, 22));
         adminName.setFill(Color.web(TEXT_WHITE));
         HBox badges = new HBox(8);
-        Label roleBadge = new Label("🔑  Admin");
+        Label roleBadge = new Label(user.role());
         roleBadge.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
         roleBadge.setTextFill(Color.web(ACCENT));
         roleBadge.setStyle("-fx-background-color: rgba(230,57,70,0.15); -fx-background-radius: 10; -fx-padding: 3 12 3 12;");
@@ -242,7 +255,7 @@ public class AdminProfileScreen extends Application {
         statusBadge.setTextFill(Color.web(SUCCESS));
         statusBadge.setStyle("-fx-background-color: rgba(76,175,80,0.15); -fx-background-radius: 10; -fx-padding: 3 12 3 12;");
         badges.getChildren().addAll(roleBadge, statusBadge);
-        Text lastLogin = new Text("Last login: June 1, 2025 at 8:34 AM");
+        Text lastLogin = new Text(user.lastLoginText());
         lastLogin.setFont(Font.font("Verdana", 10));
         lastLogin.setFill(Color.web(TEXT_DIM));
         nameInfo.getChildren().addAll(adminName, badges, lastLogin);
@@ -258,9 +271,11 @@ public class AdminProfileScreen extends Application {
         // ── Two-column layout ──────────────────────────────────────
         HBox twoCol = new HBox(22);
         twoCol.setAlignment(Pos.TOP_LEFT);
+        twoCol.setMaxWidth(Double.MAX_VALUE);
 
         // LEFT column
         VBox leftCol = new VBox(22);
+        leftCol.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(leftCol, Priority.ALWAYS);
 
         // Profile Details Card
@@ -271,12 +286,12 @@ public class AdminProfileScreen extends Application {
         ColumnConstraints dc2 = new ColumnConstraints(); dc2.setPercentWidth(50);
         detailsForm.getColumnConstraints().addAll(dc1, dc2);
 
-        detailsForm.add(buildFG("FIRST NAME",    "Enter first name",     "Admin",            false), 0, 0);
-        detailsForm.add(buildFG("LAST NAME",     "Enter last name",      "User",             false), 1, 0);
-        detailsForm.add(buildFG("USERNAME",      "Enter username",       "admin",            false), 0, 1);
-        detailsForm.add(buildFG("EMAIL ADDRESS", "Enter email",          "admin@mj23gym.com",false), 1, 1);
-        detailsForm.add(buildFG("PHONE NUMBER",  "09XXXXXXXXX",          "09171234567",      false), 0, 2);
-        detailsForm.add(buildFG("POSITION",      "Your role/position",   "System Administrator", false), 1, 2);
+        detailsForm.add(buildFG("FIRST NAME",    "Enter first name",     user.firstName(),   false), 0, 0);
+        detailsForm.add(buildFG("LAST NAME",     "Enter last name",      user.lastName(),    false), 1, 0);
+        detailsForm.add(buildFG("USERNAME",      "Enter username",       user.username(),    false), 0, 1);
+        detailsForm.add(buildFG("EMAIL ADDRESS", "Enter email",          user.email(),       false), 1, 1);
+        detailsForm.add(buildFG("PHONE NUMBER",  "09XXXXXXXXX",          user.phone(),       false), 0, 2);
+        detailsForm.add(buildFG("POSITION",      "Your role/position",   user.position(),    false), 1, 2);
 
         HBox saveBtn = new HBox(); saveBtn.setAlignment(Pos.CENTER_RIGHT);
         saveBtn.getChildren().add(makeAccentBtn("💾  Save Changes"));
@@ -339,21 +354,6 @@ public class AdminProfileScreen extends Application {
         pwBtn.getChildren().add(makeAccentBtn("Update Password"));
         pwCard.getChildren().addAll(strengthBox, pwBtn);
         rightCol.getChildren().add(pwCard);
-
-        // Register New Admin Card
-        VBox regCard = buildSectionCard("➕  Register New Staff Account", "Add a new admin or staff user");
-        regCard.getChildren().addAll(
-            buildFG("FULL NAME",     "Enter full name",    "", false),
-            buildFG("USERNAME",      "Choose a username",  "", false),
-            buildFG("EMAIL",         "Enter email address","", false),
-            buildFG("ROLE",          "Admin / Staff",      "", false),
-            buildFG("INITIAL PASSWORD", "Set initial password", "", true)
-        );
-        HBox regBtn = new HBox(); regBtn.setAlignment(Pos.CENTER_RIGHT);
-        Button createAccBtn = makeAccentBtn("➕  Create Account");
-        regBtn.getChildren().add(createAccBtn);
-        regCard.getChildren().add(regBtn);
-        rightCol.getChildren().add(regCard);
 
         twoCol.getChildren().addAll(leftCol, rightCol);
         body.getChildren().addAll(profileHeaderCard, twoCol);
