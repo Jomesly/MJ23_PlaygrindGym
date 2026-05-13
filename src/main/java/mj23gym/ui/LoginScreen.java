@@ -1,14 +1,25 @@
 package mj23gym.ui;
 
+import java.util.Optional;
+
 import javafx.animation.FadeTransition;
 import javafx.animation.TranslateTransition;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.layout.*;
+import javafx.scene.layout.Border;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
@@ -17,6 +28,7 @@ import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import mj23gym.dao.UserDAO;
 
 /**
  * MJ23 Playgrind Gym – Login Screen
@@ -233,19 +245,44 @@ public class LoginScreen extends Application {
             if (u.isEmpty() || p.isEmpty()) {
                 showMsg(msgLbl, "⚠   Please enter both username and password.", false);
                 shakeCard(card);
-            } else if (u.equals("admin") && p.equals("admin123")) {
-                showMsg(msgLbl, "✔   Login successful! Loading dashboard...", true);
-                try {
-                    AppSession.login(AppSession.User.admin(u));
-                    new GymManagementApp().start(stage);
-                } catch (Exception ex) {
-                    showMsg(msgLbl, "⚠   Could not load dashboard: " + ex.getMessage(), false);
-                }
-            } else {
-                showMsg(msgLbl, "⚠   Invalid username or password. Try again.", false);
-                passwordField.clear();
-                shakeCard(card);
+                return;
             }
+            
+            loginBtn.setDisable(true);
+            msgLbl.setText("🔄  Authenticating...");
+            msgLbl.setVisible(true);
+            
+            // Try to authenticate with database
+            new Thread(() -> {
+                try {
+                    UserDAO userDAO = new UserDAO();
+                    Optional<UserDAO.UserRecord> user = userDAO.authenticate(u, p);
+                    
+                    javafx.application.Platform.runLater(() -> {
+                        if (user.isPresent()) {
+                            UserDAO.UserRecord ur = user.get();
+                            showMsg(msgLbl, "✔   Login successful! Loading dashboard...", true);
+                            AppSession.login(AppSession.User.fromUserRecord(ur));
+                            try {
+                                new GymManagementApp().start(stage);
+                            } catch (Exception ex) {
+                                showMsg(msgLbl, "⚠   Could not load dashboard: " + ex.getMessage(), false);
+                                loginBtn.setDisable(false);
+                            }
+                        } else {
+                            showMsg(msgLbl, "⚠   Invalid username or password. Try again.", false);
+                            passwordField.clear();
+                            shakeCard(card);
+                            loginBtn.setDisable(false);
+                        }
+                    });
+                } catch (Exception ex) {
+                    javafx.application.Platform.runLater(() -> {
+                        showMsg(msgLbl, "⚠   Database error: " + ex.getMessage(), false);
+                        loginBtn.setDisable(false);
+                    });
+                }
+            }).start();
         };
 
         loginBtn.setOnAction(e -> doLogin.run());

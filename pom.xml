@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
+
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>mj23gym</groupId>
@@ -11,80 +13,115 @@
     <packaging>jar</packaging>
 
     <name>MJ23 Playgrind Gym Management System</name>
-    <description>Integrated gym management application with JavaFX UI</description>
 
+    <!-- ===================================================== -->
+    <!-- PROPERTIES -->
+    <!-- ===================================================== -->
     <properties>
+
+        <!-- Java -->
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- JavaFX -->
         <javafx.version>21.0.3</javafx.version>
         <javafx.maven.plugin.version>0.0.8</javafx.maven.plugin.version>
+
+        <!-- Dependencies -->
+        <mysql.version>8.0.33</mysql.version>
+        <hikaricp.version>5.1.0</hikaricp.version>
+        <slf4j.version>2.0.9</slf4j.version>
+
     </properties>
 
+    <!-- ===================================================== -->
+    <!-- DEPENDENCIES -->
+    <!-- ===================================================== -->
     <dependencies>
-        <!-- JavaFX Controls -->
+
+        <!-- ========================= -->
+        <!-- JavaFX -->
+        <!-- ========================= -->
+
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
         </dependency>
-        
-        <!-- JavaFX FXML -->
+
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
         </dependency>
-        
-        <!-- JavaFX Graphics -->
+
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-graphics</artifactId>
             <version>${javafx.version}</version>
         </dependency>
-        
-        <!-- JavaFX Swing -->
+
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-swing</artifactId>
             <version>${javafx.version}</version>
         </dependency>
 
-        <!-- MySQL Connector Java 8.x for Java 17 -->
+        <!-- ========================= -->
+        <!-- MySQL JDBC Driver -->
+        <!-- ========================= -->
+
         <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
-            <version>8.0.33</version>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <version>${mysql.version}</version>
         </dependency>
 
-        <!-- HikariCP for connection pooling -->
+        <!-- ========================= -->
+        <!-- HikariCP -->
+        <!-- ========================= -->
+
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
-            <version>5.1.0</version>
+            <version>${hikaricp.version}</version>
         </dependency>
 
-        <!-- SLF4J for logging -->
+        <!-- ========================= -->
+        <!-- Logging -->
+        <!-- ========================= -->
+
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>2.0.9</version>
+            <version>${slf4j.version}</version>
         </dependency>
-        
+
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
-            <version>2.0.9</version>
+            <version>${slf4j.version}</version>
         </dependency>
+
     </dependencies>
 
+    <!-- ===================================================== -->
+    <!-- BUILD -->
+    <!-- ===================================================== -->
     <build>
+
         <plugins>
+
+            <!-- ========================= -->
             <!-- Compiler Plugin -->
+            <!-- ========================= -->
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.11.0</version>
+
                 <configuration>
                     <source>17</source>
                     <target>17</target>
@@ -92,45 +129,76 @@
                 </configuration>
             </plugin>
 
-            <!-- JavaFX Maven Plugin -->
+            <!-- ========================= -->
+            <!-- JavaFX Plugin -->
+            <!-- ========================= -->
+
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>${javafx.maven.plugin.version}</version>
+
                 <configuration>
                     <mainClass>mj23gym.ui.LoginScreen</mainClass>
                 </configuration>
             </plugin>
 
-            <!-- Shade Plugin for creating fat JAR -->
+            <!-- ========================= -->
+            <!-- Shade Plugin -->
+            <!-- ========================= -->
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.5.0</version>
+
                 <executions>
+
                     <execution>
+
                         <phase>package</phase>
+
                         <goals>
                             <goal>shade</goal>
                         </goals>
+
                         <configuration>
+
                             <createDependencyReducedPom>false</createDependencyReducedPom>
+
                             <transformers>
-                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>mj23gym.ui.LoginScreen</mainClass>
+
+                                <transformer implementation=
+                                    "org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+
+                                    <mainClass>
+                                        mj23gym.ui.LoginScreen
+                                    </mainClass>
+
                                 </transformer>
+
                             </transformers>
+
                         </configuration>
+
                     </execution>
+
                 </executions>
+
             </plugin>
 
-            <!-- Surefire Plugin for running tests -->
+            <!-- ========================= -->
+            <!-- Test Plugin -->
+            <!-- ========================= -->
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.1.2</version>
             </plugin>
+
         </plugins>
+
     </build>
+
 </project>

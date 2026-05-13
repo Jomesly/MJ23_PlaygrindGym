@@ -88,6 +88,32 @@ final class AppSession {
             );
         }
 
+        static User fromUserRecord(mj23gym.dao.UserDAO.UserRecord ur) {
+            String displayName = ur.fullName() != null && !ur.fullName().isEmpty() 
+                ? ur.fullName() 
+                : ur.username();
+            String position = ur.role() != null 
+                ? (ur.role().equals("admin") ? "Administrator" : ur.role())
+                : "Staff";
+            LocalDateTime lastLogin = ur.lastLogin() != null 
+                ? ur.lastLogin().toLocalDateTime()
+                : null;
+            
+            return new User(
+                ur.username(),
+                ur.fullName() != null ? ur.fullName().split(" ")[0] : ur.username(),
+                ur.fullName() != null && ur.fullName().contains(" ") 
+                    ? ur.fullName().substring(ur.fullName().indexOf(" ") + 1)
+                    : "",
+                displayName,
+                ur.role(),
+                position,
+                ur.email() != null ? ur.email() : "",
+                ur.phone() != null ? ur.phone() : "",
+                lastLogin
+            );
+        }
+
         private User withLastLogin(LocalDateTime loginTime) {
             return new User(
                 username,

@@ -24,8 +24,8 @@ A complete **Gym Management System** with:
 |-----------|---------|--------|
 | **Java** | 17 LTS | ✅ Verified |
 | **JavaFX** | 21.0.3 | ✅ Compatible with Java 17 |
-| **MySQL** | 8.0.33 | ✅ Latest stable version |
-| **MySQL Connector** | 8.0.33 | ✅ JDBC driver for Java 17 |
+| **MySQL** | 8.4.0 | ✅ Latest stable version |
+| **MySQL Connector** | 8.4.0 | ✅ JDBC driver for Java 17 |
 | **HikariCP** | 5.1.0 | ✅ Connection pooling |
 | **Maven** | 3.6+ | ✅ Build automation |
 
