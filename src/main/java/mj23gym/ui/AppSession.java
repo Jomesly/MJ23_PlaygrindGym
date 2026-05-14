@@ -28,6 +28,7 @@ final class AppSession {
     }
 
     static final class User {
+        private final int userId;
         private final String username;
         private final String firstName;
         private final String lastName;
@@ -39,6 +40,7 @@ final class AppSession {
         private final LocalDateTime lastLogin;
 
         private User(
+            int userId,
             String username,
             String firstName,
             String lastName,
@@ -49,6 +51,7 @@ final class AppSession {
             String phone,
             LocalDateTime lastLogin
         ) {
+            this.userId = userId;
             this.username = username;
             this.firstName = firstName;
             this.lastName = lastName;
@@ -62,6 +65,7 @@ final class AppSession {
 
         static User admin(String username) {
             return new User(
+                0,
                 username,
                 "Admin",
                 "User",
@@ -76,6 +80,7 @@ final class AppSession {
 
         static User guest() {
             return new User(
+                0,
                 "guest",
                 "Guest",
                 "User",
@@ -100,6 +105,7 @@ final class AppSession {
                 : null;
             
             return new User(
+                ur.userId(),
                 ur.username(),
                 ur.fullName() != null ? ur.fullName().split(" ")[0] : ur.username(),
                 ur.fullName() != null && ur.fullName().contains(" ") 
@@ -116,6 +122,7 @@ final class AppSession {
 
         private User withLastLogin(LocalDateTime loginTime) {
             return new User(
+                userId,
                 username,
                 firstName,
                 lastName,
@@ -126,6 +133,10 @@ final class AppSession {
                 phone,
                 loginTime
             );
+        }
+
+        int userId() {
+            return userId;
         }
 
         String username() {

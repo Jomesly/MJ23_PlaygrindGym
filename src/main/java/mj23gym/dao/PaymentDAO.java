@@ -121,6 +121,78 @@ public class PaymentDAO {
         return paymentQuery(sql, ps -> { ps.setDate(1, from); ps.setDate(2, to); });
     }
 
+    /** Row for reports: member + plan + payment. */
+    public record PaymentSummaryRow(
+        String memberName,
+        String membershipType,
+        double amount,
+        String paymentMethod,
+        Date paymentDate,
+        String status
+    ) {}
+
+    public List<PaymentSummaryRow> findPaymentSummaryBetween(Date from, Date to) {
+        String sql =
+            "SELECT CONCAT(m.first_name,' ',m.last_name) AS member_name," +
+            " m.membership_type, pr.amount, pr.payment_method, pr.payment_date, pr.status" +
+            " FROM payment_records pr" +
+            " JOIN members m ON pr.member_id = m.member_id" +
+            " WHERE pr.payment_date BETWEEN ? AND ?" +
+            " ORDER BY pr.payment_date DESC, pr.created_at DESC";
+        List<PaymentSummaryRow> list = new ArrayList<>();
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDate(1, from);
+            ps.setDate(2, to);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new PaymentSummaryRow(
+                        rs.getString("member_name"),
+                        rs.getString("membership_type"),
+                        rs.getDouble("amount"),
+                        rs.getString("payment_method"),
+                        rs.getDate("payment_date"),
+                        rs.getString("status")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[PaymentDAO] findPaymentSummaryBetween error: " + e.getMessage());
+        }
+        return list;
+    }
+
+    /** Sum of completed payments in date range (membership revenue). */
+    public double sumCompletedBetween(Date from, Date to) {
+        String sql =
+            "SELECT COALESCE(SUM(amount),0) FROM payment_records" +
+            " WHERE status='Completed' AND payment_date BETWEEN ? AND ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDate(1, from);
+            ps.setDate(2, to);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getDouble(1) : 0;
+            }
+        } catch (SQLException e) {
+            return 0;
+        }
+    }
+
+    public int countBetween(Date from, Date to) {
+        String sql = "SELECT COUNT(*) FROM payment_records WHERE payment_date BETWEEN ? AND ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDate(1, from);
+            ps.setDate(2, to);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (SQLException e) {
+            return 0;
+        }
+    }
+
     /** Total revenue for today. */
     public double todayRevenue() {
         String sql = "SELECT COALESCE(SUM(amount),0) FROM payment_records WHERE payment_date=CURDATE() AND status='Completed'";
@@ -244,5 +316,34 @@ public class PaymentDAO {
              ResultSet rs = st.executeQuery(sql)) {
             return rs.next() ? rs.getDouble(1) : 0;
         } catch (SQLException e) { return 0; }
+    }
+
+    /** Billing rows still marked Unpaid (not yet fully paid). */
+    public int countPendingInvoices() {
+        String sql = "SELECT COUNT(*) FROM billing WHERE payment_status = 'Unpaid'";
+        return scalarInt(sql);
+    }
+
+    /** Billing overdue or unpaid past due date. */
+    public int countOverdueAccounts() {
+        return findOverdue().size();
+    }
+
+    /** Completed membership (or any) payments recorded this calendar month. */
+    public int countCompletedPaymentsThisMonth() {
+        String sql =
+            "SELECT COUNT(*) FROM payment_records WHERE status = 'Completed' " +
+            "AND YEAR(payment_date) = YEAR(CURDATE()) AND MONTH(payment_date) = MONTH(CURDATE())";
+        return scalarInt(sql);
+    }
+
+    private int scalarInt(String sql) {
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            return rs.next() ? rs.getInt(1) : 0;
+        } catch (SQLException e) {
+            return 0;
+        }
     }
 }

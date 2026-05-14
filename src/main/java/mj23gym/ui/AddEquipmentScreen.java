@@ -16,6 +16,14 @@ import javafx.stage.Stage;
 import javafx.animation.FadeTransition;
 import javafx.util.Duration;
 
+import java.sql.Date;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import mj23gym.dao.EquipmentDAO;
+
 /**
  * MJ23 Playgrind Gym – Add Equipment / Equipment Management Screen
  */
@@ -34,17 +42,6 @@ public class AddEquipmentScreen extends Application {
     static final String SUCCESS     = "#4caf50";
     static final String WARNING     = "#ff9800";
     static final String INFO        = "#2196f3";
-
-    private final String[][] equipment = {
-        {"#EQ-001", "Treadmill",          "Cardio",    "2", "Good",        "2025-07-01"},
-        {"#EQ-002", "Cable Machine",      "Strength",  "1", "Maintenance", "2025-06-15"},
-        {"#EQ-003", "Barbell Set",        "Strength",  "4", "Good",        "2025-08-01"},
-        {"#EQ-004", "Dumbbell Rack",      "Strength",  "1", "Good",        "2025-09-01"},
-        {"#EQ-005", "Bench Press",        "Strength",  "2", "Good",        "2025-07-15"},
-        {"#EQ-006", "Stationary Bike",    "Cardio",    "2", "Good",        "2025-08-01"},
-        {"#EQ-007", "Pull-Up Bar",        "Bodyweight","3", "Good",        "2025-10-01"},
-        {"#EQ-008", "Leg Press Machine",  "Strength",  "1", "Fair",        "2025-06-20"},
-    };
 
     @Override
     public void start(Stage stage) {
@@ -162,42 +159,111 @@ public class AddEquipmentScreen extends Application {
         body.setPadding(new Insets(26, 28, 26, 28));
         body.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
-        // Stats
+        EquipmentDAO equipmentDAO = new EquipmentDAO();
+
+        Text statTotalVal = new Text();
+        Text statGoodVal = new Text();
+        Text statMaintVal = new Text();
+        Text statFairVal = new Text();
+        for (Text t : new Text[] { statTotalVal, statGoodVal, statMaintVal, statFairVal }) {
+            t.setFont(Font.font("Georgia", FontWeight.BOLD, 22));
+        }
+
+        Runnable refreshStats = () -> {
+            statTotalVal.setText(String.valueOf(equipmentDAO.findAll().size()));
+            statGoodVal.setText(String.valueOf(equipmentDAO.countByCondition("Good")));
+            statMaintVal.setText(String.valueOf(equipmentDAO.countByCondition("Maintenance")));
+            statFairVal.setText(String.valueOf(equipmentDAO.countByCondition("Fair")));
+        };
+        refreshStats.run();
+
         HBox stats = new HBox(16);
         stats.getChildren().addAll(
-            makeStatChip("🏋 Total Equipment", "8",  TEXT_WHITE),
-            makeStatChip("✅ Good Condition",   "6",  SUCCESS),
-            makeStatChip("🔧 Maintenance",      "1",  WARNING),
-            makeStatChip("⚠  Fair Condition",   "1",  INFO)
+            makeStatChipText("🏋 Total Equipment", statTotalVal, TEXT_WHITE),
+            makeStatChipText("✅ Good", statGoodVal, SUCCESS),
+            makeStatChipText("🔧 Maintenance", statMaintVal, WARNING),
+            makeStatChipText("⚠ Fair", statFairVal, INFO)
         );
 
-        // Controls
         HBox controls = new HBox(12);
         controls.setAlignment(Pos.CENTER_LEFT);
         TextField search = new TextField();
         search.setPromptText("🔍  Search equipment...");
-        search.setPrefWidth(250); search.setPrefHeight(38);
+        search.setPrefWidth(250);
+        search.setPrefHeight(38);
         applyFieldStyle(search);
         ComboBox<String> catFilter = new ComboBox<>();
-        catFilter.getItems().addAll("All Types", "Cardio", "Strength", "Bodyweight");
-        catFilter.setValue("All Types"); styleCombo(catFilter);
+        catFilter.getItems().addAll("All Types", "Cardio", "Strength", "Bodyweight", "Flexibility", "Other");
+        catFilter.setValue("All Types");
+        styleCombo(catFilter);
         ComboBox<String> condFilter = new ComboBox<>();
-        condFilter.getItems().addAll("All Conditions", "Good", "Fair", "Maintenance");
-        condFilter.setValue("All Conditions"); styleCombo(condFilter);
-        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        Button addBtn = makeAccentBtn("＋  Add Equipment");
-        addBtn.setOnAction(e -> showAddEquipmentDialog());
-        controls.getChildren().addAll(search, catFilter, condFilter, sp, addBtn);
+        condFilter.getItems().addAll("All Conditions", "Good", "Fair", "Maintenance", "Broken");
+        condFilter.setValue("All Conditions");
+        styleCombo(condFilter);
+        Region ctrlSp = new Region();
+        HBox.setHgrow(ctrlSp, Priority.ALWAYS);
+        controls.getChildren().addAll(search, catFilter, condFilter, ctrlSp);
 
-        // Two-column layout: table + add form
         HBox mainRow = new HBox(20);
 
-        // Equipment table
-        VBox tableCard = buildEquipmentTable();
+        VBox rows = new VBox(0);
+        Text pgInfo = new Text();
+        pgInfo.setFont(Font.font("Verdana", 11));
+        pgInfo.setFill(Color.web(TEXT_MUTED));
+
+        double[] colW = {8, 22, 12, 7, 13, 14, 14};
+        VBox tableCard = buildEquipmentTableShell(colW, rows, pgInfo);
         HBox.setHgrow(tableCard, Priority.ALWAYS);
 
-        // Quick Add form card
-        VBox addCard = buildAddFormCard();
+        TextField addName = new TextField();
+        ComboBox<String> addCat = new ComboBox<>();
+        addCat.getItems().addAll("Cardio", "Strength", "Bodyweight", "Flexibility", "Other");
+        addCat.setValue("Cardio");
+        styleCombo(addCat);
+        TextField addQty = new TextField();
+        addQty.setPromptText("1");
+        ComboBox<String> addCond = new ComboBox<>();
+        addCond.getItems().addAll("Good", "Fair", "Maintenance", "Broken");
+        addCond.setValue("Good");
+        styleCombo(addCond);
+        TextField addPurchase = new TextField();
+        addPurchase.setPromptText("Purchase date YYYY-MM-DD (optional)");
+        TextField addNextMaint = new TextField();
+        addNextMaint.setPromptText("Next maintenance YYYY-MM-DD (optional)");
+        TextField addNotes = new TextField();
+        addNotes.setPromptText("Optional notes");
+
+        final Runnable[] refreshHolder = new Runnable[1];
+        refreshHolder[0] = () -> {
+            refreshEquipmentRows(
+                rows,
+                pgInfo,
+                equipmentDAO,
+                search.getText().trim(),
+                catFilter.getValue(),
+                condFilter.getValue(),
+                colW,
+                refreshHolder[0]
+            );
+            refreshStats.run();
+        };
+
+        search.setOnAction(e -> refreshHolder[0].run());
+        catFilter.setOnAction(e -> refreshHolder[0].run());
+        condFilter.setOnAction(e -> refreshHolder[0].run());
+        refreshHolder[0].run();
+
+        VBox addCard = buildQuickAddCard(
+            equipmentDAO,
+            addName,
+            addCat,
+            addQty,
+            addCond,
+            addPurchase,
+            addNextMaint,
+            addNotes,
+            refreshHolder[0]
+        );
         addCard.setMinWidth(300);
         addCard.setMaxWidth(320);
 
@@ -208,11 +274,13 @@ public class AddEquipmentScreen extends Application {
         VBox.setVgrow(scroll, Priority.ALWAYS);
 
         FadeTransition ft = new FadeTransition(Duration.millis(350), body);
-        ft.setFromValue(0); ft.setToValue(1); ft.play();
+        ft.setFromValue(0);
+        ft.setToValue(1);
+        ft.play();
         return content;
     }
 
-    private VBox buildEquipmentTable() {
+    private VBox buildEquipmentTableShell(double[] colW, VBox rows, Text pgInfo) {
         VBox card = new VBox(0);
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
@@ -221,17 +289,18 @@ public class AddEquipmentScreen extends Application {
             "-fx-border-radius: 12;" +
             "-fx-border-width: 1;");
         DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000", 0.3)); ds.setRadius(12); ds.setOffsetY(4);
+        ds.setColor(Color.web("#000", 0.3));
+        ds.setRadius(12);
+        ds.setOffsetY(4);
         card.setEffect(ds);
 
         String[] headers = {"ID", "Equipment Name", "Type", "Qty", "Condition", "Next Maint.", "Actions"};
-        double[] colW = {8, 22, 12, 7, 13, 14, 14};
-
         HBox tblHdr = new HBox();
         tblHdr.setPadding(new Insets(12, 20, 12, 20));
         tblHdr.setStyle("-fx-background-color: " + BG_SIDEBAR + "; -fx-background-radius: 12 12 0 0;");
         GridPane hGrid = makeGrid(colW);
-        hGrid.setMaxWidth(Double.MAX_VALUE); HBox.setHgrow(hGrid, Priority.ALWAYS);
+        hGrid.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(hGrid, Priority.ALWAYS);
         for (int i = 0; i < headers.length; i++) {
             Label h = new Label(headers[i].toUpperCase());
             h.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
@@ -240,41 +309,103 @@ public class AddEquipmentScreen extends Application {
         }
         tblHdr.getChildren().add(hGrid);
 
-        VBox rows = new VBox(0);
-        for (int r = 0; r < equipment.length; r++) {
-            String[] eq = equipment[r];
+        HBox pag = new HBox(10);
+        pag.setAlignment(Pos.CENTER_RIGHT);
+        pag.setPadding(new Insets(14, 20, 14, 20));
+        pag.setStyle("-fx-border-color: " + BORDER + " transparent transparent transparent; -fx-border-width: 1 0 0 0;");
+        Region pgSp = new Region();
+        HBox.setHgrow(pgSp, Priority.ALWAYS);
+        pag.getChildren().addAll(pgInfo, pgSp);
+
+        card.getChildren().addAll(tblHdr, rows, pag);
+        return card;
+    }
+
+    private void refreshEquipmentRows(
+        VBox rows,
+        Text pgInfo,
+        EquipmentDAO dao,
+        String keyword,
+        String catFilterVal,
+        String condFilterVal,
+        double[] colW,
+        Runnable fullRefresh
+    ) {
+        rows.getChildren().clear();
+        String q = keyword.toLowerCase();
+        List<EquipmentDAO.EquipmentRecord> filtered = new ArrayList<>();
+        for (EquipmentDAO.EquipmentRecord eq : dao.findAll()) {
+            if (!"All Types".equals(catFilterVal)
+                && (eq.category() == null || !eq.category().equalsIgnoreCase(catFilterVal))) {
+                continue;
+            }
+            if (!"All Conditions".equals(condFilterVal)
+                && (eq.condition() == null || !eq.condition().equalsIgnoreCase(condFilterVal))) {
+                continue;
+            }
+            if (!q.isEmpty()) {
+                String blob = ((eq.equipmentName() != null ? eq.equipmentName() : "") + " "
+                    + (eq.equipmentCode() != null ? eq.equipmentCode() : "")).toLowerCase();
+                if (!blob.contains(q)) {
+                    continue;
+                }
+            }
+            filtered.add(eq);
+        }
+        pgInfo.setText("Showing " + filtered.size() + " item(s)");
+
+        int r = 0;
+        for (EquipmentDAO.EquipmentRecord eq : filtered) {
             String bg = (r % 2 == 0) ? BG_CARD : BG_ROW_ALT;
             HBox row = new HBox();
             row.setPadding(new Insets(11, 20, 11, 20));
             row.setStyle("-fx-background-color: " + bg + ";");
             row.setAlignment(Pos.CENTER_LEFT);
             GridPane rg = makeGrid(colW);
-            rg.setMaxWidth(Double.MAX_VALUE); HBox.setHgrow(rg, Priority.ALWAYS);
-            rg.add(makeCell(eq[0], ACCENT, true), 0, 0);
-            rg.add(makeCell(eq[1], TEXT_WHITE, false), 1, 0);
-            rg.add(makeTypeBadge(eq[2]), 2, 0);
-            rg.add(makeCell(eq[3], TEXT_WHITE, true), 3, 0);
-            rg.add(makeCondBadge(eq[4]), 4, 0);
-            rg.add(makeCell(eq[5], TEXT_MUTED, false), 5, 0);
-            HBox actions = new HBox(6);
+            rg.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(rg, Priority.ALWAYS);
+            String code = "#" + eq.equipmentCode();
+            String next = eq.nextMaintenance() != null ? eq.nextMaintenance().toString() : "—";
+            rg.add(makeCell(code, ACCENT, true), 0, 0);
+            rg.add(makeCell(eq.equipmentName(), TEXT_WHITE, false), 1, 0);
+            rg.add(makeTypeBadge(eq.category() != null ? eq.category() : "Other"), 2, 0);
+            rg.add(makeCell(String.valueOf(eq.quantity()), TEXT_WHITE, true), 3, 0);
+            rg.add(makeCondBadge(eq.condition() != null ? eq.condition() : "Good"), 4, 0);
+            rg.add(makeCell(next, TEXT_MUTED, false), 5, 0);
+
+            Button delBtn = makeActionBtn("🗑", ACCENT);
+            delBtn.setOnAction(e -> {
+                Alert c = new Alert(Alert.AlertType.CONFIRMATION);
+                c.setContentText("Deactivate " + eq.equipmentName() + "?");
+                Optional<ButtonType> res = c.showAndWait();
+                if (res.isPresent() && res.get() == ButtonType.OK && dao.deactivate(eq.equipmentId())) {
+                    fullRefresh.run();
+                }
+            });
+            HBox actions = new HBox(6, delBtn);
             actions.setAlignment(Pos.CENTER_LEFT);
-            actions.getChildren().addAll(
-                makeActionBtn("✏", WARNING),
-                makeActionBtn("🔧", INFO),
-                makeActionBtn("🗑", ACCENT)
-            );
             rg.add(actions, 6, 0);
+
             row.getChildren().add(rg);
             String fBg = bg;
             row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: rgba(230,57,70,0.06);"));
             row.setOnMouseExited(e -> row.setStyle("-fx-background-color: " + fBg + ";"));
             rows.getChildren().add(row);
+            r++;
         }
-        card.getChildren().addAll(tblHdr, rows);
-        return card;
     }
 
-    private VBox buildAddFormCard() {
+    private VBox buildQuickAddCard(
+        EquipmentDAO dao,
+        TextField addName,
+        ComboBox<String> addCat,
+        TextField addQty,
+        ComboBox<String> addCond,
+        TextField addPurchase,
+        TextField addNextMaint,
+        TextField addNotes,
+        Runnable onSaved
+    ) {
         VBox card = new VBox(16);
         card.setPadding(new Insets(24));
         card.setStyle(
@@ -284,51 +415,164 @@ public class AddEquipmentScreen extends Application {
             "-fx-border-radius: 12;" +
             "-fx-border-width: 1;");
         DropShadow ds = new DropShadow();
-        ds.setColor(Color.web(ACCENT, 0.2)); ds.setRadius(14); ds.setOffsetY(4);
+        ds.setColor(Color.web(ACCENT, 0.2));
+        ds.setRadius(14);
+        ds.setOffsetY(4);
         card.setEffect(ds);
 
         Text title = new Text("Add Equipment");
         title.setFont(Font.font("Georgia", FontWeight.BOLD, 16));
         title.setFill(Color.web(TEXT_WHITE));
         Rectangle ul = new Rectangle(40, 3);
-        ul.setFill(Color.web(ACCENT)); ul.setArcWidth(3); ul.setArcHeight(3);
+        ul.setFill(Color.web(ACCENT));
+        ul.setArcWidth(3);
+        ul.setArcHeight(3);
 
-        card.getChildren().addAll(title, ul,
-            buildFG("EQUIPMENT NAME", "e.g. Treadmill"),
-            buildFG("TYPE / CATEGORY", "e.g. Cardio"),
-            buildFG("QUANTITY", "Enter quantity"),
-            buildFG("CONDITION", "Good / Fair / Poor"),
-            buildFG("DATE ACQUIRED", "YYYY-MM-DD"),
-            buildFG("NEXT MAINTENANCE", "YYYY-MM-DD"),
-            buildFG("NOTES", "Optional notes...")
-        );
+        VBox nameBox = labeledField("EQUIPMENT NAME", addName, "e.g. Treadmill");
+        VBox catBox = new VBox(6);
+        Label catLbl = new Label("CATEGORY");
+        catLbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        catLbl.setTextFill(Color.web(TEXT_MUTED));
+        addCat.setPrefHeight(40);
+        catBox.getChildren().addAll(catLbl, addCat);
+
+        VBox qtyBox = labeledField("QUANTITY", addQty, "1");
+        VBox condBox = new VBox(6);
+        Label condLbl = new Label("CONDITION");
+        condLbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        condLbl.setTextFill(Color.web(TEXT_MUTED));
+        addCond.setPrefHeight(40);
+        condBox.getChildren().addAll(condLbl, addCond);
+
+        VBox purchBox = labeledField("PURCHASE DATE (optional)", addPurchase, "YYYY-MM-DD");
+        VBox nextBox = labeledField("NEXT MAINTENANCE (optional)", addNextMaint, "YYYY-MM-DD");
+        VBox notesBox = labeledField("NOTES (optional)", addNotes, "Notes");
+
+        Runnable resetForm = () -> {
+            addName.clear();
+            addQty.clear();
+            addPurchase.clear();
+            addNextMaint.clear();
+            addNotes.clear();
+            addCat.setValue("Cardio");
+            addCond.setValue("Good");
+        };
 
         HBox btnRow = new HBox(10);
         btnRow.setAlignment(Pos.CENTER_RIGHT);
         Button clear = new Button("Clear");
-        clear.setPrefHeight(38); clear.setPadding(new Insets(0, 16, 0, 16));
+        clear.setPrefHeight(38);
+        clear.setPadding(new Insets(0, 16, 0, 16));
         clear.setFont(Font.font("Verdana", 11));
-        clear.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-text-fill: " + TEXT_MUTED + "; -fx-background-radius: 8; -fx-cursor: hand;");
+        clear.setStyle(
+            "-fx-background-color: " + BG_MAIN + ";" +
+            "-fx-text-fill: " + TEXT_MUTED + ";" +
+            "-fx-background-radius: 8;" +
+            "-fx-cursor: hand;"
+        );
+        clear.setOnAction(e -> resetForm.run());
+
         Button save = makeAccentBtn("Save");
-        save.setPrefHeight(38); save.setPadding(new Insets(0, 20, 0, 20));
+        save.setPrefHeight(38);
+        save.setPadding(new Insets(0, 20, 0, 20));
+        save.setOnAction(e -> {
+            String nm = addName.getText().trim();
+            if (nm.isEmpty()) {
+                new Alert(Alert.AlertType.WARNING, "Equipment name is required.").showAndWait();
+                return;
+            }
+            int qty;
+            try {
+                String qs = addQty.getText().trim();
+                qty = qs.isEmpty() ? 1 : Integer.parseInt(qs);
+            } catch (NumberFormatException ex) {
+                new Alert(Alert.AlertType.ERROR, "Invalid quantity.").showAndWait();
+                return;
+            }
+            Date purchase = parseOptionalSqlDate(addPurchase.getText().trim());
+            Date nextMaint = parseOptionalSqlDate(addNextMaint.getText().trim());
+            EquipmentDAO.EquipmentRecord rec = new EquipmentDAO.EquipmentRecord(
+                0,
+                "",
+                nm,
+                addCat.getValue(),
+                "",
+                purchase,
+                0,
+                0,
+                qty,
+                addCond.getValue(),
+                "",
+                null,
+                nextMaint,
+                null,
+                addNotes.getText().trim(),
+                true
+            );
+            int id = dao.insert(rec, AppSession.currentUser().userId());
+            if (id > 0) {
+                resetForm.run();
+                onSaved.run();
+                new Alert(Alert.AlertType.INFORMATION, "Equipment saved.").showAndWait();
+            } else {
+                new Alert(Alert.AlertType.ERROR, "Save failed. Check database connection or duplicate code.")
+                    .showAndWait();
+            }
+        });
+
         btnRow.getChildren().addAll(clear, save);
-        card.getChildren().add(btnRow);
+        card.getChildren().addAll(
+            title, ul, nameBox, catBox, qtyBox, condBox, purchBox, nextBox, notesBox, btnRow
+        );
         return card;
     }
 
-    private VBox buildFG(String label, String prompt) {
+    private VBox labeledField(String label, TextField field, String prompt) {
         VBox g = new VBox(6);
         Label lbl = new Label(label);
         lbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
         lbl.setTextFill(Color.web(TEXT_MUTED));
-        TextField tf = new TextField();
-        tf.setPromptText(prompt); tf.setPrefHeight(38);
-        applyFieldStyle(tf);
-        g.getChildren().addAll(lbl, tf);
+        field.setPromptText(prompt);
+        field.setPrefHeight(38);
+        applyFieldStyle(field);
+        g.getChildren().addAll(lbl, field);
         return g;
     }
 
-    private void showAddEquipmentDialog() { /* same as inline form */ }
+    private Date parseOptionalSqlDate(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return Date.valueOf(LocalDate.parse(raw));
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private HBox makeStatChipText(String label, Text valueNode, String color) {
+        HBox chip = new HBox(10);
+        chip.setAlignment(Pos.CENTER_LEFT);
+        chip.setPadding(new Insets(14, 20, 14, 20));
+        chip.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-radius: 10;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 10;" +
+            "-fx-border-width: 1;");
+        HBox.setHgrow(chip, Priority.ALWAYS);
+        DropShadow d = new DropShadow();
+        d.setColor(Color.web("#000", 0.2));
+        d.setRadius(8);
+        d.setOffsetY(3);
+        chip.setEffect(d);
+        valueNode.setFill(Color.web(color));
+        Text lbl = new Text(label);
+        lbl.setFont(Font.font("Verdana", 11));
+        lbl.setFill(Color.web(TEXT_MUTED));
+        chip.getChildren().add(new VBox(2, lbl, valueNode));
+        return chip;
+    }
 
     private HBox buildTopBar(String title, String sub) {
         HBox bar = new HBox();
@@ -386,11 +630,29 @@ public class AddEquipmentScreen extends Application {
     private Label makeCondBadge(String cond) {
         Label b = new Label(cond);
         b.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
-        String c, bg;
+        String c;
+        String bg;
         switch (cond) {
-            case "Good":        c = SUCCESS; bg = "rgba(76,175,80,0.15)";  break;
-            case "Maintenance": c = ACCENT;  bg = "rgba(230,57,70,0.15)";  break;
-            default:            c = WARNING; bg = "rgba(255,152,0,0.15)";  break;
+            case "Good":
+                c = SUCCESS;
+                bg = "rgba(76,175,80,0.15)";
+                break;
+            case "Maintenance":
+                c = ACCENT;
+                bg = "rgba(230,57,70,0.15)";
+                break;
+            case "Broken":
+                c = ACCENT;
+                bg = "rgba(230,57,70,0.22)";
+                break;
+            case "Fair":
+                c = WARNING;
+                bg = "rgba(255,152,0,0.15)";
+                break;
+            default:
+                c = TEXT_MUTED;
+                bg = "transparent";
+                break;
         }
         b.setTextFill(Color.web(c));
         b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 10; -fx-padding: 3 10 3 10;");

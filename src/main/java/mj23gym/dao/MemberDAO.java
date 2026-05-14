@@ -46,6 +46,14 @@ public class MemberDAO {
         return query("SELECT * FROM members ORDER BY last_name, first_name", ps -> {});
     }
 
+    /** Newest registrations first (for dashboard widgets). */
+    public List<MemberRecord> findRecent(int limit) {
+        return query(
+            "SELECT * FROM members ORDER BY created_at DESC LIMIT ?",
+            ps -> ps.setInt(1, Math.max(1, limit))
+        );
+    }
+
     public List<MemberRecord> findByStatus(String status) {
         return query("SELECT * FROM members WHERE status=? ORDER BY last_name",
                      ps -> ps.setString(1, status));

@@ -16,6 +16,14 @@ import javafx.stage.Stage;
 import javafx.animation.FadeTransition;
 import javafx.util.Duration;
 
+import java.sql.Date;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import mj23gym.dao.MemberDAO;
+import mj23gym.dao.PaymentDAO;
+
 /**
  * MJ23 Playgrind Gym – Payment & Billing Screen
  * Shows member payment form with cash/GCash/bank transfer options,
@@ -174,17 +182,31 @@ public class PaymentScreen extends Application {
         body.setPadding(new Insets(26, 28, 26, 28));
         body.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
+        MemberDAO memberDAO = new MemberDAO();
+        PaymentDAO paymentDAO = new PaymentDAO();
+        final MemberDAO.MemberRecord[] selectedMember = new MemberDAO.MemberRecord[1];
+
         // ── Stats row ──────────────────────────────────────────────
+        double today = paymentDAO.todayRevenue();
+        int overdue = paymentDAO.countOverdueAccounts();
+        int pending = paymentDAO.countPendingInvoices();
+        int paidMonth = paymentDAO.countCompletedPaymentsThisMonth();
         HBox statsRow = new HBox(16);
         statsRow.getChildren().addAll(
-            makeStatChip("💰 Total Collected Today", "₱4,320", SUCCESS),
-            makeStatChip("⚠  Overdue Accounts",      "7",      ACCENT),
-            makeStatChip("📋 Pending Invoices",       "3",      WARNING),
-            makeStatChip("✅ Paid This Month",         "128",    INFO)
+            makeStatChip("💰 Total Collected Today", String.format("₱%.0f", today), SUCCESS),
+            makeStatChip("⚠  Overdue Accounts", String.valueOf(overdue), ACCENT),
+            makeStatChip("📋 Pending Invoices", String.valueOf(pending), WARNING),
+            makeStatChip("✅ Paid This Month", String.valueOf(paidMonth), INFO)
         );
 
         // ── Two-column layout: Payment Form + Summary ──────────────
         HBox mainRow = new HBox(20);
+
+        VBox histRows = new VBox(0);
+        VBox histCard = buildPaymentHistory(paymentDAO, histRows);
+        Runnable refreshHist = () -> populatePaymentHistoryRows(histRows, paymentDAO.findRecentPayments(50));
+        refreshHist.run();
+        HBox.setHgrow(histCard, Priority.ALWAYS);
 
         // LEFT: Payment form card
         VBox payCard = new VBox(18);
@@ -236,27 +258,43 @@ public class PaymentScreen extends Application {
         memberInfo.setPadding(new Insets(16));
         GridPane infoGrid = new GridPane();
         infoGrid.setHgap(20); infoGrid.setVgap(10);
-        String[][] infoData = {
-            {"Member ID",   "#M-001"},
-            {"Name",        "Juan dela Cruz"},
-            {"Plan",        "Monthly – ₱800"},
-            {"Status",      "Active"},
-            {"Balance Due", "₱800"},
-            {"Due Date",    "2025-06-30"},
-        };
-        for (int i = 0; i < infoData.length; i++) {
-            Label key = new Label(infoData[i][0] + ":");
+        String[] infoKeys = {"Member ID", "Name", "Plan", "Status", "Balance Due", "Due Date"};
+        Label[] infoVals = new Label[infoKeys.length];
+        for (int i = 0; i < infoKeys.length; i++) {
+            Label key = new Label(infoKeys[i] + ":");
             key.setFont(Font.font("Verdana", 11));
             key.setTextFill(Color.web(TEXT_DIM));
-            Label val = new Label(infoData[i][1]);
+            Label val = new Label("—");
             val.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
-            String valColor = infoData[i][0].equals("Balance Due") ? ACCENT :
-                              infoData[i][0].equals("Status") ? SUCCESS : TEXT_WHITE;
-            val.setTextFill(Color.web(valColor));
+            val.setTextFill(Color.web(TEXT_WHITE));
+            infoVals[i] = val;
             infoGrid.add(key, 0, i);
             infoGrid.add(val, 1, i);
         }
         memberInfo.getChildren().add(infoGrid);
+
+        Runnable updateMemberInfo = () -> {
+            MemberDAO.MemberRecord m = selectedMember[0];
+            if (m == null) {
+                for (Label v : infoVals) {
+                    v.setText("—");
+                    v.setTextFill(Color.web(TEXT_WHITE));
+                }
+                return;
+            }
+            infoVals[0].setText("#" + m.memberCode());
+            infoVals[1].setText(m.fullName());
+            infoVals[2].setText(m.membershipType() != null ? m.membershipType() : "—");
+            infoVals[3].setText(m.status() != null ? m.status() : "—");
+            infoVals[3].setTextFill(Color.web(
+                m.status() != null && m.status().equalsIgnoreCase("Active") ? SUCCESS : ACCENT));
+            infoVals[4].setText("₱0");
+            infoVals[4].setTextFill(Color.web(ACCENT));
+            infoVals[5].setText(
+                m.membershipEndDate() != null ? m.membershipEndDate().toString() : "—");
+            infoVals[5].setTextFill(Color.web(TEXT_WHITE));
+        };
+        updateMemberInfo.run();
 
         // Payment method selector
         VBox methodGroup = new VBox(10);
@@ -273,6 +311,7 @@ public class PaymentScreen extends Application {
             HBox.setHgrow(tb, Priority.ALWAYS);
             tb.setMaxWidth(Double.MAX_VALUE);
             if (methods[i].equals("Cash")) tb.setSelected(true);
+            tb.setUserData(methods[i]);
             styleToggleBtn(tb, methods[i].equals("Cash"));
             tb.selectedProperty().addListener((obs, old, sel) -> styleToggleBtn(tb, sel));
         }
@@ -299,10 +338,69 @@ public class PaymentScreen extends Application {
         ColumnConstraints cb = new ColumnConstraints(); cb.setPercentWidth(50);
         amtGrid.getColumnConstraints().addAll(ca, cb);
 
-        amtGrid.add(buildAmtField("AMOUNT DUE", "₱800.00", true), 0, 0);
-        amtGrid.add(buildAmtField("DISCOUNT", "₱0.00", false), 1, 0);
-        amtGrid.add(buildAmtField("PENALTY (Late)", "₱0.00", false), 0, 1);
-        amtGrid.add(buildAmtField("TOTAL AMOUNT", "₱800.00", true), 1, 1);
+        VBox dueBox = buildAmtField("AMOUNT DUE", "0", true);
+        VBox discBox = buildAmtField("DISCOUNT", "0", false);
+        VBox penBox = buildAmtField("PENALTY (Late)", "0", false);
+        VBox totBox = buildAmtField("TOTAL AMOUNT", "0", true);
+        TextField dueTf = (TextField) dueBox.getChildren().get(1);
+        TextField discountTf = (TextField) discBox.getChildren().get(1);
+        TextField penaltyTf = (TextField) penBox.getChildren().get(1);
+        TextField totalTf = (TextField) totBox.getChildren().get(1);
+
+        Runnable recalcTotal = () -> {
+            try {
+                double due = parseMoney(dueTf.getText());
+                double disc = parseMoney(discountTf.getText());
+                double pen = parseMoney(penaltyTf.getText());
+                double tot = Math.max(0, due - disc + pen);
+                totalTf.setText(String.format("%.2f", tot));
+            } catch (NumberFormatException ex) {
+                totalTf.setText("0");
+            }
+        };
+        dueTf.textProperty().addListener((o, a, b) -> recalcTotal.run());
+        discountTf.textProperty().addListener((o, a, b) -> recalcTotal.run());
+        penaltyTf.textProperty().addListener((o, a, b) -> recalcTotal.run());
+
+        amtGrid.add(dueBox, 0, 0);
+        amtGrid.add(discBox, 1, 0);
+        amtGrid.add(penBox, 0, 1);
+        amtGrid.add(totBox, 1, 1);
+
+        findBtn.setOnAction(e -> {
+            String q = memberSearch.getText().trim();
+            if (q.isEmpty()) {
+                selectedMember[0] = null;
+                updateMemberInfo.run();
+                return;
+            }
+            Optional<MemberDAO.MemberRecord> hit = Optional.empty();
+            if (q.startsWith("M-") || q.startsWith("#")) {
+                String code = q.startsWith("#") ? q.substring(1) : q;
+                hit = memberDAO.findByCode(code);
+            }
+            if (hit.isEmpty()) {
+                List<MemberDAO.MemberRecord> found = memberDAO.search(q);
+                if (found.size() == 1) {
+                    hit = Optional.of(found.get(0));
+                }
+            }
+            if (hit.isEmpty()) {
+                selectedMember[0] = null;
+                updateMemberInfo.run();
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setTitle("Member");
+                a.setContentText("No single member matched. Try member code (e.g. M-001) or refine your search.");
+                a.showAndWait();
+                return;
+            }
+            selectedMember[0] = hit.get();
+            updateMemberInfo.run();
+            dueTf.setText("800");
+            discountTf.setText("0");
+            penaltyTf.setText("0");
+            recalcTotal.run();
+        });
 
         // Notes
         VBox notesGroup = new VBox(6);
@@ -363,16 +461,70 @@ public class PaymentScreen extends Application {
         processBtn.setOnMouseExited(e -> processBtn.setStyle(
             "-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;"
         ));
+        processBtn.setOnAction(e -> {
+            if (selectedMember[0] == null) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("Find and select a member first.");
+                a.showAndWait();
+                return;
+            }
+            double amount;
+            try {
+                amount = Double.parseDouble(totalTf.getText().trim().replace(",", ""));
+            } catch (NumberFormatException ex) {
+                Alert a = new Alert(Alert.AlertType.ERROR);
+                a.setContentText("Invalid total amount.");
+                a.showAndWait();
+                return;
+            }
+            if (amount <= 0) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("Amount must be greater than zero.");
+                a.showAndWait();
+                return;
+            }
+            ToggleButton sel = (ToggleButton) methodGroup2.getSelectedToggle();
+            String method = sel != null && sel.getUserData() != null ? sel.getUserData().toString() : "Cash";
+            int uid = AppSession.currentUser().userId();
+            int pid = paymentDAO.insertPayment(
+                selectedMember[0].memberId(),
+                null,
+                method,
+                "Membership",
+                new Date(System.currentTimeMillis()),
+                amount,
+                refField.getText().trim(),
+                notesArea.getText().trim(),
+                uid
+            );
+            if (pid > 0) {
+                refreshHist.run();
+                Alert ok = new Alert(Alert.AlertType.INFORMATION);
+                ok.setContentText("Payment recorded. Reference #" + pid);
+                ok.showAndWait();
+            } else {
+                Alert er = new Alert(Alert.AlertType.ERROR);
+                er.setContentText("Payment failed. Check database connection.");
+                er.showAndWait();
+            }
+        });
+        clearBtn.setOnAction(e -> {
+            memberSearch.clear();
+            selectedMember[0] = null;
+            updateMemberInfo.run();
+            refField.clear();
+            notesArea.clear();
+            dueTf.setText("0");
+            discountTf.setText("0");
+            penaltyTf.setText("0");
+            recalcTotal.run();
+        });
         btnRow.getChildren().addAll(clearBtn, printBtn, processBtn);
 
         payCard.getChildren().addAll(
             payTitle, payLine, memberLookup, memberInfo,
             methodGroup, refGroup, amtGrid, notesGroup, btnRow
         );
-
-        // RIGHT: Payment history
-        VBox histCard = buildPaymentHistory();
-        HBox.setHgrow(histCard, Priority.ALWAYS);
 
         mainRow.getChildren().addAll(payCard, histCard);
         body.getChildren().addAll(statsRow, mainRow);
@@ -386,7 +538,7 @@ public class PaymentScreen extends Application {
     }
 
     // ── Payment history table ──────────────────────────────────────
-    private VBox buildPaymentHistory() {
+    private VBox buildPaymentHistory(PaymentDAO paymentDAO, VBox rowsBox) {
         VBox card = new VBox(0);
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
@@ -419,7 +571,6 @@ public class PaymentScreen extends Application {
         );
         header.getChildren().addAll(t, sp, filter);
 
-        // Table headers
         String[] hdrs = {"Member", "Amount", "Method", "Date", "Status"};
         HBox tblHdr = new HBox();
         tblHdr.setPadding(new Insets(10, 20, 10, 20));
@@ -435,19 +586,30 @@ public class PaymentScreen extends Application {
         }
         tblHdr.getChildren().add(hg);
 
-        String[][] rows = {
-            {"Juan dela Cruz",  "₱800",  "Cash",          "2025-06-01", "Paid"},
-            {"Maria Santos",    "₱100",  "GCash",         "2025-06-01", "Paid"},
-            {"Pedro Reyes",     "₱800",  "Bank Transfer", "2025-05-30", "Overdue"},
-            {"Ana Garcia",      "₱50",   "Cash",          "2025-06-01", "Paid"},
-            {"Carlo Mendoza",   "₱800",  "GCash",         "2025-05-28", "Paid"},
-            {"Liza Fernandez",  "₱800",  "Cash",          "2025-05-15", "Overdue"},
-            {"Ramon Torres",    "₱100",  "GCash",         "2025-06-01", "Paid"},
-            {"Celia Villanueva","₱50",   "Cash",          "2025-06-01", "Paid"},
-        };
+        filter.setOnAction(e -> {
+            String f = filter.getValue();
+            List<PaymentDAO.PaymentRecord> all = paymentDAO.findRecentPayments(80);
+            if ("All".equals(f)) {
+                populatePaymentHistoryRows(rowsBox, all);
+            } else {
+                List<PaymentDAO.PaymentRecord> sub = new java.util.ArrayList<>();
+                for (PaymentDAO.PaymentRecord p : all) {
+                    if (p.paymentMethod() != null && p.paymentMethod().equalsIgnoreCase(f)) {
+                        sub.add(p);
+                    }
+                }
+                populatePaymentHistoryRows(rowsBox, sub);
+            }
+        });
 
-        VBox rowsBox = new VBox(0);
-        for (int r = 0; r < rows.length; r++) {
+        card.getChildren().addAll(header, tblHdr, rowsBox);
+        return card;
+    }
+
+    private void populatePaymentHistoryRows(VBox rowsBox, List<PaymentDAO.PaymentRecord> payments) {
+        rowsBox.getChildren().clear();
+        int r = 0;
+        for (PaymentDAO.PaymentRecord pr : payments) {
             String bg = (r % 2 == 0) ? BG_CARD : BG_ROW_ALT;
             HBox dataRow = new HBox();
             dataRow.setPadding(new Insets(10, 20, 10, 20));
@@ -455,20 +617,34 @@ public class PaymentScreen extends Application {
             GridPane rg = makePayGrid();
             rg.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(rg, Priority.ALWAYS);
-            rg.add(makeCell(rows[r][0], TEXT_WHITE, false), 0, 0);
-            rg.add(makeCell(rows[r][1], SUCCESS, true), 1, 0);
-            rg.add(makeMethodBadge(rows[r][2]), 2, 0);
-            rg.add(makeCell(rows[r][3], TEXT_MUTED, false), 3, 0);
-            rg.add(makeStatusBadge(rows[r][4]), 4, 0);
+            String name = pr.memberName() != null ? pr.memberName() : "Member";
+            String amt = String.format("₱%.2f", pr.amount());
+            String method = pr.paymentMethod() != null ? pr.paymentMethod() : "Cash";
+            String dateStr = pr.paymentDate() != null ? pr.paymentDate().toString() : "";
+            String statusLbl = "Completed".equalsIgnoreCase(pr.status()) ? "Paid" : pr.status();
+            rg.add(makeCell(name, TEXT_WHITE, false), 0, 0);
+            rg.add(makeCell(amt, SUCCESS, true), 1, 0);
+            rg.add(makeMethodBadge(method), 2, 0);
+            rg.add(makeCell(dateStr, TEXT_MUTED, false), 3, 0);
+            rg.add(makeStatusBadge(statusLbl), 4, 0);
             dataRow.getChildren().add(rg);
             String fBg = bg;
             dataRow.setOnMouseEntered(e -> dataRow.setStyle("-fx-background-color: rgba(230,57,70,0.05);"));
             dataRow.setOnMouseExited(e -> dataRow.setStyle("-fx-background-color: " + fBg + ";"));
             rowsBox.getChildren().add(dataRow);
+            r++;
         }
+    }
 
-        card.getChildren().addAll(header, tblHdr, rowsBox);
-        return card;
+    private static double parseMoney(String raw) {
+        if (raw == null) {
+            return 0;
+        }
+        String s = raw.replace("₱", "").replace(",", "").trim();
+        if (s.isEmpty()) {
+            return 0;
+        }
+        return Double.parseDouble(s);
     }
 
     // ── Helpers ────────────────────────────────────────────────────
@@ -558,8 +734,9 @@ public class PaymentScreen extends Application {
     private Label makeStatusBadge(String status) {
         Label b = new Label(status);
         b.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
-        String c = status.equalsIgnoreCase("Paid") ? SUCCESS : ACCENT;
-        String bg = status.equalsIgnoreCase("Paid") ? "rgba(76,175,80,0.15)" : "rgba(230,57,70,0.15)";
+        boolean ok = status.equalsIgnoreCase("Paid") || status.equalsIgnoreCase("Completed");
+        String c = ok ? SUCCESS : ACCENT;
+        String bg = ok ? "rgba(76,175,80,0.15)" : "rgba(230,57,70,0.15)";
         b.setTextFill(Color.web(c));
         b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 10; -fx-padding: 3 10 3 10;");
         return b;
@@ -569,10 +746,12 @@ public class PaymentScreen extends Application {
         Label b = new Label(method);
         b.setFont(Font.font("Verdana", 10));
         String c; String bg;
-        switch (method) {
-            case "Cash": c = SUCCESS; bg = "rgba(76,175,80,0.12)"; break;
-            case "GCash": c = "#2196f3"; bg = "rgba(33,150,243,0.12)"; break;
-            default: c = WARNING; bg = "rgba(255,152,0,0.12)"; break;
+        if ("Cash".equalsIgnoreCase(method)) {
+            c = SUCCESS; bg = "rgba(76,175,80,0.12)";
+        } else if ("GCash".equalsIgnoreCase(method)) {
+            c = "#2196f3"; bg = "rgba(33,150,243,0.12)";
+        } else {
+            c = WARNING; bg = "rgba(255,152,0,0.12)";
         }
         b.setTextFill(Color.web(c));
         b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 10; -fx-padding: 3 10 3 10;");

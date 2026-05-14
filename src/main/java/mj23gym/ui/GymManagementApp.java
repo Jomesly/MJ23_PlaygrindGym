@@ -314,6 +314,9 @@ public class GymManagementApp extends Application {
             default -> new DashboardScreen().buildDashboardContent();
         };
 
+        screen.setMaxWidth(Double.MAX_VALUE);
+        screen.setMaxHeight(Double.MAX_VALUE);
+        VBox.setVgrow(screen, Priority.ALWAYS);
         contentArea.getChildren().add(screen);
     }
 

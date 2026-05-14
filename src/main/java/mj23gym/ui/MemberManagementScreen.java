@@ -17,6 +17,14 @@ import javafx.stage.Stage;
 import javafx.animation.FadeTransition;
 import javafx.util.Duration;
 
+import java.sql.Date;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import mj23gym.dao.MemberDAO;
+
 /**
  * MJ23 Playgrind Gym – Member Management Screen
  * Searchable, filterable member table with Add / Edit / View controls.
@@ -35,20 +43,6 @@ public class MemberManagementScreen extends Application {
     static final String BORDER       = "#253545";
     static final String SUCCESS      = "#4caf50";
     static final String WARNING      = "#ff9800";
-
-    // Sample data
-    private final String[][] members = {
-        {"#M-001","Juan dela Cruz",   "M","09171234567","Monthly",    "2025-06-01","Active"},
-        {"#M-002","Maria Santos",     "F","09182345678","Daily",      "2025-06-01","Active"},
-        {"#M-003","Pedro Reyes",      "M","09193456789","Monthly",    "2025-05-01","Expired"},
-        {"#M-004","Ana Garcia",       "F","09204567890","Per Session","2025-06-01","Active"},
-        {"#M-005","Carlo Mendoza",    "M","09215678901","Monthly",    "2025-06-01","Active"},
-        {"#M-006","Liza Fernandez",   "F","09226789012","Monthly",    "2025-05-15","Expired"},
-        {"#M-007","Ramon Torres",     "M","09237890123","Daily",      "2025-06-01","Active"},
-        {"#M-008","Celia Villanueva", "F","09248901234","Per Session","2025-06-01","Active"},
-        {"#M-009","Bong Aquino",      "M","09259012345","Monthly",    "2025-04-01","Expired"},
-        {"#M-010","Tina Ramos",       "F","09260123456","Monthly",    "2025-06-01","Active"},
-    };
 
     @Override
     public void start(Stage stage) {
@@ -209,13 +203,43 @@ public class MemberManagementScreen extends Application {
         body.setPadding(new Insets(26, 28, 26, 28));
         body.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
+        MemberDAO memberDAO = new MemberDAO();
+
         // ── Stats row ──────────────────────────────────────────────
+        Text statTotalVal = new Text();
+        Text statActiveVal = new Text();
+        Text statExpiredVal = new Text();
+        Text statRenewVal = new Text();
+        styleStatValue(statTotalVal);
+        styleStatValue(statActiveVal);
+        styleStatValue(statExpiredVal);
+        styleStatValue(statRenewVal);
+
+        Runnable refreshStats = () -> {
+            int total = memberDAO.countAll();
+            int active = memberDAO.countByStatus("Active");
+            int expired = memberDAO.countByStatus("Expired");
+            LocalDate today = LocalDate.now();
+            int renewals = 0;
+            for (MemberDAO.MemberRecord m : memberDAO.findAll()) {
+                if (m.membershipEndDate() != null
+                    && m.membershipEndDate().toLocalDate().equals(today)) {
+                    renewals++;
+                }
+            }
+            statTotalVal.setText(String.valueOf(total));
+            statActiveVal.setText(String.valueOf(active));
+            statExpiredVal.setText(String.valueOf(expired));
+            statRenewVal.setText(String.valueOf(renewals));
+        };
+        refreshStats.run();
+
         HBox statsRow = new HBox(16);
         statsRow.getChildren().addAll(
-            makeStatChip("👥 Total Members",   "148", TEXT_WHITE),
-            makeStatChip("✅ Active",          "132", SUCCESS),
-            makeStatChip("❌ Expired",          "16",  ACCENT),
-            makeStatChip("📅 Renewals Today",   "4",   WARNING)
+            makeStatChipText("👥 Total Members", statTotalVal, TEXT_WHITE),
+            makeStatChipText("✅ Active", statActiveVal, SUCCESS),
+            makeStatChipText("❌ Expired", statExpiredVal, ACCENT),
+            makeStatChipText("📅 Renewals Today", statRenewVal, WARNING)
         );
 
         // ── Controls row ───────────────────────────────────────────
@@ -239,12 +263,12 @@ public class MemberManagementScreen extends Application {
         );
 
         ComboBox<String> filterPlan = new ComboBox<>();
-        filterPlan.getItems().addAll("All Plans", "Monthly", "Daily", "Per Session");
+        filterPlan.getItems().addAll("All Plans", "Monthly", "Daily", "Quarterly", "Yearly", "Per Session");
         filterPlan.setValue("All Plans");
         styleCombo(filterPlan);
 
         ComboBox<String> filterStatus = new ComboBox<>();
-        filterStatus.getItems().addAll("All Status", "Active", "Expired");
+        filterStatus.getItems().addAll("All Status", "Active", "Expired", "Suspended", "Cancelled");
         filterStatus.setValue("All Status");
         styleCombo(filterStatus);
 
@@ -273,7 +297,6 @@ public class MemberManagementScreen extends Application {
             "-fx-background-radius: 8;" +
             "-fx-cursor: hand;"
         ));
-        addBtn.setOnAction(e -> showAddMemberDialog());
 
         controls.getChildren().addAll(search, filterPlan, filterStatus, ctrlSp, addBtn);
 
@@ -293,16 +316,7 @@ public class MemberManagementScreen extends Application {
 
         // Table header row
         String[] headers = {"Member ID","Full Name","Gender","Phone","Plan","Registered","Status","Actions"};
-        GridPane table = new GridPane();
-
-        // Column constraints
         double[] colWidths = {8, 16, 7, 12, 10, 11, 9, 14};
-        for (double w : colWidths) {
-            ColumnConstraints cc = new ColumnConstraints();
-            cc.setPercentWidth(w);
-            cc.setHgrow(Priority.ALWAYS);
-            table.getColumnConstraints().add(cc);
-        }
 
         // Header
         HBox tableHeaderRow = new HBox();
@@ -330,10 +344,118 @@ public class MemberManagementScreen extends Application {
         }
         tableHeaderRow.getChildren().add(headerGrid);
 
-        // Data rows
         VBox rows = new VBox(0);
-        for (int r = 0; r < members.length; r++) {
-            String[] m = members[r];
+        Text pageInfo = new Text();
+        pageInfo.setFont(Font.font("Verdana", 11));
+        pageInfo.setFill(Color.web(TEXT_MUTED));
+
+        final Runnable[] refreshHolder = new Runnable[1];
+        refreshHolder[0] = () -> {
+            refreshMemberRows(
+                rows,
+                pageInfo,
+                memberDAO,
+                search.getText().trim(),
+                filterPlan.getValue(),
+                filterStatus.getValue(),
+                colWidths,
+                refreshHolder[0]
+            );
+            refreshStats.run();
+        };
+
+        search.setOnAction(e -> refreshHolder[0].run());
+        filterPlan.setOnAction(e -> refreshHolder[0].run());
+        filterStatus.setOnAction(e -> refreshHolder[0].run());
+        addBtn.setOnAction(e -> showAddMemberDialog(refreshHolder[0]));
+
+        refreshHolder[0].run();
+
+        HBox pagination = new HBox(10);
+        pagination.setAlignment(Pos.CENTER_RIGHT);
+        pagination.setPadding(new Insets(14, 20, 14, 20));
+        pagination.setStyle(
+            "-fx-border-color: " + BORDER + " transparent transparent transparent;" +
+            "-fx-border-width: 1 0 0 0;"
+        );
+        Region pgSp = new Region();
+        HBox.setHgrow(pgSp, Priority.ALWAYS);
+        pagination.getChildren().addAll(pageInfo, pgSp);
+
+        tableCard.getChildren().addAll(tableHeaderRow, rows, pagination);
+
+        body.getChildren().addAll(statsRow, controls, tableCard);
+        scroll.setContent(body);
+        content.getChildren().addAll(topBar, scroll);
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+
+        FadeTransition ft = new FadeTransition(Duration.millis(350), body);
+        ft.setFromValue(0); ft.setToValue(1); ft.play();
+
+        return content;
+    }
+
+    private void styleStatValue(Text val) {
+        val.setFont(Font.font("Georgia", FontWeight.BOLD, 22));
+    }
+
+    private HBox makeStatChipText(String label, Text valueNode, String color) {
+        HBox chip = new HBox(10);
+        chip.setAlignment(Pos.CENTER_LEFT);
+        chip.setPadding(new Insets(14, 20, 14, 20));
+        chip.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-radius: 10;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 10;" +
+            "-fx-border-width: 1;"
+        );
+        HBox.setHgrow(chip, Priority.ALWAYS);
+        DropShadow ds = new DropShadow();
+        ds.setColor(Color.web("#000", 0.2));
+        ds.setRadius(8); ds.setOffsetY(3);
+        chip.setEffect(ds);
+        valueNode.setFill(Color.web(color));
+        Text lbl = new Text(label);
+        lbl.setFont(Font.font("Verdana", 11));
+        lbl.setFill(Color.web(TEXT_MUTED));
+        chip.getChildren().addAll(new VBox(2, lbl, valueNode));
+        return chip;
+    }
+
+    private void refreshMemberRows(
+        VBox rows,
+        Text pageInfo,
+        MemberDAO dao,
+        String keyword,
+        String planFilter,
+        String statusFilter,
+        double[] colWidths,
+        Runnable fullRefresh
+    ) {
+        rows.getChildren().clear();
+        List<MemberDAO.MemberRecord> source =
+            keyword.isBlank() ? dao.findAll() : dao.search(keyword);
+        List<MemberDAO.MemberRecord> filtered = new ArrayList<>();
+        for (MemberDAO.MemberRecord m : source) {
+            if (!"All Plans".equals(planFilter)) {
+                String t = m.membershipType();
+                if (t == null || !t.equalsIgnoreCase(planFilter)) {
+                    continue;
+                }
+            }
+            if (!"All Status".equals(statusFilter)) {
+                String s = m.status();
+                if (s == null || !s.equalsIgnoreCase(statusFilter)) {
+                    continue;
+                }
+            }
+            filtered.add(m);
+        }
+        pageInfo.setText("Showing " + filtered.size() + " member(s)");
+
+        int r = 0;
+        for (MemberDAO.MemberRecord m : filtered) {
             String bg = (r % 2 == 0) ? BG_CARD : BG_ROW_ALT;
             HBox dataRow = new HBox();
             dataRow.setPadding(new Insets(11, 16, 11, 16));
@@ -350,73 +472,57 @@ public class MemberManagementScreen extends Application {
             rowGrid.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(rowGrid, Priority.ALWAYS);
 
-            // ID
-            rowGrid.add(makeCell(m[0], ACCENT, true), 0, 0);
-            // Name
-            rowGrid.add(makeCell(m[1], TEXT_WHITE, false), 1, 0);
-            // Gender
-            rowGrid.add(makeCell(m[2].equals("M") ? "♂ Male" : "♀ Female", TEXT_MUTED, false), 2, 0);
-            // Phone
-            rowGrid.add(makeCell(m[3], TEXT_MUTED, false), 3, 0);
-            // Plan badge
-            rowGrid.add(makePlanBadge(m[4]), 4, 0);
-            // Date
-            rowGrid.add(makeCell(m[5], TEXT_MUTED, false), 5, 0);
-            // Status
-            rowGrid.add(makeStatusBadge(m[6]), 6, 0);
-            // Action buttons
+            String code = "#" + m.memberCode();
+            String genderLabel = "Other".equalsIgnoreCase(m.gender()) ? "Other"
+                : "F".equalsIgnoreCase(m.gender()) ? "♀ Female" : "♂ Male";
+            String start = m.membershipStartDate() != null ? m.membershipStartDate().toString() : "—";
+
+            rowGrid.add(makeCell(code, ACCENT, true), 0, 0);
+            rowGrid.add(makeCell(m.fullName(), TEXT_WHITE, false), 1, 0);
+            rowGrid.add(makeCell(genderLabel, TEXT_MUTED, false), 2, 0);
+            rowGrid.add(makeCell(m.contactNumber(), TEXT_MUTED, false), 3, 0);
+            rowGrid.add(makePlanBadge(m.membershipType() != null ? m.membershipType() : "Monthly"), 4, 0);
+            rowGrid.add(makeCell(start, TEXT_MUTED, false), 5, 0);
+            rowGrid.add(makeStatusBadge(m.status() != null ? m.status() : "Active"), 6, 0);
+
             HBox actions = new HBox(6);
             actions.setAlignment(Pos.CENTER_LEFT);
             Button viewBtn = makeActionBtn("👁", "#2196f3");
-            Button editBtn = makeActionBtn("✏", WARNING);
-            Button delBtn  = makeActionBtn("🗑", ACCENT);
-            actions.getChildren().addAll(viewBtn, editBtn, delBtn);
+            viewBtn.setOnAction(e -> {
+                Alert a = new Alert(Alert.AlertType.INFORMATION);
+                a.setTitle("Member");
+                a.setHeaderText(m.fullName());
+                a.setContentText(
+                    "Code: " + m.memberCode() + "\nEmail: " + m.email() + "\nPhone: " + m.contactNumber()
+                        + "\nAddress: " + m.address() + "\nPlan: " + m.membershipType()
+                        + "\nStart: " + start + "\nEnd: "
+                        + (m.membershipEndDate() != null ? m.membershipEndDate().toString() : "—")
+                        + "\nStatus: " + m.status()
+                );
+                a.showAndWait();
+            });
+            Button delBtn = makeActionBtn("🗑", ACCENT);
+            delBtn.setOnAction(e -> {
+                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                confirm.setTitle("Delete member");
+                confirm.setHeaderText("Remove " + m.fullName() + "?");
+                confirm.setContentText("This cannot be undone.");
+                Optional<ButtonType> res = confirm.showAndWait();
+                if (res.isPresent() && res.get() == ButtonType.OK && dao.delete(m.memberId())) {
+                    fullRefresh.run();
+                }
+            });
+            actions.getChildren().addAll(viewBtn, delBtn);
             rowGrid.add(actions, 7, 0);
 
             dataRow.getChildren().add(rowGrid);
-
-            // Hover highlight
             String finalBg = bg;
-            dataRow.setOnMouseEntered(e -> dataRow.setStyle(
-                "-fx-background-color: rgba(230,57,70,0.06);"
-            ));
-            dataRow.setOnMouseExited(e -> dataRow.setStyle(
-                "-fx-background-color: " + finalBg + ";"
-            ));
+            dataRow.setOnMouseEntered(ev -> dataRow.setStyle("-fx-background-color: rgba(230,57,70,0.06);"));
+            dataRow.setOnMouseExited(ev -> dataRow.setStyle("-fx-background-color: " + finalBg + ";"));
 
             rows.getChildren().add(dataRow);
+            r++;
         }
-
-        // Pagination bar
-        HBox pagination = new HBox(10);
-        pagination.setAlignment(Pos.CENTER_RIGHT);
-        pagination.setPadding(new Insets(14, 20, 14, 20));
-        pagination.setStyle(
-            "-fx-border-color: " + BORDER + " transparent transparent transparent;" +
-            "-fx-border-width: 1 0 0 0;"
-        );
-        Text pageInfo = new Text("Showing 1–10 of 148 members");
-        pageInfo.setFont(Font.font("Verdana", 11));
-        pageInfo.setFill(Color.web(TEXT_MUTED));
-        Region pgSp = new Region(); HBox.setHgrow(pgSp, Priority.ALWAYS);
-        Button prevBtn = makePagBtn("← Prev", false);
-        Button p1 = makePagBtn("1", true);
-        Button p2 = makePagBtn("2", false);
-        Button p3 = makePagBtn("3", false);
-        Button nextBtn = makePagBtn("Next →", false);
-        pagination.getChildren().addAll(pageInfo, pgSp, prevBtn, p1, p2, p3, nextBtn);
-
-        tableCard.getChildren().addAll(tableHeaderRow, rows, pagination);
-
-        body.getChildren().addAll(statsRow, controls, tableCard);
-        scroll.setContent(body);
-        content.getChildren().addAll(topBar, scroll);
-        VBox.setVgrow(scroll, Priority.ALWAYS);
-
-        FadeTransition ft = new FadeTransition(Duration.millis(350), body);
-        ft.setFromValue(0); ft.setToValue(1); ft.play();
-
-        return content;
     }
 
     // ── Helper builders ────────────────────────────────────────────
@@ -541,7 +647,7 @@ public class MemberManagementScreen extends Application {
     }
 
     // ── Add Member Dialog ──────────────────────────────────────────
-    private void showAddMemberDialog() {
+    private void showAddMemberDialog(Runnable onSaved) {
         Stage dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.setTitle("Add New Member");
@@ -565,31 +671,45 @@ public class MemberManagementScreen extends Application {
         ColumnConstraints c2 = new ColumnConstraints(); c2.setPercentWidth(50);
         form.getColumnConstraints().addAll(c1, c2);
 
-        String[][] fields = {
-            {"First Name","Last Name"},{"Phone Number","Email"},
-            {"Address","Date of Birth"},{"Plan","Gender"}
-        };
-        String[][] prompts = {
-            {"Enter first name","Enter last name"},{"09XXXXXXXXX","email@example.com"},
-            {"Full address","YYYY-MM-DD"},{"Select plan","Select gender"}
-        };
+        TextField firstName = new TextField();
+        TextField lastName = new TextField();
+        TextField phone = new TextField();
+        TextField email = new TextField();
+        TextField address = new TextField();
+        TextField dobField = new TextField();
+        ComboBox<String> plan = new ComboBox<>();
+        plan.getItems().addAll("Daily", "Monthly", "Quarterly", "Yearly", "Per Session");
+        plan.setValue("Monthly");
+        styleCombo(plan);
+        ComboBox<String> gender = new ComboBox<>();
+        gender.getItems().addAll("M", "F", "Other");
+        gender.setValue("M");
+        styleCombo(gender);
 
-        int row = 0;
-        for (int i = 0; i < fields.length; i++) {
-            for (int j = 0; j < 2; j++) {
-                VBox fg = new VBox(6);
-                Label lbl = new Label(fields[i][j].toUpperCase());
-                lbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
-                lbl.setTextFill(Color.web(TEXT_MUTED));
-                TextField tf = new TextField();
-                tf.setPromptText(prompts[i][j]);
-                tf.setPrefHeight(40);
-                applyFieldStyle(tf);
-                fg.getChildren().addAll(lbl, tf);
-                form.add(fg, j, row);
-            }
-            row++;
-        }
+        int r = 0;
+        form.add(labeledField("FIRST NAME", firstName, "Enter first name"), 0, r);
+        form.add(labeledField("LAST NAME", lastName, "Enter last name"), 1, r++);
+        form.add(labeledField("PHONE", phone, "09XXXXXXXXX"), 0, r);
+        form.add(labeledField("EMAIL", email, "email@example.com"), 1, r++);
+        VBox addrBox = labeledField("ADDRESS", address, "Full address");
+        form.add(addrBox, 0, r++, 2, 1);
+        GridPane.setColumnSpan(addrBox, 2);
+        form.add(labeledField("DATE OF BIRTH (optional)", dobField, "YYYY-MM-DD"), 0, r);
+        VBox planBox = new VBox(6);
+        Label pl = new Label("PLAN");
+        pl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        pl.setTextFill(Color.web(TEXT_MUTED));
+        plan.setPrefHeight(40);
+        planBox.getChildren().addAll(pl, plan);
+        form.add(planBox, 1, r++);
+        VBox gBox = new VBox(6);
+        Label gl = new Label("GENDER");
+        gl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        gl.setTextFill(Color.web(TEXT_MUTED));
+        gender.setPrefHeight(40);
+        gBox.getChildren().addAll(gl, gender);
+        form.add(gBox, 0, r++, 2, 1);
+        GridPane.setColumnSpan(gBox, 2);
 
         HBox btnRow = new HBox(12);
         btnRow.setAlignment(Pos.CENTER_RIGHT);
@@ -605,6 +725,7 @@ public class MemberManagementScreen extends Application {
         );
         cancel.setOnAction(e -> dialog.close());
 
+        MemberDAO dao = new MemberDAO();
         Button save = new Button("Save Member");
         save.setPrefHeight(40);
         save.setPadding(new Insets(0, 20, 0, 20));
@@ -615,7 +736,58 @@ public class MemberManagementScreen extends Application {
             "-fx-background-radius: 8;" +
             "-fx-cursor: hand;"
         );
-        save.setOnAction(e -> dialog.close()); // TODO: save logic
+        save.setOnAction(e -> {
+            String fn = firstName.getText().trim();
+            String ln = lastName.getText().trim();
+            if (fn.isEmpty() || ln.isEmpty()) {
+                alertErr("Please enter first and last name.");
+                return;
+            }
+            String ph = phone.getText().trim();
+            String em = email.getText().trim();
+            String ad = address.getText().trim();
+            if (ph.isEmpty() || em.isEmpty() || ad.isEmpty()) {
+                alertErr("Phone, email, and address are required.");
+                return;
+            }
+            Date dobSql = null;
+            String dobStr = dobField.getText().trim();
+            if (!dobStr.isEmpty()) {
+                try {
+                    dobSql = Date.valueOf(LocalDate.parse(dobStr));
+                } catch (Exception ex) {
+                    alertErr("Invalid date of birth. Use YYYY-MM-DD.");
+                    return;
+                }
+            }
+            Date start = Date.valueOf(LocalDate.now());
+            Date end = Date.valueOf(membershipEndForPlan(start.toLocalDate(), plan.getValue()));
+            int uid = AppSession.currentUser().userId();
+            MemberDAO.MemberRecord rec = new MemberDAO.MemberRecord(
+                0,
+                "",
+                fn,
+                ln,
+                ph,
+                em,
+                ad,
+                dobSql,
+                gender.getValue(),
+                plan.getValue(),
+                start,
+                end,
+                "Active",
+                "",
+                ""
+            );
+            int newId = dao.insert(rec, uid);
+            if (newId > 0) {
+                dialog.close();
+                onSaved.run();
+            } else {
+                alertErr("Could not save member. Check database connection or duplicate email/code.");
+            }
+        });
 
         btnRow.getChildren().addAll(cancel, save);
 
@@ -624,6 +796,40 @@ public class MemberManagementScreen extends Application {
         s.setFill(Color.web(BG_CARD));
         dialog.setScene(s);
         dialog.showAndWait();
+    }
+
+    private VBox labeledField(String label, TextField field, String prompt) {
+        VBox fg = new VBox(6);
+        Label lbl = new Label(label);
+        lbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        lbl.setTextFill(Color.web(TEXT_MUTED));
+        field.setPromptText(prompt);
+        field.setPrefHeight(40);
+        applyFieldStyle(field);
+        fg.getChildren().addAll(lbl, field);
+        return fg;
+    }
+
+    private LocalDate membershipEndForPlan(LocalDate start, String planType) {
+        if (planType == null) {
+            return start.plusMonths(1);
+        }
+        return switch (planType) {
+            case "Daily" -> start.plusDays(1);
+            case "Monthly" -> start.plusMonths(1);
+            case "Quarterly" -> start.plusMonths(3);
+            case "Yearly" -> start.plusYears(1);
+            case "Per Session" -> start.plusMonths(1);
+            default -> start.plusMonths(1);
+        };
+    }
+
+    private void alertErr(String msg) {
+        Alert a = new Alert(Alert.AlertType.ERROR);
+        a.setTitle("Validation");
+        a.setHeaderText(null);
+        a.setContentText(msg);
+        a.showAndWait();
     }
 
     private void applyFieldStyle(TextField f) {

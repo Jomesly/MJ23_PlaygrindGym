@@ -16,6 +16,14 @@ import javafx.stage.Stage;
 import javafx.animation.FadeTransition;
 import javafx.util.Duration;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import mj23gym.dao.InventoryDAO;
+import mj23gym.dao.PosDAO;
+
 /**
  * MJ23 Playgrind Gym – Point of Sale (POS) Screen
  */
@@ -34,17 +42,6 @@ public class POSScreen extends Application {
     static final String SUCCESS     = "#4caf50";
     static final String WARNING     = "#ff9800";
     static final String INFO        = "#2196f3";
-
-    private final String[][] products = {
-        {"Whey Protein (1 serving)", "₱120", "Supplements"},
-        {"Creatine (1 serving)",     "₱85",  "Supplements"},
-        {"Nature Spring Water",       "₱25",  "Drinks"},
-        {"Gatorade (Blue)",           "₱55",  "Drinks"},
-        {"Energy Bar",                "₱65",  "Snacks"},
-        {"B-Complex Vitamins",        "₱42",  "Supplements"},
-        {"Gym Gloves (M)",            "₱350", "Accessories"},
-        {"Resistance Band",           "₱180", "Equipment"},
-    };
 
     @Override
     public void start(Stage stage) {
@@ -138,6 +135,10 @@ public class POSScreen extends Application {
         VBox leftCol = new VBox(14);
         HBox.setHgrow(leftCol, Priority.ALWAYS);
 
+        InventoryDAO inventoryDAO = new InventoryDAO();
+        PosDAO posDAO = new PosDAO();
+        Map<Integer, Integer> cart = new LinkedHashMap<>();
+
         // Search + filter
         HBox searchRow = new HBox(12);
         searchRow.setAlignment(Pos.CENTER_LEFT);
@@ -147,11 +148,10 @@ public class POSScreen extends Application {
         HBox.setHgrow(searchField, Priority.ALWAYS);
         applyFieldStyle(searchField);
         ComboBox<String> catFilter = new ComboBox<>();
-        catFilter.getItems().addAll("All", "Supplements", "Drinks", "Snacks", "Accessories", "Equipment");
+        catFilter.getItems().addAll("All", "Supplements", "Drinks", "Snacks", "Accessories", "Equipment", "Other");
         catFilter.setValue("All"); styleCombo(catFilter);
         searchRow.getChildren().addAll(searchField, catFilter);
 
-        // Product grid
         ScrollPane prodScroll = new ScrollPane();
         prodScroll.setFitToWidth(true);
         prodScroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
@@ -161,30 +161,62 @@ public class POSScreen extends Application {
         productGrid.setHgap(14); productGrid.setVgap(14);
         productGrid.setPadding(new Insets(4, 0, 4, 0));
 
-        for (int i = 0; i < products.length; i++) {
-            String[] p = products[i];
-            VBox card = buildProductCard(p[0], p[1], p[2]);
-            productGrid.add(card, i % 3, i / 3);
-        }
+        final Runnable[] refreshCartRef = new Runnable[1];
 
-        // Column constraints for 3 columns
-        for (int i = 0; i < 3; i++) {
-            ColumnConstraints cc = new ColumnConstraints();
-            cc.setPercentWidth(33.33);
-            cc.setHgrow(Priority.ALWAYS);
-            productGrid.getColumnConstraints().add(cc);
-        }
-
-        prodScroll.setContent(productGrid);
-        leftCol.getChildren().addAll(searchRow, prodScroll);
-        VBox.setVgrow(prodScroll, Priority.ALWAYS);
+        Runnable rebuildProductGrid = () -> {
+            productGrid.getChildren().clear();
+            productGrid.getColumnConstraints().clear();
+            for (int i = 0; i < 3; i++) {
+                ColumnConstraints cc = new ColumnConstraints();
+                cc.setPercentWidth(33.33);
+                cc.setHgrow(Priority.ALWAYS);
+                productGrid.getColumnConstraints().add(cc);
+            }
+            String q = searchField.getText().trim().toLowerCase();
+            String cat = catFilter.getValue();
+            List<InventoryDAO.InventoryRecord> list = inventoryDAO.findAll();
+            List<InventoryDAO.InventoryRecord> show = new ArrayList<>();
+            for (InventoryDAO.InventoryRecord it : list) {
+                if (it.currentStock() <= 0) {
+                    continue;
+                }
+                if (!"All".equals(cat) && (it.category() == null || !it.category().equalsIgnoreCase(cat))) {
+                    continue;
+                }
+                if (!q.isEmpty()) {
+                    String nm = (it.itemName() + " " + it.itemCode()).toLowerCase();
+                    if (!nm.contains(q)) {
+                        continue;
+                    }
+                }
+                show.add(it);
+            }
+            int col = 0, row = 0;
+            for (InventoryDAO.InventoryRecord it : show) {
+                String priceStr = String.format("₱%.0f", it.sellingPrice());
+                String catStr = it.category() != null ? it.category() : "Other";
+                VBox card = buildProductCard(it.itemName(), priceStr, catStr, () -> {
+                    cart.merge(it.itemId(), 1, Integer::sum);
+                    if (refreshCartRef[0] != null) {
+                        refreshCartRef[0].run();
+                    }
+                });
+                productGrid.add(card, col, row);
+                col++;
+                if (col >= 3) {
+                    col = 0;
+                    row++;
+                }
+            }
+        };
+        searchField.setOnAction(e -> rebuildProductGrid.run());
+        catFilter.setOnAction(e -> rebuildProductGrid.run());
 
         // RIGHT: Cart + Checkout
         VBox cartCol = new VBox(14);
         cartCol.setMinWidth(300);
         cartCol.setMaxWidth(320);
 
-        // Cart card
         VBox cartCard = new VBox(0);
         cartCard.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 12; -fx-border-color: " + BORDER + "; -fx-border-radius: 12; -fx-border-width: 1;");
         DropShadow ds = new DropShadow(); ds.setColor(Color.web("#000", 0.3)); ds.setRadius(12); ds.setOffsetY(4); cartCard.setEffect(ds);
@@ -202,58 +234,103 @@ public class POSScreen extends Application {
         clearCartBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + ACCENT + "; -fx-font-size: 11; -fx-cursor: hand; -fx-padding: 2 0 2 0;");
         cartHeader.getChildren().addAll(cartTitle, cartSp, clearCartBtn);
 
-        // Cart items
         VBox cartItems = new VBox(0);
-        String[][] cartData = {
-            {"Nature Spring Water", "2", "₱25",  "₱50"},
-            {"Whey Protein",        "1", "₱120", "₱120"},
-            {"Energy Bar",          "3", "₱65",  "₱195"},
-        };
-        for (int i = 0; i < cartData.length; i++) {
-            String bg = (i % 2 == 0) ? BG_CARD : BG_ROW_ALT;
-            HBox ci = new HBox(8);
-            ci.setPadding(new Insets(10, 16, 10, 16));
-            ci.setStyle("-fx-background-color: " + bg + ";");
-            ci.setAlignment(Pos.CENTER_LEFT);
-            VBox nameCol = new VBox(2);
-            HBox.setHgrow(nameCol, Priority.ALWAYS);
-            Label name = new Label(cartData[i][0]);
-            name.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
-            name.setTextFill(Color.web(TEXT_WHITE));
-            Label qty = new Label("Qty: " + cartData[i][1] + "  ×  " + cartData[i][2]);
-            qty.setFont(Font.font("Verdana", 10));
-            qty.setTextFill(Color.web(TEXT_MUTED));
-            nameCol.getChildren().addAll(name, qty);
-            Label total = new Label(cartData[i][3]);
-            total.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
-            total.setTextFill(Color.web(SUCCESS));
-            Button removeBtn = new Button("✕");
-            removeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + ACCENT + "; -fx-font-size: 11; -fx-cursor: hand; -fx-padding: 2 4 2 4;");
-            ci.getChildren().addAll(nameCol, total, removeBtn);
-            cartItems.getChildren().add(ci);
-        }
+        Text subVal = new Text("₱0");
+        subVal.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
+        subVal.setFill(Color.web(TEXT_WHITE));
+        Text totVal = new Text("₱0");
+        totVal.setFont(Font.font("Verdana", FontWeight.BOLD, 15));
+        totVal.setFill(Color.web(TEXT_WHITE));
 
-        // Order summary
+        Runnable refreshCart = () -> {
+            cartItems.getChildren().clear();
+            double sub = 0;
+            int idx = 0;
+            for (Map.Entry<Integer, Integer> e : cart.entrySet()) {
+                int itemId = e.getKey();
+                int qty = e.getValue();
+                InventoryDAO.InventoryRecord inv = inventoryDAO.findById(itemId).orElse(null);
+                if (inv == null) {
+                    continue;
+                }
+                double line = inv.sellingPrice() * qty;
+                sub += line;
+                String bg = (idx % 2 == 0) ? BG_CARD : BG_ROW_ALT;
+                idx++;
+                HBox ci = new HBox(8);
+                ci.setPadding(new Insets(10, 16, 10, 16));
+                ci.setStyle("-fx-background-color: " + bg + ";");
+                ci.setAlignment(Pos.CENTER_LEFT);
+                VBox nameCol = new VBox(2);
+                HBox.setHgrow(nameCol, Priority.ALWAYS);
+                Label name = new Label(inv.itemName());
+                name.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
+                name.setTextFill(Color.web(TEXT_WHITE));
+                Label qtyLbl = new Label("Qty: " + qty + "  ×  " + String.format("₱%.2f", inv.sellingPrice()));
+                qtyLbl.setFont(Font.font("Verdana", 10));
+                qtyLbl.setTextFill(Color.web(TEXT_MUTED));
+                nameCol.getChildren().addAll(name, qtyLbl);
+                Label total = new Label(String.format("₱%.2f", line));
+                total.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
+                total.setTextFill(Color.web(SUCCESS));
+                Button removeBtn = new Button("✕");
+                removeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + ACCENT + "; -fx-font-size: 11; -fx-cursor: hand; -fx-padding: 2 4 2 4;");
+                int fid = itemId;
+                removeBtn.setOnAction(ev -> {
+                    cart.remove(fid);
+                    refreshCart.run();
+                });
+                ci.getChildren().addAll(nameCol, total, removeBtn);
+                cartItems.getChildren().add(ci);
+            }
+            subVal.setText(String.format("₱%.2f", sub));
+            totVal.setText(String.format("₱%.2f", sub));
+        };
+        refreshCartRef[0] = refreshCart;
+
+        rebuildProductGrid.run();
+        refreshCart.run();
+
+        prodScroll.setContent(productGrid);
+        leftCol.getChildren().addAll(searchRow, prodScroll);
+        VBox.setVgrow(prodScroll, Priority.ALWAYS);
+
+        clearCartBtn.setOnAction(e -> {
+            cart.clear();
+            refreshCart.run();
+        });
+
         VBox summary = new VBox(10);
         summary.setPadding(new Insets(16, 20, 16, 20));
         summary.setStyle("-fx-border-color: " + BORDER + " transparent transparent transparent; -fx-border-width: 1 0 0 0;");
 
-        summary.getChildren().addAll(
-            makeSummaryRow("Subtotal",  "₱365",  TEXT_MUTED, false),
-            makeSummaryRow("Discount",  "-₱0",   SUCCESS,    false),
-            makeSummaryRow("TOTAL",     "₱365",  TEXT_WHITE, true)
-        );
+        HBox subRow = new HBox();
+        subRow.setAlignment(Pos.CENTER_LEFT);
+        Label sl = new Label("Subtotal");
+        sl.setFont(Font.font("Verdana", 11));
+        sl.setTextFill(Color.web(TEXT_MUTED));
+        Region s1 = new Region(); HBox.setHgrow(s1, Priority.ALWAYS);
+        subRow.getChildren().addAll(sl, s1, subVal);
+        HBox totRow = new HBox();
+        totRow.setAlignment(Pos.CENTER_LEFT);
+        Label tl = new Label("TOTAL");
+        tl.setFont(Font.font("Verdana", FontWeight.BOLD, 13));
+        tl.setTextFill(Color.web(TEXT_WHITE));
+        Region s2 = new Region(); HBox.setHgrow(s2, Priority.ALWAYS);
+        totRow.getChildren().addAll(tl, s2, totVal);
+        summary.getChildren().addAll(subRow, totRow);
 
-        // Payment method
         Label pmLbl = new Label("PAYMENT METHOD");
         pmLbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
         pmLbl.setTextFill(Color.web(TEXT_MUTED));
         HBox pmBtns = new HBox(8);
         ToggleGroup tg = new ToggleGroup();
-        String[] methods = {"💵 Cash", "📱 GCash", "🏦 Bank"};
-        for (int i = 0; i < methods.length; i++) {
-            ToggleButton tb = new ToggleButton(methods[i]);
+        String[] pmLabels = {"💵 Cash", "📱 GCash", "🏦 Bank"};
+        String[] pmDb = {"Cash", "GCash", "Bank Transfer"};
+        for (int i = 0; i < pmLabels.length; i++) {
+            ToggleButton tb = new ToggleButton(pmLabels[i]);
             tb.setToggleGroup(tg);
+            tb.setUserData(pmDb[i]);
             tb.setFont(Font.font("Verdana", 10));
             tb.setPrefHeight(34);
             HBox.setHgrow(tb, Priority.ALWAYS);
@@ -271,6 +348,39 @@ public class POSScreen extends Application {
         checkoutBtn.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;");
         checkoutBtn.setOnMouseEntered(e -> checkoutBtn.setStyle("-fx-background-color: " + ACCENT_DARK + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;"));
         checkoutBtn.setOnMouseExited(e -> checkoutBtn.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;"));
+        checkoutBtn.setOnAction(e -> {
+            if (cart.isEmpty()) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("Cart is empty.");
+                a.showAndWait();
+                return;
+            }
+            List<PosDAO.SaleLine> lines = new ArrayList<>();
+            for (Map.Entry<Integer, Integer> en : cart.entrySet()) {
+                inventoryDAO.findById(en.getKey()).ifPresent(inv ->
+                    lines.add(new PosDAO.SaleLine(inv.itemId(), inv.itemName(), en.getValue(), inv.sellingPrice()))
+                );
+            }
+            if (lines.isEmpty()) {
+                return;
+            }
+            ToggleButton sel = (ToggleButton) tg.getSelectedToggle();
+            String method = sel != null && sel.getUserData() != null ? sel.getUserData().toString() : "Cash";
+            int uid = AppSession.currentUser().userId();
+            int tx = posDAO.completeSale(null, method, null, uid, lines);
+            if (tx > 0) {
+                cart.clear();
+                refreshCart.run();
+                rebuildProductGrid.run();
+                Alert ok = new Alert(Alert.AlertType.INFORMATION);
+                ok.setContentText("Sale saved. Transaction #" + tx);
+                ok.showAndWait();
+            } else {
+                Alert er = new Alert(Alert.AlertType.ERROR);
+                er.setContentText("Sale failed. Check stock and database.");
+                er.showAndWait();
+            }
+        });
 
         summary.getChildren().addAll(pmLbl, pmBtns, checkoutBtn);
         cartCard.getChildren().addAll(cartHeader, cartItems, summary);
@@ -278,11 +388,6 @@ public class POSScreen extends Application {
         VBox.setVgrow(cartCard, Priority.ALWAYS);
 
         body.getChildren().addAll(leftCol, cartCol);
-
-        ScrollPane bodyScroll = new ScrollPane(body);
-        bodyScroll.setFitToWidth(true);
-        bodyScroll.setFitToHeight(true);
-        bodyScroll.setStyle("-fx-background: " + BG_MAIN + "; -fx-background-color: " + BG_MAIN + ";");
 
         content.getChildren().addAll(topBar, body);
         VBox.setVgrow(body, Priority.ALWAYS);
@@ -292,7 +397,7 @@ public class POSScreen extends Application {
         return content;
     }
 
-    private VBox buildProductCard(String name, String price, String cat) {
+    private VBox buildProductCard(String name, String price, String cat, Runnable onAdd) {
         VBox card = new VBox(8);
         card.setPadding(new Insets(16));
         card.setAlignment(Pos.CENTER);
@@ -300,8 +405,8 @@ public class POSScreen extends Application {
         card.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 10; -fx-border-color: " + BORDER + "; -fx-border-radius: 10; -fx-border-width: 1;");
         DropShadow ds = new DropShadow(); ds.setColor(Color.web("#000", 0.25)); ds.setRadius(8); ds.setOffsetY(3); card.setEffect(ds);
 
-        // Icon
-        Text icon = new Text(cat.equals("Drinks") ? "🥤" : cat.equals("Snacks") ? "🍫" : cat.equals("Accessories") ? "🧤" : cat.equals("Equipment") ? "🏋" : "💊");
+        String c = cat != null ? cat : "Other";
+        Text icon = new Text(c.equals("Drinks") ? "🥤" : c.equals("Snacks") ? "🍫" : c.equals("Accessories") ? "🧤" : c.equals("Equipment") ? "🏋" : "💊");
         icon.setFont(Font.font(28));
 
         Label nameLbl = new Label(name);
@@ -311,7 +416,7 @@ public class POSScreen extends Application {
         nameLbl.setAlignment(Pos.CENTER);
         nameLbl.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
 
-        Label catLbl = new Label(cat);
+        Label catLbl = new Label(c);
         catLbl.setFont(Font.font("Verdana", 9));
         catLbl.setTextFill(Color.web(INFO));
         catLbl.setStyle("-fx-background-color: rgba(33,150,243,0.12); -fx-background-radius: 8; -fx-padding: 2 8 2 8;");
@@ -327,6 +432,7 @@ public class POSScreen extends Application {
         addBtn.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 6; -fx-cursor: hand;");
         addBtn.setOnMouseEntered(e -> addBtn.setStyle("-fx-background-color: " + ACCENT_DARK + "; -fx-text-fill: white; -fx-background-radius: 6; -fx-cursor: hand;"));
         addBtn.setOnMouseExited(e -> addBtn.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 6; -fx-cursor: hand;"));
+        addBtn.setOnAction(e -> onAdd.run());
 
         card.getChildren().addAll(icon, nameLbl, catLbl, priceLbl, addBtn);
         card.setOnMouseEntered(e -> card.setStyle("-fx-background-color: #253545; -fx-background-radius: 10; -fx-border-color: " + ACCENT + "; -fx-border-radius: 10; -fx-border-width: 1;"));

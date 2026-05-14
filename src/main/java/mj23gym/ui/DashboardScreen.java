@@ -30,9 +30,11 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import mj23gym.dao.EquipmentDAO;
 import mj23gym.dao.InventoryDAO;
 import mj23gym.dao.MemberDAO;
 import mj23gym.dao.PaymentDAO;
+import mj23gym.dao.PosDAO;
 
 /**
  * MJ23 Playgrind Gym – Dashboard Screen
@@ -376,15 +378,15 @@ public class DashboardScreen extends Application {
         MemberDAO memberDAO = new MemberDAO();
         PaymentDAO paymentDAO = new PaymentDAO();
         InventoryDAO inventoryDAO = new InventoryDAO();
+        EquipmentDAO equipmentDAO = new EquipmentDAO();
+        PosDAO posDAO = new PosDAO();
 
         int totalMembers = memberDAO.countAll();
-        double revenueToday = paymentDAO.todayRevenue();
+        double revenueToday = paymentDAO.todayRevenue() + posDAO.todayPosTotal();
         int lowStockCount = inventoryDAO.countLowStock();
-        
-        List<MemberDAO.MemberRecord> recentMembers = memberDAO.findAll();
-        if (recentMembers.size() > 5) {
-            recentMembers = recentMembers.subList(0, 5);
-        }
+        int maintDue = equipmentDAO.findMaintenanceDue().size();
+
+        List<MemberDAO.MemberRecord> recentMembers = memberDAO.findRecent(5);
         
         List<PaymentDAO.PaymentRecord> recentPayments = paymentDAO.findRecentPayments(5);
 
@@ -397,18 +399,27 @@ public class DashboardScreen extends Application {
             makeSummaryCard("👥", "Total Members",    String.valueOf(totalMembers),  "+5 this month",  ACCENT,   true),
             makeSummaryCard("💰", "Revenue Today",    revStr, "+₱820 vs. yesterday", SUCCESS, false),
             makeSummaryCard("📦", "Low Stock Items",  String.valueOf(lowStockCount),    "Needs restocking", WARNING, false),
-            makeSummaryCard("🏋", "Equipment Issues", "1",    "Scheduled today",  INFO,    false)
+            makeSummaryCard("🏋", "Maintenance Due", String.valueOf(maintDue),
+                maintDue > 0 ? "Within 30 days" : "None due soon", INFO, false)
         );
 
         // ── Recent Activity + Quick Stats row ─────────────────────
         HBox midRow = new HBox(18);
         HBox.setHgrow(midRow, Priority.ALWAYS);
 
+        int totalEq = equipmentDAO.findAll().size();
+        int maintCount = equipmentDAO.countByCondition("Maintenance");
+        int brokenCount = equipmentDAO.countByCondition("Broken");
+        int equipOk = Math.max(0, totalEq - maintCount - brokenCount);
+
+        int activeMembers = memberDAO.countByStatus("Active");
+        int expiredMembers = memberDAO.countByStatus("Expired");
+
         // Convert member records to table data
         String[][] memberTableData = new String[recentMembers.size()][4];
         for (int i = 0; i < recentMembers.size(); i++) {
             MemberDAO.MemberRecord m = recentMembers.get(i);
-            memberTableData[i][0] = "#M-" + String.format("%03d", m.memberId());
+            memberTableData[i][0] = "#" + m.memberCode();
             memberTableData[i][1] = m.fullName();
             memberTableData[i][2] = m.membershipType() != null ? m.membershipType() : "Monthly";
             memberTableData[i][3] = m.status() != null ? m.status() : "Active";
@@ -425,7 +436,14 @@ public class DashboardScreen extends Application {
         HBox.setHgrow(recentMembersCard, Priority.ALWAYS);
 
         // Quick stats panel
-        VBox quickStats = buildQuickStats();
+        VBox quickStats = buildQuickStats(
+            activeMembers,
+            expiredMembers,
+            posDAO.todayPosTotal(),
+            Math.max(0, equipOk),
+            equipmentDAO.countByCondition("Maintenance"),
+            lowStockCount
+        );
         quickStats.setMinWidth(240);
         quickStats.setMaxWidth(260);
 
@@ -630,7 +648,14 @@ public class DashboardScreen extends Application {
     }
 
     // ── Quick stats side panel ─────────────────────────────────────
-    private VBox buildQuickStats() {
+    private VBox buildQuickStats(
+        int activeMembers,
+        int expiredMembers,
+        double posToday,
+        int equipmentOk,
+        int underMaintenance,
+        int lowStockAlerts
+    ) {
         VBox card = new VBox(0);
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
@@ -658,12 +683,12 @@ public class DashboardScreen extends Application {
 
         VBox stats = new VBox(0);
         String[][] statItems = {
-            {"Active Members",    "132",   ACCENT},
-            {"Expired Members",   "16",    WARNING},
-            {"POS Sales Today",   "₱1,250", SUCCESS},
-            {"Equipment OK",      "14",    SUCCESS},
-            {"Under Maintenance", "1",     WARNING},
-            {"Low Stock Alerts",  "3",     ACCENT},
+            {"Active Members",    String.valueOf(activeMembers),   ACCENT},
+            {"Expired Members",   String.valueOf(expiredMembers),  WARNING},
+            {"POS Sales Today",   String.format("₱%.0f", posToday), SUCCESS},
+            {"Equipment OK",      String.valueOf(equipmentOk),     SUCCESS},
+            {"Under Maintenance", String.valueOf(underMaintenance), WARNING},
+            {"Low Stock Alerts",  String.valueOf(lowStockAlerts),   ACCENT},
         };
 
         for (int i = 0; i < statItems.length; i++) {

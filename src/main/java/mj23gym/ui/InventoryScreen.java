@@ -17,6 +17,12 @@ import javafx.stage.Stage;
 import javafx.animation.FadeTransition;
 import javafx.util.Duration;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import mj23gym.dao.InventoryDAO;
+
 /**
  * MJ23 Playgrind Gym – Inventory Screen
  * Paginated table of gym supplies/products with Add, Search, Edit controls.
@@ -36,19 +42,6 @@ public class InventoryScreen extends Application {
     static final String SUCCESS     = "#4caf50";
     static final String WARNING     = "#ff9800";
     static final String INFO        = "#2196f3";
-
-    private final String[][] items = {
-        {"#INV-001", "Whey Protein (1kg)",    "Supplements", "12",  "₱1,200", "Low Stock"},
-        {"#INV-002", "Creatine (500g)",        "Supplements", "25",  "₱850",   "In Stock"},
-        {"#INV-003", "Nature Spring Water",    "Drinks",      "48",  "₱25",    "In Stock"},
-        {"#INV-004", "Gatorade (Blue)",        "Drinks",      "3",   "₱55",    "Low Stock"},
-        {"#INV-005", "Resistance Bands",       "Equipment",   "10",  "₱180",   "In Stock"},
-        {"#INV-006", "Jump Rope",              "Equipment",   "7",   "₱120",   "In Stock"},
-        {"#INV-007", "Gym Gloves (M)",         "Accessories", "0",   "₱350",   "Out of Stock"},
-        {"#INV-008", "Gym Gloves (L)",         "Accessories", "5",   "₱350",   "In Stock"},
-        {"#INV-009", "Vitamins (B-Complex)",   "Supplements", "18",  "₱420",   "In Stock"},
-        {"#INV-010", "Energy Bar",             "Snacks",      "2",   "₱65",    "Low Stock"},
-    };
 
     @Override
     public void start(Stage stage) {
@@ -183,13 +176,43 @@ public class InventoryScreen extends Application {
         body.setPadding(new Insets(26, 28, 26, 28));
         body.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
-        // ── Stats row ──────────────────────────────────────────────
+        InventoryDAO inventoryDAO = new InventoryDAO();
+
+        Text statTotal = new Text();
+        Text statIn = new Text();
+        Text statLow = new Text();
+        Text statOut = new Text();
+        for (Text t : new Text[] { statTotal, statIn, statLow, statOut }) {
+            t.setFont(Font.font("Georgia", FontWeight.BOLD, 22));
+        }
+
+        Runnable refreshStats = () -> {
+            List<InventoryDAO.InventoryRecord> all = inventoryDAO.findAll();
+            int total = all.size();
+            int inC = 0, lowC = 0, outC = 0;
+            for (InventoryDAO.InventoryRecord it : all) {
+                String st = it.status();
+                if ("Out of Stock".equals(st)) {
+                    outC++;
+                } else if ("Low Stock".equals(st)) {
+                    lowC++;
+                } else {
+                    inC++;
+                }
+            }
+            statTotal.setText(String.valueOf(total));
+            statIn.setText(String.valueOf(inC));
+            statLow.setText(String.valueOf(lowC));
+            statOut.setText(String.valueOf(outC));
+        };
+        refreshStats.run();
+
         HBox statsRow = new HBox(16);
         statsRow.getChildren().addAll(
-            makeStatChip("📦 Total Items",      "10",  TEXT_WHITE),
-            makeStatChip("✅ In Stock",          "6",   SUCCESS),
-            makeStatChip("⚠  Low Stock",         "3",   WARNING),
-            makeStatChip("❌ Out of Stock",       "1",   ACCENT)
+            makeStatChipText("📦 Total Items", statTotal, TEXT_WHITE),
+            makeStatChipText("✅ In Stock", statIn, SUCCESS),
+            makeStatChipText("⚠  Low Stock", statLow, WARNING),
+            makeStatChipText("❌ Out of Stock", statOut, ACCENT)
         );
 
         // ── Controls row ───────────────────────────────────────────
@@ -203,7 +226,7 @@ public class InventoryScreen extends Application {
         applyFieldStyle(search);
 
         ComboBox<String> catFilter = new ComboBox<>();
-        catFilter.getItems().addAll("All Categories", "Supplements", "Drinks", "Equipment", "Accessories", "Snacks");
+        catFilter.getItems().addAll("All Categories", "Supplements", "Drinks", "Equipment", "Accessories", "Snacks", "Other");
         catFilter.setValue("All Categories");
         styleCombo(catFilter);
 
@@ -215,7 +238,6 @@ public class InventoryScreen extends Application {
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
 
         Button addBtn = makeAccentBtn("＋  Add Item");
-        addBtn.setOnAction(e -> showAddItemDialog());
 
         controls.getChildren().addAll(search, catFilter, stockFilter, sp, addBtn);
 
@@ -249,59 +271,37 @@ public class InventoryScreen extends Application {
         }
         tblHdr.getChildren().add(hGrid);
 
-        // Data rows
         VBox rowsBox = new VBox(0);
-        for (int r = 0; r < this.items.length; r++) {
-            String[] item = this.items[r];
-            String bg = (r % 2 == 0) ? BG_CARD : BG_ROW_ALT;
-            HBox row = new HBox();
-            row.setPadding(new Insets(11, 20, 11, 20));
-            row.setStyle("-fx-background-color: " + bg + ";");
-            row.setAlignment(Pos.CENTER_LEFT);
+        Text pgInfo = new Text();
+        pgInfo.setFont(Font.font("Verdana", 11));
+        pgInfo.setFill(Color.web(TEXT_MUTED));
 
-            GridPane rGrid = makeGrid(colW);
-            rGrid.setMaxWidth(Double.MAX_VALUE);
-            HBox.setHgrow(rGrid, Priority.ALWAYS);
-
-            rGrid.add(makeCell(item[0], ACCENT, true), 0, 0);
-            rGrid.add(makeCell(item[1], TEXT_WHITE, false), 1, 0);
-            rGrid.add(makeCatBadge(item[2]), 2, 0);
-
-            // Qty — highlight red if low/out
-            String qtyColor = item[3].equals("0") ? ACCENT :
-                              Integer.parseInt(item[3]) <= 5 ? WARNING : TEXT_WHITE;
-            rGrid.add(makeCell(item[3], qtyColor, true), 3, 0);
-            rGrid.add(makeCell(item[4], TEXT_MUTED, false), 4, 0);
-            rGrid.add(makeStockBadge(item[5]), 5, 0);
-
-            HBox actions = new HBox(6);
-            actions.setAlignment(Pos.CENTER_LEFT);
-            actions.getChildren().addAll(
-                makeActionBtn("✏", WARNING),
-                makeActionBtn("📋", INFO),
-                makeActionBtn("🗑", ACCENT)
+        final Runnable[] refreshHolder = new Runnable[1];
+        refreshHolder[0] = () -> {
+            refreshInventoryRows(
+                rowsBox,
+                pgInfo,
+                inventoryDAO,
+                search.getText().trim(),
+                catFilter.getValue(),
+                stockFilter.getValue(),
+                colW,
+                refreshHolder[0]
             );
-            rGrid.add(actions, 6, 0);
-            row.getChildren().add(rGrid);
+            refreshStats.run();
+        };
+        search.setOnAction(e -> refreshHolder[0].run());
+        catFilter.setOnAction(e -> refreshHolder[0].run());
+        stockFilter.setOnAction(e -> refreshHolder[0].run());
+        addBtn.setOnAction(e -> showAddItemDialog(refreshHolder[0]));
+        refreshHolder[0].run();
 
-            String fBg = bg;
-            row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: rgba(230,57,70,0.06);"));
-            row.setOnMouseExited(e -> row.setStyle("-fx-background-color: " + fBg + ";"));
-            rowsBox.getChildren().add(row);
-        }
-
-        // Pagination
         HBox pag = new HBox(10);
         pag.setAlignment(Pos.CENTER_RIGHT);
         pag.setPadding(new Insets(14, 20, 14, 20));
         pag.setStyle("-fx-border-color: " + BORDER + " transparent transparent transparent; -fx-border-width: 1 0 0 0;");
-        Text pgInfo = new Text("Showing 1–10 of 47 items");
-        pgInfo.setFont(Font.font("Verdana", 11));
-        pgInfo.setFill(Color.web(TEXT_MUTED));
         Region pgSp = new Region(); HBox.setHgrow(pgSp, Priority.ALWAYS);
-        pag.getChildren().addAll(pgInfo, pgSp,
-            makePagBtn("← Prev", false), makePagBtn("1", true),
-            makePagBtn("2", false), makePagBtn("3", false), makePagBtn("Next →", false));
+        pag.getChildren().addAll(pgInfo, pgSp);
 
         tableCard.getChildren().addAll(tblHdr, rowsBox, pag);
         body.getChildren().addAll(statsRow, controls, tableCard);
@@ -315,7 +315,7 @@ public class InventoryScreen extends Application {
     }
 
     // ── Add Item Dialog ────────────────────────────────────────────
-    private void showAddItemDialog() {
+    private void showAddItemDialog(Runnable onSaved) {
         Stage dialog = new Stage();
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.setTitle("Add New Item");
@@ -332,19 +332,35 @@ public class InventoryScreen extends Application {
         Rectangle ul = new Rectangle(48, 3);
         ul.setFill(Color.web(ACCENT)); ul.setArcWidth(3); ul.setArcHeight(3);
 
+        TextField nameTf = new TextField();
+        TextField unitTf = new TextField();
+        TextField qtyTf = new TextField();
+        TextField reorderTf = new TextField();
+        TextField supplierTf = new TextField();
+        TextField notesTf = new TextField();
+        ComboBox<String> catBox = new ComboBox<>();
+        catBox.getItems().addAll("Supplements", "Drinks", "Equipment", "Accessories", "Snacks", "Other");
+        catBox.setValue("Supplements");
+        styleCombo(catBox);
+
         GridPane form = new GridPane();
         form.setHgap(16); form.setVgap(14);
         ColumnConstraints c1 = new ColumnConstraints(); c1.setPercentWidth(50);
         ColumnConstraints c2 = new ColumnConstraints(); c2.setPercentWidth(50);
         form.getColumnConstraints().addAll(c1, c2);
-
-        form.add(buildFieldGroup("ITEM NAME",    "Enter item name",      false), 0, 0, 2, 1);
-        form.add(buildFieldGroup("CATEGORY",     "e.g. Supplements",     false), 0, 1);
-        form.add(buildFieldGroup("UNIT PRICE",   "₱0.00",                false), 1, 1);
-        form.add(buildFieldGroup("QUANTITY",     "Enter quantity",        false), 0, 2);
-        form.add(buildFieldGroup("LOW STOCK THRESHOLD", "e.g. 5",        false), 1, 2);
-        form.add(buildFieldGroup("SUPPLIER",     "Supplier name",         false), 0, 3, 2, 1);
-        form.add(buildFieldGroup("NOTES",        "Optional notes...",     false), 0, 4, 2, 1);
+        int r = 0;
+        form.add(labeledInv("ITEM NAME", nameTf, "Enter item name"), 0, r++, 2, 1);
+        VBox catV = new VBox(6);
+        Label cl = new Label("CATEGORY");
+        cl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        cl.setTextFill(Color.web(TEXT_MUTED));
+        catV.getChildren().addAll(cl, catBox);
+        form.add(catV, 0, r);
+        form.add(labeledInv("SELLING PRICE", unitTf, "0.00"), 1, r++);
+        form.add(labeledInv("INITIAL QUANTITY", qtyTf, "0"), 0, r);
+        form.add(labeledInv("REORDER LEVEL", reorderTf, "10"), 1, r++);
+        form.add(labeledInv("SUPPLIER", supplierTf, "Supplier name"), 0, r++, 2, 1);
+        form.add(labeledInv("NOTES", notesTf, "Optional"), 0, r++, 2, 1);
 
         HBox btnRow = new HBox(12);
         btnRow.setAlignment(Pos.CENTER_RIGHT);
@@ -353,14 +369,159 @@ public class InventoryScreen extends Application {
         cancel.setFont(Font.font("Verdana", 12));
         cancel.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-text-fill: " + TEXT_MUTED + "; -fx-background-radius: 8; -fx-cursor: hand;");
         cancel.setOnAction(e -> dialog.close());
+        InventoryDAO dao = new InventoryDAO();
         Button save = makeAccentBtn("Save Item");
         save.setPrefHeight(40); save.setPadding(new Insets(0, 20, 0, 20));
-        save.setOnAction(e -> dialog.close());
+        save.setOnAction(e -> {
+            try {
+                String nm = nameTf.getText().trim();
+                if (nm.isEmpty()) {
+                    invAlert(Alert.AlertType.WARNING, "Item name is required.");
+                    return;
+                }
+                double price = Double.parseDouble(unitTf.getText().trim().replace("₱", "").replace(",", ""));
+                int q = Integer.parseInt(qtyTf.getText().trim());
+                int reord = reorderTf.getText().trim().isEmpty() ? 10 : Integer.parseInt(reorderTf.getText().trim());
+                InventoryDAO.InventoryRecord rec = new InventoryDAO.InventoryRecord(
+                    0,
+                    "",
+                    nm,
+                    catBox.getValue(),
+                    "",
+                    q,
+                    q,
+                    reord,
+                    reord,
+                    price,
+                    price,
+                    "pcs",
+                    supplierTf.getText().trim(),
+                    null,
+                    "",
+                    notesTf.getText().trim(),
+                    true
+                );
+                int id = dao.insert(rec, AppSession.currentUser().userId());
+                if (id > 0) {
+                    dialog.close();
+                    onSaved.run();
+                } else {
+                    invAlert(Alert.AlertType.ERROR, "Save failed. Check database connection.");
+                }
+            } catch (NumberFormatException ex) {
+                invAlert(Alert.AlertType.ERROR, "Invalid number in price, quantity, or reorder level.");
+            }
+        });
         btnRow.getChildren().addAll(cancel, save);
 
         root.getChildren().addAll(title, ul, form, btnRow);
         dialog.setScene(new Scene(root));
         dialog.showAndWait();
+    }
+
+    private VBox labeledInv(String label, TextField field, String prompt) {
+        VBox g = new VBox(6);
+        Label l = new Label(label);
+        l.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        l.setTextFill(Color.web(TEXT_MUTED));
+        field.setPromptText(prompt);
+        field.setPrefHeight(40);
+        applyFieldStyle(field);
+        g.getChildren().addAll(l, field);
+        return g;
+    }
+
+    private void invAlert(Alert.AlertType type, String msg) {
+        Alert a = new Alert(type);
+        a.setContentText(msg);
+        a.showAndWait();
+    }
+
+    private HBox makeStatChipText(String label, Text valueNode, String color) {
+        HBox chip = new HBox(10);
+        chip.setAlignment(Pos.CENTER_LEFT);
+        chip.setPadding(new Insets(14, 20, 14, 20));
+        chip.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-radius: 10;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 10;" +
+            "-fx-border-width: 1;");
+        HBox.setHgrow(chip, Priority.ALWAYS);
+        DropShadow d = new DropShadow(); d.setColor(Color.web("#000", 0.2)); d.setRadius(8); d.setOffsetY(3);
+        chip.setEffect(d);
+        valueNode.setFill(Color.web(color));
+        Text lbl = new Text(label);
+        lbl.setFont(Font.font("Verdana", 11));
+        lbl.setFill(Color.web(TEXT_MUTED));
+        chip.getChildren().add(new VBox(2, lbl, valueNode));
+        return chip;
+    }
+
+    private void refreshInventoryRows(
+        VBox rowsBox,
+        Text pgInfo,
+        InventoryDAO dao,
+        String keyword,
+        String catFilterVal,
+        String stockFilterVal,
+        double[] colW,
+        Runnable fullRefresh
+    ) {
+        rowsBox.getChildren().clear();
+        List<InventoryDAO.InventoryRecord> list =
+            keyword.isBlank() ? dao.findAll() : dao.search(keyword);
+        List<InventoryDAO.InventoryRecord> filtered = new ArrayList<>();
+        for (InventoryDAO.InventoryRecord it : list) {
+            if (!"All Categories".equals(catFilterVal)
+                && (it.category() == null || !it.category().equalsIgnoreCase(catFilterVal))) {
+                continue;
+            }
+            if (!"All Stock".equals(stockFilterVal)
+                && (it.status() == null || !it.status().equalsIgnoreCase(stockFilterVal))) {
+                continue;
+            }
+            filtered.add(it);
+        }
+        pgInfo.setText("Showing " + filtered.size() + " item(s)");
+        int r = 0;
+        for (InventoryDAO.InventoryRecord it : filtered) {
+            String bg = (r % 2 == 0) ? BG_CARD : BG_ROW_ALT;
+            HBox row = new HBox();
+            row.setPadding(new Insets(11, 20, 11, 20));
+            row.setStyle("-fx-background-color: " + bg + ";");
+            row.setAlignment(Pos.CENTER_LEFT);
+            GridPane rGrid = makeGrid(colW);
+            rGrid.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(rGrid, Priority.ALWAYS);
+            String code = "#" + it.itemCode();
+            int q = it.currentStock();
+            String qtyColor = q == 0 ? ACCENT : (q <= it.reorderLevel() ? WARNING : TEXT_WHITE);
+            rGrid.add(makeCell(code, ACCENT, true), 0, 0);
+            rGrid.add(makeCell(it.itemName(), TEXT_WHITE, false), 1, 0);
+            rGrid.add(makeCatBadge(it.category()), 2, 0);
+            rGrid.add(makeCell(String.valueOf(q), qtyColor, true), 3, 0);
+            rGrid.add(makeCell(String.format("₱%.2f", it.sellingPrice()), TEXT_MUTED, false), 4, 0);
+            rGrid.add(makeStockBadge(it.status()), 5, 0);
+            Button del = makeActionBtn("🗑", ACCENT);
+            del.setOnAction(e -> {
+                Alert c = new Alert(Alert.AlertType.CONFIRMATION);
+                c.setContentText("Deactivate " + it.itemName() + "?");
+                Optional<ButtonType> res = c.showAndWait();
+                if (res.isPresent() && res.get() == ButtonType.OK && dao.deactivate(it.itemId())) {
+                    fullRefresh.run();
+                }
+            });
+            HBox actions = new HBox(6, del);
+            actions.setAlignment(Pos.CENTER_LEFT);
+            rGrid.add(actions, 6, 0);
+            row.getChildren().add(rGrid);
+            String fBg = bg;
+            row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: rgba(230,57,70,0.06);"));
+            row.setOnMouseExited(e -> row.setStyle("-fx-background-color: " + fBg + ";"));
+            rowsBox.getChildren().add(row);
+            r++;
+        }
     }
 
     // ── Helpers ────────────────────────────────────────────────────
