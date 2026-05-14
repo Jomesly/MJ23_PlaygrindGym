@@ -441,3 +441,15 @@ GROUP BY status;
 ALTER DATABASE mj23gym CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 SELECT 'MJ23 Playgrind Gym database initialized successfully!' AS status;
+
+
+
+
+
+
+
+
+
+
+
+

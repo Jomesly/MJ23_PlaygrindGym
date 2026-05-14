@@ -256,6 +256,7 @@ public class LoginScreen extends Application {
             new Thread(() -> {
                 try {
                     UserDAO userDAO = new UserDAO();
+                    // Supports both bcrypt and plain text passwords
                     Optional<UserDAO.UserRecord> user = userDAO.authenticate(u, p);
                     
                     javafx.application.Platform.runLater(() -> {

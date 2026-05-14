@@ -1,12 +1,27 @@
 package mj23gym.ui;
 
+import java.time.LocalDate;
+import java.util.List;
+
+import javafx.animation.FadeTransition;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.layout.*;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
@@ -14,8 +29,10 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
-import javafx.animation.FadeTransition;
 import javafx.util.Duration;
+import mj23gym.dao.InventoryDAO;
+import mj23gym.dao.MemberDAO;
+import mj23gym.dao.PaymentDAO;
 
 /**
  * MJ23 Playgrind Gym – Dashboard Screen
@@ -303,10 +320,11 @@ public class DashboardScreen extends Application {
         );
 
         VBox pageTitle = new VBox(2);
+        AppSession.User user = AppSession.currentUser();
         Text pgTitle = new Text("Dashboard");
         pgTitle.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
         pgTitle.setFill(Color.web(TEXT_WHITE));
-        Text pgSub = new Text("Welcome back, Admin  •  " + java.time.LocalDate.now());
+        Text pgSub = new Text("Welcome back, " + user.displayName() + "  •  " + LocalDate.now());
         pgSub.setFont(Font.font("Verdana", 11));
         pgSub.setFill(Color.web(TEXT_MUTED));
         pageTitle.getChildren().addAll(pgTitle, pgSub);
@@ -354,14 +372,31 @@ public class DashboardScreen extends Application {
         body.setPadding(new Insets(28, 28, 28, 28));
         body.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
+        // ── Fetch data from DAOs ──────────────────────────────────
+        MemberDAO memberDAO = new MemberDAO();
+        PaymentDAO paymentDAO = new PaymentDAO();
+        InventoryDAO inventoryDAO = new InventoryDAO();
+
+        int totalMembers = memberDAO.countAll();
+        double revenueToday = paymentDAO.todayRevenue();
+        int lowStockCount = inventoryDAO.countLowStock();
+        
+        List<MemberDAO.MemberRecord> recentMembers = memberDAO.findAll();
+        if (recentMembers.size() > 5) {
+            recentMembers = recentMembers.subList(0, 5);
+        }
+        
+        List<PaymentDAO.PaymentRecord> recentPayments = paymentDAO.findRecentPayments(5);
+
         // ── Summary Cards Row ──────────────────────────────────────
         HBox summaryCards = new HBox(18);
         summaryCards.setAlignment(Pos.CENTER_LEFT);
 
+        String revStr = String.format("₱%.0f", revenueToday);
         summaryCards.getChildren().addAll(
-            makeSummaryCard("👥", "Total Members",    "148",  "+5 this month",  ACCENT,   true),
-            makeSummaryCard("💰", "Revenue Today",    "₱4,320", "+₱820 vs. yesterday", SUCCESS, false),
-            makeSummaryCard("📦", "Low Stock Items",  "3",    "Needs restocking", WARNING, false),
+            makeSummaryCard("👥", "Total Members",    String.valueOf(totalMembers),  "+5 this month",  ACCENT,   true),
+            makeSummaryCard("💰", "Revenue Today",    revStr, "+₱820 vs. yesterday", SUCCESS, false),
+            makeSummaryCard("📦", "Low Stock Items",  String.valueOf(lowStockCount),    "Needs restocking", WARNING, false),
             makeSummaryCard("🏋", "Equipment Issues", "1",    "Scheduled today",  INFO,    false)
         );
 
@@ -369,16 +404,22 @@ public class DashboardScreen extends Application {
         HBox midRow = new HBox(18);
         HBox.setHgrow(midRow, Priority.ALWAYS);
 
+        // Convert member records to table data
+        String[][] memberTableData = new String[recentMembers.size()][4];
+        for (int i = 0; i < recentMembers.size(); i++) {
+            MemberDAO.MemberRecord m = recentMembers.get(i);
+            memberTableData[i][0] = "#M-" + String.format("%03d", m.memberId());
+            memberTableData[i][1] = m.fullName();
+            memberTableData[i][2] = m.membershipType() != null ? m.membershipType() : "Monthly";
+            memberTableData[i][3] = m.status() != null ? m.status() : "Active";
+        }
+
         // Recent Members table
         VBox recentMembersCard = buildTableCard(
             "Recent Member Registrations",
             new String[]{"Member ID", "Name", "Plan", "Status"},
-            new String[][]{
-                {"#M-001", "Juan dela Cruz",    "Monthly",  "Active"},
-                {"#M-002", "Maria Santos",      "Daily",    "Active"},
-                {"#M-003", "Pedro Reyes",       "Monthly",  "Expired"},
-                {"#M-004", "Ana Garcia",        "Per Session","Active"},
-                {"#M-005", "Carlo Mendoza",     "Monthly",  "Active"},
+            memberTableData.length > 0 ? memberTableData : new String[][]{
+                {"#M-001", "Loading...", "Loading...", "Loading..."}
             }
         );
         HBox.setHgrow(recentMembersCard, Priority.ALWAYS);
@@ -390,16 +431,23 @@ public class DashboardScreen extends Application {
 
         midRow.getChildren().addAll(recentMembersCard, quickStats);
 
+        // Convert payment records to table data
+        String[][] paymentTableData = new String[recentPayments.size()][5];
+        for (int i = 0; i < recentPayments.size(); i++) {
+            PaymentDAO.PaymentRecord p = recentPayments.get(i);
+            paymentTableData[i][0] = p.memberName() != null ? p.memberName() : "Unknown";
+            paymentTableData[i][1] = String.format("₱%.2f", p.amount());
+            paymentTableData[i][2] = p.paymentMethod() != null ? p.paymentMethod() : "Cash";
+            paymentTableData[i][3] = p.paymentDate() != null ? p.paymentDate().toString() : LocalDate.now().toString();
+            paymentTableData[i][4] = p.status() != null ? p.status() : "Pending";
+        }
+
         // ── Recent Payments table ──────────────────────────────────
         VBox paymentsCard = buildTableCard(
             "Recent Payments",
             new String[]{"Member", "Amount", "Method", "Date", "Status"},
-            new String[][]{
-                {"Juan dela Cruz",  "₱800",  "Cash",          "2025-06-01", "Paid"},
-                {"Maria Santos",    "₱100",  "GCash",         "2025-06-01", "Paid"},
-                {"Pedro Reyes",     "₱800",  "Bank Transfer", "2025-05-30", "Overdue"},
-                {"Ana Garcia",      "₱50",   "Cash",          "2025-06-01", "Paid"},
-                {"Carlo Mendoza",   "₱800",  "GCash",         "2025-06-01", "Paid"},
+            paymentTableData.length > 0 ? paymentTableData : new String[][]{
+                {"Loading...", "₱0.00", "Loading...", LocalDate.now().toString(), "Loading..."}
             }
         );
 

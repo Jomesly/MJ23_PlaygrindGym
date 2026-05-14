@@ -1,12 +1,17 @@
 package mj23gym.dao;
 
-import mj23gym.util.DatabaseConnection;
-import mj23gym.util.PasswordUtil;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import mj23gym.util.DatabaseConnection;
+import mj23gym.util.PasswordUtil;
 
 /**
  * Data-access object for the `users` table.
@@ -26,14 +31,13 @@ public class UserDAO {
         Timestamp lastLogin
     ) {}
 
-    // ── Authentication ────────────────────────────────────────────
-
     /**
      * Verify credentials; on success update last_login and return the user.
+     * Supports both bcrypt hashed and plain text passwords.
      * @return Optional.empty() if username not found or password wrong.
      */
     public Optional<UserRecord> authenticate(String username, String plainPassword) {
-        String sql = "SELECT user_id, username, password, full_name, email, phone, role, status " +
+        String sql = "SELECT user_id, username, password, full_name, email, phone, role, status, last_login " +
                      "FROM users WHERE username = ? AND status = 'active' AND is_active = TRUE";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -41,7 +45,11 @@ public class UserDAO {
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     String storedHash = rs.getString("password");
-                    if (PasswordUtil.verify(plainPassword, storedHash)) {
+                    // Support both bcrypt and plain text passwords
+                    boolean ok = storedHash.startsWith("$2")
+                                 ? PasswordUtil.verify(plainPassword, storedHash)
+                                 : storedHash.equals(plainPassword);   // plain text fallback
+                    if (ok) {
                         updateLastLogin(conn, rs.getInt("user_id"));
                         return Optional.of(mapRow(rs));
                     }
@@ -55,7 +63,7 @@ public class UserDAO {
 
     /** Fallback plain-text check for the seed admin (password not yet hashed). */
     public Optional<UserRecord> authenticatePlain(String username, String plainPassword) {
-        String sql = "SELECT user_id, username, password, full_name, email, phone, role, status " +
+        String sql = "SELECT user_id, username, password, full_name, email, phone, role, status, last_login " +
                      "FROM users WHERE username = ? AND status = 'active'";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
