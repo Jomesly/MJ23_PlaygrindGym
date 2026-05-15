@@ -12,6 +12,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.layout.Border;
@@ -26,6 +28,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextAlignment;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import mj23gym.dao.UserDAO;
@@ -213,6 +216,7 @@ public class LoginScreen extends Application {
         forgot.setPadding(Insets.EMPTY);
         forgot.setOnMouseEntered(e -> forgot.setTextFill(Color.web(ACCENT_DARK)));
         forgot.setOnMouseExited(e -> forgot.setTextFill(Color.web(ACCENT)));
+        forgot.setOnAction(e -> showForgotDialog(stage));
         HBox forgotRow = new HBox(forgot);
         forgotRow.setAlignment(Pos.CENTER_RIGHT);
 
@@ -409,6 +413,222 @@ public class LoginScreen extends Application {
         lbl.setTextFill(Color.web(TEXT_MUTED));
         pill.getChildren().add(lbl);
         return pill;
+    }
+
+    private void showForgotDialog(Stage owner) {
+        Stage dialog = new Stage();
+        dialog.setTitle("Account Recovery");
+        dialog.initOwner(owner);
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setResizable(false);
+
+        VBox root = new VBox(16);
+        root.setPadding(new Insets(24));
+        root.setStyle("-fx-background-color: " + BG_CARD + ";");
+
+        Text title = new Text("Forgot Username or Password");
+        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFill(Color.web(TEXT_WHITE));
+
+        Text subtitle = new Text("Verify your identity using your registered email or phone number.");
+        subtitle.setFont(Font.font("Verdana", 11));
+        subtitle.setFill(Color.web(TEXT_MUTED));
+
+        TabPane tabs = new TabPane();
+        tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        tabs.getTabs().addAll(
+            new Tab("Username Recovery", buildUsernameRecoveryPane()),
+            new Tab("Password Recovery", buildPasswordRecoveryPane())
+        );
+        tabs.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-control-inner-background: " + BG_MAIN + ";"
+        );
+
+        Button close = new Button("CLOSE");
+        close.setPrefHeight(38);
+        close.setMaxWidth(Double.MAX_VALUE);
+        styleSecondaryButton(close, false);
+        close.setOnMouseEntered(e -> styleSecondaryButton(close, true));
+        close.setOnMouseExited(e -> styleSecondaryButton(close, false));
+        close.setOnAction(e -> dialog.close());
+
+        root.getChildren().addAll(title, subtitle, tabs, close);
+        Scene scene = new Scene(root, 520, 440);
+        dialog.setScene(scene);
+        dialog.showAndWait();
+    }
+
+    private VBox buildUsernameRecoveryPane() {
+        VBox pane = recoveryPane();
+        TextField identityField = buildRecoveryField("Registered email or phone");
+        Label message = buildRecoveryMessage();
+
+        Button recover = buildRecoveryButton("RECOVER USERNAME");
+        recover.setOnAction(e -> {
+            String identity = identityField.getText().trim();
+            if (identity.isEmpty()) {
+                setRecoveryMessage(message, "Enter your registered email or phone number.", false);
+                return;
+            }
+
+            recover.setDisable(true);
+            setRecoveryMessage(message, "Verifying identity...", true);
+            new Thread(() -> {
+                Optional<UserDAO.UserRecord> user = new UserDAO().findUsernameByRecoveryIdentity(identity);
+                javafx.application.Platform.runLater(() -> {
+                    if (user.isPresent()) {
+                        setRecoveryMessage(message, "Your username is: " + user.get().username(), true);
+                    } else {
+                        setRecoveryMessage(message, "No active account matched that email or phone.", false);
+                    }
+                    recover.setDisable(false);
+                });
+            }).start();
+        });
+
+        pane.getChildren().addAll(
+            recoveryHint("Submodule 1.1 - confirms identity before showing the account username."),
+            identityField,
+            message,
+            recover
+        );
+        return pane;
+    }
+
+    private VBox buildPasswordRecoveryPane() {
+        VBox pane = recoveryPane();
+        TextField usernameField = buildRecoveryField("Username");
+        TextField identityField = buildRecoveryField("Registered email or phone");
+        PasswordField newPasswordField = new PasswordField();
+        newPasswordField.setPromptText("New password");
+        fieldStyle(newPasswordField, false);
+        newPasswordField.focusedProperty().addListener((o, old, focused) -> fieldStyle(newPasswordField, focused));
+
+        PasswordField confirmPasswordField = new PasswordField();
+        confirmPasswordField.setPromptText("Confirm new password");
+        fieldStyle(confirmPasswordField, false);
+        confirmPasswordField.focusedProperty().addListener((o, old, focused) -> fieldStyle(confirmPasswordField, focused));
+
+        Label message = buildRecoveryMessage();
+        Button reset = buildRecoveryButton("RESET PASSWORD");
+        reset.setOnAction(e -> {
+            String username = usernameField.getText().trim();
+            String identity = identityField.getText().trim();
+            String newPassword = newPasswordField.getText();
+            String confirmPassword = confirmPasswordField.getText();
+
+            if (username.isEmpty() || identity.isEmpty() || newPassword.isEmpty()) {
+                setRecoveryMessage(message, "Username, identity, and new password are required.", false);
+                return;
+            }
+            if (newPassword.length() < 6) {
+                setRecoveryMessage(message, "Password must be at least 6 characters.", false);
+                return;
+            }
+            if (!newPassword.equals(confirmPassword)) {
+                setRecoveryMessage(message, "New password and confirmation do not match.", false);
+                return;
+            }
+
+            reset.setDisable(true);
+            setRecoveryMessage(message, "Verifying identity and resetting password...", true);
+            new Thread(() -> {
+                UserDAO userDAO = new UserDAO();
+                Optional<UserDAO.UserRecord> user = userDAO.findActiveByRecoveryIdentity(username, identity);
+                boolean changed = user.isPresent()
+                    && userDAO.resetPasswordAfterRecovery(user.get().userId(), newPassword);
+
+                javafx.application.Platform.runLater(() -> {
+                    if (changed) {
+                        newPasswordField.clear();
+                        confirmPasswordField.clear();
+                        setRecoveryMessage(message, "Password reset successful. You can now sign in.", true);
+                    } else {
+                        setRecoveryMessage(message, "Could not verify that username with the given email or phone.", false);
+                    }
+                    reset.setDisable(false);
+                });
+            }).start();
+        });
+
+        pane.getChildren().addAll(
+            recoveryHint("Submodule 1.2 - verifies identity before allowing a password reset."),
+            usernameField,
+            identityField,
+            newPasswordField,
+            confirmPasswordField,
+            message,
+            reset
+        );
+        return pane;
+    }
+
+    private VBox recoveryPane() {
+        VBox pane = new VBox(12);
+        pane.setPadding(new Insets(18, 0, 0, 0));
+        pane.setStyle("-fx-background-color: " + BG_CARD + ";");
+        return pane;
+    }
+
+    private Text recoveryHint(String text) {
+        Text hint = new Text(text);
+        hint.setFont(Font.font("Verdana", 10));
+        hint.setFill(Color.web(TEXT_MUTED));
+        return hint;
+    }
+
+    private TextField buildRecoveryField(String prompt) {
+        TextField field = new TextField();
+        field.setPromptText(prompt);
+        field.setPrefHeight(42);
+        fieldStyle(field, false);
+        field.focusedProperty().addListener((o, old, focused) -> fieldStyle(field, focused));
+        return field;
+    }
+
+    private Label buildRecoveryMessage() {
+        Label message = new Label();
+        message.setFont(Font.font("Verdana", 11));
+        message.setWrapText(true);
+        message.setVisible(false);
+        message.setMaxWidth(Double.MAX_VALUE);
+        message.setPadding(new Insets(8, 12, 8, 12));
+        return message;
+    }
+
+    private Button buildRecoveryButton(String text) {
+        Button button = new Button(text);
+        button.setPrefHeight(42);
+        button.setMaxWidth(Double.MAX_VALUE);
+        styleBtn(button, false);
+        button.setOnMouseEntered(e -> styleBtn(button, true));
+        button.setOnMouseExited(e -> styleBtn(button, false));
+        return button;
+    }
+
+    private void styleSecondaryButton(Button button, boolean hovered) {
+        button.setStyle(
+            "-fx-background-color: " + (hovered ? FIELD_BORDER : FIELD_BG) + ";" +
+            "-fx-text-fill: " + TEXT_MUTED + ";" +
+            "-fx-border-color: " + FIELD_BORDER + ";" +
+            "-fx-border-radius: 8;" +
+            "-fx-background-radius: 8;" +
+            "-fx-font-family: Verdana;" +
+            "-fx-font-weight: bold;" +
+            "-fx-cursor: hand;"
+        );
+    }
+
+    private void setRecoveryMessage(Label label, String text, boolean success) {
+        label.setText(text);
+        label.setTextFill(success ? Color.web("#4caf50") : Color.web(ACCENT));
+        label.setStyle(
+            "-fx-background-color: " + (success
+                ? "rgba(76,175,80,0.12)" : "rgba(230,57,70,0.12)") + ";" +
+            "-fx-background-radius: 7;"
+        );
+        label.setVisible(true);
     }
 
     public static void main(String[] args) { launch(args); }

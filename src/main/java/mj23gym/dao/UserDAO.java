@@ -86,6 +86,56 @@ public class UserDAO {
         return Optional.empty();
     }
 
+    public Optional<UserRecord> findActiveByRecoveryIdentity(String username, String emailOrPhone) {
+        String sql = "SELECT user_id, username, full_name, email, phone, role, status, last_login " +
+                     "FROM users WHERE username = ? AND status = 'active' AND is_active = TRUE " +
+                     "AND (LOWER(email) = LOWER(?) OR phone = ?)";
+        String identity = emailOrPhone == null ? "" : emailOrPhone.trim();
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.setString(2, identity);
+            ps.setString(3, identity);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return Optional.of(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] findActiveByRecoveryIdentity error: " + e.getMessage());
+        }
+        return Optional.empty();
+    }
+
+    public Optional<UserRecord> findUsernameByRecoveryIdentity(String emailOrPhone) {
+        String sql = "SELECT user_id, username, full_name, email, phone, role, status, last_login " +
+                     "FROM users WHERE status = 'active' AND is_active = TRUE " +
+                     "AND (LOWER(email) = LOWER(?) OR phone = ?) ORDER BY user_id LIMIT 1";
+        String identity = emailOrPhone == null ? "" : emailOrPhone.trim();
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, identity);
+            ps.setString(2, identity);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return Optional.of(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] findUsernameByRecoveryIdentity error: " + e.getMessage());
+        }
+        return Optional.empty();
+    }
+
+    public boolean resetPasswordAfterRecovery(int userId, String newPlainPassword) {
+        String sql = "UPDATE users SET password=?, updated_at=NOW() WHERE user_id=? AND status='active'";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, PasswordUtil.hash(newPlainPassword));
+            ps.setInt(2, userId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] resetPasswordAfterRecovery error: " + e.getMessage());
+            return false;
+        }
+    }
+
     // ── CRUD ──────────────────────────────────────────────────────
 
     public List<UserRecord> findAll() {
@@ -117,6 +167,39 @@ public class UserDAO {
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("[UserDAO] insert error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean registerStaffForVerification(String username, String fullName, String email,
+                                                String phone, String plainPassword) {
+        String sql = "INSERT INTO users (username, password, full_name, email, phone, role, status, is_active) " +
+                     "VALUES (?, ?, ?, ?, ?, 'staff', 'inactive', FALSE)";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, username);
+            ps.setString(2, PasswordUtil.hash(plainPassword));
+            ps.setString(3, fullName);
+            ps.setString(4, email);
+            ps.setString(5, phone);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] registerStaffForVerification error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean setVerificationStatus(int userId, boolean verified) {
+        String sql = "UPDATE users SET status=?, is_active=?, updated_at=NOW() " +
+                     "WHERE user_id=? AND role='staff'";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, verified ? "active" : "inactive");
+            ps.setBoolean(2, verified);
+            ps.setInt(3, userId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] setVerificationStatus error: " + e.getMessage());
             return false;
         }
     }

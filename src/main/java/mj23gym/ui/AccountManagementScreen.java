@@ -9,7 +9,6 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.ScrollPane;
@@ -59,14 +58,16 @@ public class AccountManagementScreen extends Application {
         public String username;
         public String fullName;
         public String email;
+        public String phone;
         public String role;
         public String status;
 
-        public UserRowData(String userId, String username, String fullName, String email, String role, String status) {
+        public UserRowData(String userId, String username, String fullName, String email, String phone, String role, String status) {
             this.userId = userId;
             this.username = username;
             this.fullName = fullName;
             this.email = email;
+            this.phone = phone;
             this.role = role;
             this.status = status;
         }
@@ -142,21 +143,22 @@ public class AccountManagementScreen extends Application {
     // ══════════════════════════════════════════════════════════════
     // CONTENT
     // ══════════════════════════════════════════════════════════════
-    private VBox buildContent() {
+    public VBox buildContent() {
         VBox content = new VBox(0);
         content.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
         // Top bar with title and add button
         HBox topBar = new HBox();
         topBar.setAlignment(Pos.CENTER_LEFT);
+        topBar.setSpacing(10);
         topBar.setPadding(new Insets(18, 28, 18, 28));
         topBar.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
         
         VBox titleBox = new VBox(2);
-        Text titleText = new Text("Account Management");
+        Text titleText = new Text("Registration / Verification");
         titleText.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
         titleText.setFill(Color.web(TEXT_WHITE));
-        Text subtitleText = new Text("Create and manage system user accounts");
+        Text subtitleText = new Text("Register staff accounts, check details, and activate verified users");
         subtitleText.setFont(Font.font("Verdana", 11));
         subtitleText.setFill(Color.web(TEXT_MUTED));
         titleBox.getChildren().addAll(titleText, subtitleText);
@@ -164,7 +166,7 @@ public class AccountManagementScreen extends Application {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        Button addBtn = new Button("➕  NEW ACCOUNT");
+        Button addBtn = new Button("+  REGISTER STAFF");
         addBtn.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
         addBtn.setStyle(
             "-fx-background-color: " + ACCENT + ";" +
@@ -189,7 +191,13 @@ public class AccountManagementScreen extends Application {
         ));
         addBtn.setOnAction(e -> showCreateAccountDialog());
 
-        topBar.getChildren().addAll(titleBox, spacer, addBtn);
+        Button verifyBtn = buildActionButton("VERIFY STAFF", SUCCESS);
+        verifyBtn.setOnAction(e -> updateSelectedVerification(true));
+
+        Button holdBtn = buildActionButton("MARK UNVERIFIED", WARNING);
+        holdBtn.setOnAction(e -> updateSelectedVerification(false));
+
+        topBar.getChildren().addAll(titleBox, spacer, verifyBtn, holdBtn, addBtn);
 
         // Status label
         statusLabel = new Label();
@@ -237,6 +245,10 @@ public class AccountManagementScreen extends Application {
         emailCol.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().email));
         emailCol.setPrefWidth(180);
 
+        TableColumn<UserRowData, String> phoneCol = new TableColumn<>("Phone");
+        phoneCol.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().phone));
+        phoneCol.setPrefWidth(120);
+
         TableColumn<UserRowData, String> roleCol = new TableColumn<>("Role");
         roleCol.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().role));
         roleCol.setPrefWidth(100);
@@ -245,7 +257,7 @@ public class AccountManagementScreen extends Application {
         statusCol.setCellValueFactory(c -> new javafx.beans.property.SimpleStringProperty(c.getValue().status));
         statusCol.setPrefWidth(100);
 
-        table.getColumns().addAll(idCol, usernameCol, nameCol, emailCol, roleCol, statusCol);
+        table.getColumns().addAll(idCol, usernameCol, nameCol, emailCol, phoneCol, roleCol, statusCol);
         return table;
     }
 
@@ -260,6 +272,7 @@ public class AccountManagementScreen extends Application {
                         ur.username(),
                         ur.fullName(),
                         ur.email(),
+                        ur.phone(),
                         ur.role(),
                         ur.status()
                     ));
@@ -274,9 +287,56 @@ public class AccountManagementScreen extends Application {
     // ══════════════════════════════════════════════════════════════
     // CREATE ACCOUNT DIALOG
     // ══════════════════════════════════════════════════════════════
+    private Button buildActionButton(String label, String color) {
+        Button button = new Button(label);
+        button.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
+        button.setStyle(
+            "-fx-background-color: " + color + ";" +
+            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-padding: 10 16 10 16;" +
+            "-fx-background-radius: 6;" +
+            "-fx-cursor: hand;"
+        );
+        return button;
+    }
+
+    private void updateSelectedVerification(boolean verified) {
+        UserRowData selected = usersTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showStatus("Select a staff account first.", false);
+            return;
+        }
+        if (!"staff".equalsIgnoreCase(selected.role)) {
+            showStatus("Only staff accounts can be verified in Module 2.", false);
+            return;
+        }
+
+        int userId;
+        try {
+            userId = Integer.parseInt(selected.userId);
+        } catch (NumberFormatException ex) {
+            showStatus("Selected account has an invalid user ID.", false);
+            return;
+        }
+
+        new Thread(() -> {
+            boolean success = userDAO.setVerificationStatus(userId, verified);
+            javafx.application.Platform.runLater(() -> {
+                if (success) {
+                    showStatus(selected.username + (verified
+                        ? " is now verified and can log in as staff."
+                        : " is now unverified and cannot log in."), true);
+                    loadUsersTable();
+                } else {
+                    showStatus("Could not update verification status.", false);
+                }
+            });
+        }).start();
+    }
+
     private void showCreateAccountDialog() {
         Stage dialog = new Stage();
-        dialog.setTitle("Create New Account");
+        dialog.setTitle("Register Staff for Verification");
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.setResizable(false);
 
@@ -284,7 +344,7 @@ public class AccountManagementScreen extends Application {
         form.setPadding(new Insets(24));
         form.setStyle("-fx-background-color: " + BG_CARD + ";");
 
-        Text titleText = new Text("Create New User Account");
+        Text titleText = new Text("Register New Staff");
         titleText.setFont(Font.font("Georgia", FontWeight.BOLD, 16));
         titleText.setFill(Color.web(TEXT_WHITE));
 
@@ -300,42 +360,20 @@ public class AccountManagementScreen extends Application {
         HBox phoneBox = buildInputField("Phone", "09171234567");
         TextField phoneField = (TextField) phoneBox.getChildren().get(1);
 
-        HBox roleBox = new HBox(12);
-        Label roleLabel = new Label("Role:");
-        roleLabel.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
-        roleLabel.setTextFill(Color.web(TEXT_MUTED));
-        roleLabel.setMinWidth(100);
-        ComboBox<String> roleCombo = new ComboBox<>(FXCollections.observableArrayList("admin", "staff", "trainer"));
-        roleCombo.setValue("staff");
-        roleCombo.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
-            "-fx-border-color: " + BORDER + ";"
-        );
-        roleCombo.setPrefWidth(250);
-        roleBox.getChildren().addAll(roleLabel, roleCombo);
+        Label roleInfo = new Label("Role is automatically saved as staff. New staff stay inactive until verified.");
+        roleInfo.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
+        roleInfo.setTextFill(Color.web(INFO));
+        roleInfo.setWrapText(true);
 
         HBox passwordBox = buildInputField("Password", "");
         PasswordField passwordField = new PasswordField();
-        passwordField.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
-            "-fx-border-color: " + BORDER + ";" +
-            "-fx-padding: 8 12 8 12;" +
-            "-fx-font-size: 11;"
-        );
+        passwordField.setStyle(inputStyle());
         passwordField.setPromptText("Password");
         ((HBox) passwordBox).getChildren().set(1, passwordField);
 
         HBox confirmPassBox = buildInputField("Confirm Password", "");
         PasswordField confirmPassField = new PasswordField();
-        confirmPassField.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
-            "-fx-border-color: " + BORDER + ";" +
-            "-fx-padding: 8 12 8 12;" +
-            "-fx-font-size: 11;"
-        );
+        confirmPassField.setStyle(inputStyle());
         confirmPassField.setPromptText("Confirm Password");
         ((HBox) confirmPassBox).getChildren().set(1, confirmPassField);
 
@@ -358,7 +396,7 @@ public class AccountManagementScreen extends Application {
         );
         cancelBtn.setOnAction(e -> dialog.close());
 
-        Button saveBtn = new Button("CREATE ACCOUNT");
+        Button saveBtn = new Button("REGISTER FOR VERIFICATION");
         saveBtn.setStyle(
             "-fx-background-color: " + SUCCESS + ";" +
             "-fx-text-fill: " + TEXT_WHITE + ";" +
@@ -372,51 +410,37 @@ public class AccountManagementScreen extends Application {
             String fullName = fullNameField.getText().trim();
             String email = emailField.getText().trim();
             String phone = phoneField.getText().trim();
-            String role = roleCombo.getValue();
             String password = passwordField.getText();
             String confirmPass = confirmPassField.getText();
 
-            if (username.isEmpty() || password.isEmpty()) {
-                msgLabel.setText("⚠   Username and password are required");
-                msgLabel.setTextFill(Color.web(WARNING));
-                msgLabel.setVisible(true);
-                return;
-            }
-
-            if (!password.equals(confirmPass)) {
-                msgLabel.setText("⚠   Passwords do not match");
-                msgLabel.setTextFill(Color.web(WARNING));
-                msgLabel.setVisible(true);
-                return;
-            }
-
-            if (password.length() < 6) {
-                msgLabel.setText("⚠   Password must be at least 6 characters");
+            String validationError = validateStaffRegistration(username, fullName, email, phone, password, confirmPass);
+            if (validationError != null) {
+                msgLabel.setText(validationError);
                 msgLabel.setTextFill(Color.web(WARNING));
                 msgLabel.setVisible(true);
                 return;
             }
 
             saveBtn.setDisable(true);
-            msgLabel.setText("Creating account...");
+            msgLabel.setText("Registering staff for admin verification...");
             msgLabel.setTextFill(Color.web(INFO));
             msgLabel.setVisible(true);
 
             new Thread(() -> {
                 try {
-                    boolean success = userDAO.insert(username, fullName, email, phone, role, password);
+                    boolean success = userDAO.registerStaffForVerification(username, fullName, email, phone, password);
                     javafx.application.Platform.runLater(() -> {
                         if (success) {
-                            msgLabel.setText("✔   Account created successfully!");
+                            msgLabel.setText("Staff registered. Verify the row to activate login access.");
                             msgLabel.setTextFill(Color.web(SUCCESS));
-                            showStatus("✔   New account '" + username + "' created successfully!", true);
+                            showStatus("Staff '" + username + "' registered as unverified.", true);
                             loadUsersTable();
                             new Thread(() -> {
                                 try { Thread.sleep(1500); } catch (InterruptedException ex) {}
                                 javafx.application.Platform.runLater(dialog::close);
                             }).start();
                         } else {
-                            msgLabel.setText("⚠   Failed to create account");
+                            msgLabel.setText("Failed to register staff. Check for duplicate username or database rules.");
                             msgLabel.setTextFill(Color.web(WARNING));
                             saveBtn.setDisable(false);
                         }
@@ -439,7 +463,7 @@ public class AccountManagementScreen extends Application {
             fullNameBox,
             emailBox,
             phoneBox,
-            roleBox,
+            roleInfo,
             passwordBox,
             confirmPassBox,
             msgLabel,
@@ -455,6 +479,14 @@ public class AccountManagementScreen extends Application {
         dialog.showAndWait();
     }
 
+    private String inputStyle() {
+        return "-fx-background-color: " + BG_MAIN + ";" +
+            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-padding: 8 12 8 12;" +
+            "-fx-font-size: 11;";
+    }
+
     private HBox buildInputField(String label, String placeholder) {
         HBox box = new HBox(12);
         Label lbl = new Label(label);
@@ -463,16 +495,33 @@ public class AccountManagementScreen extends Application {
         lbl.setMinWidth(100);
         TextField field = new TextField();
         field.setPromptText(placeholder);
-        field.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
-            "-fx-border-color: " + BORDER + ";" +
-            "-fx-padding: 8 12 8 12;" +
-            "-fx-font-size: 11;"
-        );
+        field.setStyle(inputStyle());
         field.setPrefWidth(250);
         box.getChildren().addAll(lbl, field);
         return box;
+    }
+
+    private String validateStaffRegistration(String username, String fullName, String email,
+                                             String phone, String password, String confirmPass) {
+        if (username.isEmpty() || fullName.isEmpty() || email.isEmpty() || phone.isEmpty() || password.isEmpty()) {
+            return "Username, full name, email, phone, and password are required";
+        }
+        if (!username.matches("^[A-Za-z0-9._-]{4,30}$")) {
+            return "Username must be 4-30 characters using letters, numbers, dot, dash, or underscore";
+        }
+        if (!email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
+            return "Enter a valid email address";
+        }
+        if (!phone.matches("^[0-9+\\-\\s]{7,20}$")) {
+            return "Enter a valid phone number";
+        }
+        if (!password.equals(confirmPass)) {
+            return "Passwords do not match";
+        }
+        if (password.length() < 6) {
+            return "Password must be at least 6 characters";
+        }
+        return null;
     }
 
     private void showStatus(String message, boolean isSuccess) {

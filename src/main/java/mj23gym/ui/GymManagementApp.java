@@ -165,7 +165,15 @@ public class GymManagementApp extends Application {
         VBox menu = new VBox(2);
         menu.setPadding(new javafx.geometry.Insets(0, 10, 0, 10));
 
-        String[][] items = {
+        String[][] items = AppSession.currentUser().isAdmin()
+            ? new String[][] {
+                {"RV", "Registration/Verification", "registration"},
+                {"PR", "Profile", "profile"},
+                {"ST", "Settings", "settings"},
+                {"?", "Help", "help"},
+                {"i", "About", "about"}
+            }
+            : new String[][] {
             {"👤", "Profile", "profile"},
             {"⚙", "Settings", "settings"},
             {"❓", "Help", "help"},
@@ -308,6 +316,9 @@ public class GymManagementApp extends Application {
             case "equipment" -> new AddEquipmentScreen().buildContent();
             case "pos" -> new POSScreen().buildContent();
             case "reports" -> new ReportsScreen().buildContent();
+            case "accounts", "registration" -> AppSession.currentUser().isAdmin()
+                ? new AccountManagementScreen().buildContent()
+                : createAccessDeniedScreen();
             case "profile" -> new AdminProfileScreen().buildContent();
             case "settings", "about" -> new SettingsScreen().buildContent();
             case "help" -> new HelpScreen().buildContent();
@@ -318,6 +329,22 @@ public class GymManagementApp extends Application {
         screen.setMaxHeight(Double.MAX_VALUE);
         VBox.setVgrow(screen, Priority.ALWAYS);
         contentArea.getChildren().add(screen);
+    }
+
+    private VBox createAccessDeniedScreen() {
+        VBox vbox = new VBox(12);
+        vbox.setPadding(new javafx.geometry.Insets(30));
+        vbox.setStyle("-fx-background-color: " + BG_MAIN + ";");
+
+        Text title = new Text("Access Restricted");
+        title.setFont(Font.font("Georgia", FontWeight.BOLD, 28));
+        title.setFill(Color.web(TEXT_WHITE));
+
+        Label message = new Label("Account registration and verification are available to administrators only.");
+        message.setStyle("-fx-text-fill: " + TEXT_MUTED + "; -fx-font: 14 Verdana;");
+
+        vbox.getChildren().addAll(title, message);
+        return vbox;
     }
 
     private VBox createDashboardScreen() {

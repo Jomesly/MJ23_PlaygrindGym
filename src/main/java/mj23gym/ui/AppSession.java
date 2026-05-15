@@ -159,6 +159,14 @@ final class AppSession {
             return role;
         }
 
+        boolean isAdmin() {
+            return "admin".equalsIgnoreCase(role);
+        }
+
+        boolean isStaff() {
+            return "staff".equalsIgnoreCase(role);
+        }
+
         String position() {
             return position;
         }

@@ -382,7 +382,7 @@ public final class PasswordUtil {
             if (salt.charAt(2) == '$') off = 3; else { minor = salt.charAt(2); if (minor != 'a' && minor != 'b' && minor != 'y' || salt.charAt(3) != '$') throw new IllegalArgumentException("Invalid salt revision"); off = 4; }
             if (salt.charAt(off + 2) > '$') throw new IllegalArgumentException("Missing salt rounds");
             rounds = Integer.parseInt(salt.substring(off, off + 2)); real_salt = salt.substring(off + 3, off + 25); try { saltb = decode_base64(real_salt, BCRYPT_SALT_LEN); passwordb = (password + (minor >= 'a' ? "\000" : "")).getBytes("UTF-8"); } catch (java.io.UnsupportedEncodingException e) { throw new AssertionError("UTF-8 not supported"); }
-            hashed = B.crypt_raw(passwordb, saltb, rounds); StringBuilder rs = new StringBuilder(); rs.append("$2"); if (minor >= 'a') rs.append(minor); rs.append("$"); if (rounds < 10) rs.append("0"); rs.append(rounds).append("$").append(encode_base64(saltb, saltb.length)).append(encode_base64(hashed, 31)); return rs.toString();
+            hashed = B.crypt_raw(passwordb, saltb, rounds); StringBuilder rs = new StringBuilder(); rs.append("$2"); if (minor >= 'a') rs.append(minor); rs.append("$"); if (rounds < 10) rs.append("0"); rs.append(rounds).append("$").append(encode_base64(saltb, saltb.length)).append(encode_base64(hashed, hashed.length - 1)); return rs.toString();
         }
 
         public static boolean checkpw(String plaintext, String hashed) { return hashed.equals(hashpw(plaintext, hashed)); }
