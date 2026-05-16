@@ -25,27 +25,27 @@ import java.util.Optional;
 import mj23gym.dao.EquipmentDAO;
 
 /**
- * MJ23 Playgrind Gym – Add Equipment / Equipment Management Screen
+ * MJ23 Playgrind Gym  Add Equipment / Equipment Management Screen
  */
 public class AddEquipmentScreen extends Application {
 
-    static final String BG_MAIN     = "#1a1a2e";
-    static final String BG_SIDEBAR  = "#0d1b2a";
-    static final String BG_CARD     = "#1e2a3a";
-    static final String BG_ROW_ALT  = "#253545";
-    static final String ACCENT      = "#e63946";
-    static final String ACCENT_DARK = "#c0303b";
-    static final String TEXT_WHITE  = "#ffffff";
-    static final String TEXT_MUTED  = "#b0bec5";
-    static final String TEXT_DIM    = "#607080";
-    static final String BORDER      = "#253545";
-    static final String SUCCESS     = "#4caf50";
-    static final String WARNING     = "#ff9800";
-    static final String INFO        = "#2196f3";
+    static final String BG_MAIN     = "#F2F4F8";
+    static final String BG_SIDEBAR  = "#E9EDF6";
+    static final String BG_CARD     = "#F8F9FC";
+    static final String BG_ROW_ALT  = "#EEF2FA";
+    static final String ACCENT      = "#1A1363";
+    static final String ACCENT_DARK = "#332F4F";
+    static final String TEXT_WHITE  = "#1A1363";
+    static final String TEXT_MUTED  = "#77749B";
+    static final String TEXT_DIM    = "#4B4B4B";
+    static final String BORDER      = "#D9DDEA";
+    static final String SUCCESS     = "#2F6F5E";
+    static final String WARNING     = "#8A6D00";
+    static final String INFO        = "#1A1363";
 
     @Override
     public void start(Stage stage) {
-        stage.setTitle("MJ23 Playgrind Gym – Equipment Management");
+        stage.setTitle("MJ23 Playgrind Gym  Equipment Management");
         BorderPane root = new BorderPane();
         root.setPrefSize(1200, 720);
         root.setStyle("-fx-background-color: " + BG_MAIN + ";");
@@ -64,17 +64,17 @@ public class AddEquipmentScreen extends Application {
         sidebar.setPrefWidth(230); sidebar.setMinWidth(230); sidebar.setMaxWidth(230);
         sidebar.setStyle("-fx-background-color: " + BG_SIDEBAR + ";");
         Rectangle topAccent = new Rectangle(230, 5);
-        topAccent.setFill(Color.web(ACCENT));
+        topAccent.setFill(Color.web("#FDEE21"));
         HBox logoArea = buildLogoArea();
         String[][] items = {
-            {"🏠","Dashboard"},{"👥","Member Management"},{"💳","Payment & Billing"},
-            {"📦","Inventory"},{"🏋","Equipment"},{"🛒","Point of Sale"},{"📊","Reports"}
+            {"","Dashboard"},{"","Member Management"},{"","Payment & Billing"},
+            {"","Inventory"},{"","Equipment"},{"","Point of Sale"},{"","Reports"}
         };
         VBox menu = new VBox(2);
         menu.setPadding(new Insets(0, 10, 0, 10));
         for (String[] it : items)
             menu.getChildren().add(buildMenuItem(it[0], it[1], it[1].equals("Equipment")));
-        String[][] sys = {{"⚙","Settings"},{"❓","Help"},{"ℹ","About"}};
+        String[][] sys = {{"","Settings"},{"","Help"},{"","About"}};
         VBox sysMenu = new VBox(2);
         sysMenu.setPadding(new Insets(0, 10, 0, 10));
         for (String[] it : sys)
@@ -97,15 +97,15 @@ public class AddEquipmentScreen extends Application {
         bb.setArcWidth(10); bb.setArcHeight(10);
         bb.setFill(Color.web(ACCENT));
         Text bt = new Text("MJ");
-        bt.setFont(Font.font("Georgia", FontWeight.BOLD, 16));
+        bt.setFont(Font.font("Poppins", FontWeight.BOLD, 16));
         bt.setFill(Color.WHITE);
         badge.getChildren().addAll(bb, bt);
         VBox lt = new VBox(1);
         Text l1 = new Text("MJ23 PLAYGRIND");
-        l1.setFont(Font.font("Georgia", FontWeight.BOLD, 11));
+        l1.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
         l1.setFill(Color.web(TEXT_WHITE));
         Text l2 = new Text("GYM");
-        l2.setFont(Font.font("Georgia", FontWeight.BOLD, 11));
+        l2.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
         l2.setFill(Color.web(ACCENT));
         lt.getChildren().addAll(l1, l2);
         logoArea.getChildren().addAll(badge, lt);
@@ -122,22 +122,22 @@ public class AddEquipmentScreen extends Application {
         bar.setFill(active ? Color.web(ACCENT) : Color.TRANSPARENT);
         Text ico = new Text(icon); ico.setFont(Font.font(14));
         Text lbl = new Text(label);
-        lbl.setFont(Font.font("Verdana", active ? FontWeight.BOLD : FontWeight.NORMAL, 12));
+        lbl.setFont(Font.font("Poppins", active ? FontWeight.BOLD : FontWeight.NORMAL, 12));
         lbl.setFill(active ? Color.web(TEXT_WHITE) : Color.web(TEXT_MUTED));
         item.getChildren().addAll(bar, ico, lbl);
         item.setStyle(active
-            ? "-fx-background-color: " + BG_CARD + "; -fx-background-radius: 8;"
-            : "-fx-background-color: transparent; -fx-background-radius: 8;");
+            ? "-fx-background-color: " + BG_CARD + "; -fx-background-radius: 16;"
+            : "-fx-background-color: transparent; -fx-background-radius: 16;");
         if (!active) {
-            item.setOnMouseEntered(e -> item.setStyle("-fx-background-color: rgba(255,255,255,0.04); -fx-background-radius: 8;"));
-            item.setOnMouseExited(e -> item.setStyle("-fx-background-color: transparent; -fx-background-radius: 8;"));
+            item.setOnMouseEntered(e -> item.setStyle("-fx-background-color: rgba(255,255,255,0.04); -fx-background-radius: 16;"));
+            item.setOnMouseExited(e -> item.setStyle("-fx-background-color: transparent; -fx-background-radius: 16;"));
         }
         return item;
     }
 
     private Label makeSecLbl(String t) {
         Label l = new Label(t);
-        l.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        l.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         l.setTextFill(Color.web(TEXT_DIM));
         l.setPadding(new Insets(8, 0, 6, 20));
         return l;
@@ -166,7 +166,7 @@ public class AddEquipmentScreen extends Application {
         Text statMaintVal = new Text();
         Text statFairVal = new Text();
         for (Text t : new Text[] { statTotalVal, statGoodVal, statMaintVal, statFairVal }) {
-            t.setFont(Font.font("Georgia", FontWeight.BOLD, 22));
+            t.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
         }
 
         Runnable refreshStats = () -> {
@@ -179,16 +179,16 @@ public class AddEquipmentScreen extends Application {
 
         HBox stats = new HBox(16);
         stats.getChildren().addAll(
-            makeStatChipText("🏋 Total Equipment", statTotalVal, TEXT_WHITE),
-            makeStatChipText("✅ Good", statGoodVal, SUCCESS),
-            makeStatChipText("🔧 Maintenance", statMaintVal, WARNING),
-            makeStatChipText("⚠ Fair", statFairVal, INFO)
+            makeStatChipText(" Total Equipment", statTotalVal, TEXT_WHITE),
+            makeStatChipText(" Good", statGoodVal, SUCCESS),
+            makeStatChipText(" Maintenance", statMaintVal, WARNING),
+            makeStatChipText(" Fair", statFairVal, INFO)
         );
 
         HBox controls = new HBox(12);
         controls.setAlignment(Pos.CENTER_LEFT);
         TextField search = new TextField();
-        search.setPromptText("🔍  Search equipment...");
+        search.setPromptText("Search equipment...");
         search.setPrefWidth(250);
         search.setPrefHeight(38);
         applyFieldStyle(search);
@@ -207,20 +207,20 @@ public class AddEquipmentScreen extends Application {
         Label monitorAlert = new Label();
         monitorAlert.setWrapText(true);
         monitorAlert.setStyle(
-            "-fx-background-color: rgba(255,152,0,0.12);" +
+            "-fx-background-color: rgba(253,238,33,0.12);" +
             "-fx-text-fill: " + WARNING + ";" +
-            "-fx-font: bold 12 Verdana;" +
+            "-fx-font: bold 12 Poppins;" +
             "-fx-padding: 10 14;" +
-            "-fx-background-radius: 8;" +
-            "-fx-border-color: rgba(255,152,0,0.25);" +
-            "-fx-border-radius: 8;"
+            "-fx-background-radius: 16;" +
+            "-fx-border-color: rgba(253,238,33,0.25);" +
+            "-fx-border-radius: 16;"
         );
 
         HBox mainRow = new HBox(20);
 
         VBox rows = new VBox(0);
         Text pgInfo = new Text();
-        pgInfo.setFont(Font.font("Verdana", 11));
+        pgInfo.setFont(Font.font("Poppins", 11));
         pgInfo.setFill(Color.web(TEXT_MUTED));
 
         double[] colW = {8, 22, 12, 7, 13, 14, 14};
@@ -297,9 +297,9 @@ public class AddEquipmentScreen extends Application {
         VBox card = new VBox(0);
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 12;" +
+            "-fx-background-radius: 22;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 12;" +
+            "-fx-border-radius: 22;" +
             "-fx-border-width: 1;");
         DropShadow ds = new DropShadow();
         ds.setColor(Color.web("#000", 0.3));
@@ -316,7 +316,7 @@ public class AddEquipmentScreen extends Application {
         HBox.setHgrow(hGrid, Priority.ALWAYS);
         for (int i = 0; i < headers.length; i++) {
             Label h = new Label(headers[i].toUpperCase());
-            h.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+            h.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
             h.setTextFill(Color.web(TEXT_DIM));
             hGrid.add(h, i, 0);
         }
@@ -378,7 +378,7 @@ public class AddEquipmentScreen extends Application {
             rg.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(rg, Priority.ALWAYS);
             String code = "#" + eq.equipmentCode();
-            String next = eq.nextMaintenance() != null ? eq.nextMaintenance().toString() : "—";
+            String next = eq.nextMaintenance() != null ? eq.nextMaintenance().toString() : "";
             rg.add(makeCell(code, ACCENT, true), 0, 0);
             rg.add(makeCell(eq.equipmentName(), TEXT_WHITE, false), 1, 0);
             rg.add(makeTypeBadge(eq.category() != null ? eq.category() : "Other"), 2, 0);
@@ -390,7 +390,7 @@ public class AddEquipmentScreen extends Application {
             Button maintBtn = makeActionBtn("Maint", INFO);
             maintBtn.setOnAction(e -> showMaintenanceDialog(dao, eq, fullRefresh));
 
-            Button delBtn = makeActionBtn("🗑", ACCENT);
+            Button delBtn = makeActionBtn("", ACCENT);
             delBtn.setText("Delete");
             delBtn.setOnAction(e -> {
                 Alert c = new Alert(Alert.AlertType.CONFIRMATION);
@@ -406,7 +406,7 @@ public class AddEquipmentScreen extends Application {
 
             row.getChildren().add(rg);
             String fBg = bg;
-            row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: rgba(230,57,70,0.06);"));
+            row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: rgba(26,19,99,0.06);"));
             row.setOnMouseExited(e -> row.setStyle("-fx-background-color: " + fBg + ";"));
             rows.getChildren().add(row);
             r++;
@@ -424,7 +424,7 @@ public class AddEquipmentScreen extends Application {
         root.setPrefWidth(520);
 
         Text title = new Text("Update Equipment");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         title.setFill(Color.web(TEXT_WHITE));
 
         TextField name = new TextField(eq.equipmentName());
@@ -470,7 +470,7 @@ public class AddEquipmentScreen extends Application {
         buttons.setAlignment(Pos.CENTER_RIGHT);
         Button cancel = new Button("Cancel");
         cancel.setPrefHeight(38);
-        cancel.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-text-fill: " + TEXT_MUTED + "; -fx-background-radius: 8;");
+        cancel.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-text-fill: " + TEXT_MUTED + "; -fx-background-radius: 16;");
         cancel.setOnAction(e -> dialog.close());
         Button save = makeAccentBtn("Save Changes");
         save.setOnAction(e -> {
@@ -524,7 +524,7 @@ public class AddEquipmentScreen extends Application {
         root.setPrefWidth(440);
 
         Text title = new Text("Maintenance - " + eq.equipmentName());
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 18));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 18));
         title.setFill(Color.web(TEXT_WHITE));
 
         TextField type = new TextField("Preventive Maintenance");
@@ -584,7 +584,7 @@ public class AddEquipmentScreen extends Application {
         int maintenance = dao.countByCondition("Maintenance");
         if (due.isEmpty() && broken == 0 && maintenance == 0) {
             monitorAlert.setText("Equipment monitor: all active equipment is in usable condition with no upcoming maintenance alerts.");
-            monitorAlert.setStyle("-fx-background-color: rgba(76,175,80,0.12); -fx-text-fill: " + SUCCESS + "; -fx-font: bold 12 Verdana; -fx-padding: 10 14; -fx-background-radius: 8; -fx-border-color: rgba(76,175,80,0.25); -fx-border-radius: 8;");
+            monitorAlert.setStyle("-fx-background-color: rgba(228,255,223,0.12); -fx-text-fill: " + SUCCESS + "; -fx-font: bold 12 Poppins; -fx-padding: 10 14; -fx-background-radius: 16; -fx-border-color: rgba(228,255,223,0.25); -fx-border-radius: 16;");
             return;
         }
         List<String> dueNames = new ArrayList<>();
@@ -594,7 +594,7 @@ public class AddEquipmentScreen extends Application {
         }
         String dueText = dueNames.isEmpty() ? "none due soon" : String.join(", ", dueNames);
         monitorAlert.setText("Equipment monitor: " + broken + " broken, " + maintenance + " in maintenance, due soon: " + dueText);
-        monitorAlert.setStyle("-fx-background-color: rgba(255,152,0,0.12); -fx-text-fill: " + WARNING + "; -fx-font: bold 12 Verdana; -fx-padding: 10 14; -fx-background-radius: 8; -fx-border-color: rgba(255,152,0,0.25); -fx-border-radius: 8;");
+        monitorAlert.setStyle("-fx-background-color: rgba(253,238,33,0.12); -fx-text-fill: " + WARNING + "; -fx-font: bold 12 Poppins; -fx-padding: 10 14; -fx-background-radius: 16; -fx-border-color: rgba(253,238,33,0.25); -fx-border-radius: 16;");
     }
 
     private VBox buildQuickAddCard(
@@ -612,9 +612,9 @@ public class AddEquipmentScreen extends Application {
         card.setPadding(new Insets(24));
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 12;" +
+            "-fx-background-radius: 22;" +
             "-fx-border-color: " + ACCENT + ";" +
-            "-fx-border-radius: 12;" +
+            "-fx-border-radius: 22;" +
             "-fx-border-width: 1;");
         DropShadow ds = new DropShadow();
         ds.setColor(Color.web(ACCENT, 0.2));
@@ -623,7 +623,7 @@ public class AddEquipmentScreen extends Application {
         card.setEffect(ds);
 
         Text title = new Text("Add Equipment");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 16));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 16));
         title.setFill(Color.web(TEXT_WHITE));
         Rectangle ul = new Rectangle(40, 3);
         ul.setFill(Color.web(ACCENT));
@@ -633,7 +633,7 @@ public class AddEquipmentScreen extends Application {
         VBox nameBox = labeledField("EQUIPMENT NAME", addName, "e.g. Treadmill");
         VBox catBox = new VBox(6);
         Label catLbl = new Label("CATEGORY");
-        catLbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        catLbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         catLbl.setTextFill(Color.web(TEXT_MUTED));
         addCat.setPrefHeight(40);
         catBox.getChildren().addAll(catLbl, addCat);
@@ -641,7 +641,7 @@ public class AddEquipmentScreen extends Application {
         VBox qtyBox = labeledField("QUANTITY", addQty, "1");
         VBox condBox = new VBox(6);
         Label condLbl = new Label("CONDITION");
-        condLbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        condLbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         condLbl.setTextFill(Color.web(TEXT_MUTED));
         addCond.setPrefHeight(40);
         condBox.getChildren().addAll(condLbl, addCond);
@@ -665,11 +665,11 @@ public class AddEquipmentScreen extends Application {
         Button clear = new Button("Clear");
         clear.setPrefHeight(38);
         clear.setPadding(new Insets(0, 16, 0, 16));
-        clear.setFont(Font.font("Verdana", 11));
+        clear.setFont(Font.font("Poppins", 11));
         clear.setStyle(
             "-fx-background-color: " + BG_MAIN + ";" +
             "-fx-text-fill: " + TEXT_MUTED + ";" +
-            "-fx-background-radius: 8;" +
+            "-fx-background-radius: 16;" +
             "-fx-cursor: hand;"
         );
         clear.setOnAction(e -> resetForm.run());
@@ -732,7 +732,7 @@ public class AddEquipmentScreen extends Application {
     private VBox labeledField(String label, TextField field, String prompt) {
         VBox g = new VBox(6);
         Label lbl = new Label(label);
-        lbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         lbl.setTextFill(Color.web(TEXT_MUTED));
         field.setPromptText(prompt);
         field.setPrefHeight(38);
@@ -744,7 +744,7 @@ public class AddEquipmentScreen extends Application {
     private VBox comboField(String label, ComboBox<String> combo) {
         VBox g = new VBox(6);
         Label lbl = new Label(label);
-        lbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         lbl.setTextFill(Color.web(TEXT_MUTED));
         combo.setPrefHeight(38);
         g.getChildren().addAll(lbl, combo);
@@ -766,7 +766,7 @@ public class AddEquipmentScreen extends Application {
         if (raw == null || raw.trim().isEmpty()) {
             return 0;
         }
-        return Double.parseDouble(raw.replace("PHP", "").replace("₱", "").replace(",", "").trim());
+        return Double.parseDouble(raw.replace("PHP", "").replace("", "").replace(",", "").trim());
     }
 
     private String dateText(Date date) {
@@ -783,9 +783,9 @@ public class AddEquipmentScreen extends Application {
         chip.setPadding(new Insets(14, 20, 14, 20));
         chip.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 10;" +
+            "-fx-background-radius: 18;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 10;" +
+            "-fx-border-radius: 18;" +
             "-fx-border-width: 1;");
         HBox.setHgrow(chip, Priority.ALWAYS);
         DropShadow d = new DropShadow();
@@ -795,7 +795,7 @@ public class AddEquipmentScreen extends Application {
         chip.setEffect(d);
         valueNode.setFill(Color.web(color));
         Text lbl = new Text(label);
-        lbl.setFont(Font.font("Verdana", 11));
+        lbl.setFont(Font.font("Poppins", 11));
         lbl.setFill(Color.web(TEXT_MUTED));
         chip.getChildren().add(new VBox(2, lbl, valueNode));
         return chip;
@@ -807,8 +807,8 @@ public class AddEquipmentScreen extends Application {
         bar.setPadding(new Insets(18, 28, 18, 28));
         bar.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
         VBox pg = new VBox(2);
-        Text t1 = new Text(title); t1.setFont(Font.font("Georgia", FontWeight.BOLD, 20)); t1.setFill(Color.web(TEXT_WHITE));
-        Text t2 = new Text(sub); t2.setFont(Font.font("Verdana", 11)); t2.setFill(Color.web(TEXT_MUTED));
+        Text t1 = new Text(title); t1.setFont(Font.font("Poppins", FontWeight.BOLD, 20)); t1.setFill(Color.web(TEXT_WHITE));
+        Text t2 = new Text(sub); t2.setFont(Font.font("Poppins", 11)); t2.setFill(Color.web(TEXT_MUTED));
         pg.getChildren().addAll(t1, t2);
         bar.getChildren().add(pg);
         return bar;
@@ -821,21 +821,21 @@ public class AddEquipmentScreen extends Application {
     }
 
     private void applyFieldStyle(TextField f) {
-        f.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 8; -fx-background-radius: 8; -fx-text-fill: " + TEXT_WHITE + "; -fx-prompt-text-fill: " + TEXT_DIM + "; -fx-padding: 0 12 0 12; -fx-font-family: Verdana; -fx-font-size: 12;");
-        f.focusedProperty().addListener((o, old, foc) -> f.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-border-color: " + (foc ? ACCENT : BORDER) + "; -fx-border-radius: 8; -fx-background-radius: 8; -fx-text-fill: " + TEXT_WHITE + "; -fx-prompt-text-fill: " + TEXT_DIM + "; -fx-padding: 0 12 0 12; -fx-font-family: Verdana; -fx-font-size: 12;"));
+        f.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 16; -fx-background-radius: 16; -fx-text-fill: " + TEXT_WHITE + "; -fx-prompt-text-fill: " + TEXT_DIM + "; -fx-padding: 0 12 0 12; -fx-font-family: Poppins; -fx-font-size: 12;");
+        f.focusedProperty().addListener((o, old, foc) -> f.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-border-color: " + (foc ? ACCENT : BORDER) + "; -fx-border-radius: 16; -fx-background-radius: 16; -fx-text-fill: " + TEXT_WHITE + "; -fx-prompt-text-fill: " + TEXT_DIM + "; -fx-padding: 0 12 0 12; -fx-font-family: Poppins; -fx-font-size: 12;"));
     }
 
     private void styleCombo(ComboBox<String> c) {
-        c.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 8; -fx-background-radius: 8; -fx-text-fill: " + TEXT_WHITE + "; -fx-font-family: Verdana; -fx-font-size: 12; -fx-pref-height: 38;");
+        c.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 16; -fx-background-radius: 16; -fx-text-fill: " + TEXT_WHITE + "; -fx-font-family: Poppins; -fx-font-size: 12; -fx-pref-height: 38;");
     }
 
     private Button makeAccentBtn(String text) {
         Button b = new Button(text);
         b.setPrefHeight(38); b.setPadding(new Insets(0, 18, 0, 18));
-        b.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
-        b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;");
-        b.setOnMouseEntered(e -> b.setStyle("-fx-background-color: " + ACCENT_DARK + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;"));
-        b.setOnMouseExited(e -> b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;"));
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;");
+        b.setOnMouseEntered(e -> b.setStyle("-fx-background-color: " + ACCENT_DARK + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;"));
+        b.setOnMouseExited(e -> b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;"));
         return b;
     }
 
@@ -849,32 +849,32 @@ public class AddEquipmentScreen extends Application {
 
     private Label makeCell(String text, String color, boolean bold) {
         Label l = new Label(text);
-        l.setFont(Font.font("Verdana", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
+        l.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
         l.setTextFill(Color.web(color));
         return l;
     }
 
     private Label makeCondBadge(String cond) {
         Label b = new Label(cond);
-        b.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         String c;
         String bg;
         switch (cond) {
             case "Good":
                 c = SUCCESS;
-                bg = "rgba(76,175,80,0.15)";
+                bg = "rgba(228,255,223,0.15)";
                 break;
             case "Maintenance":
                 c = ACCENT;
-                bg = "rgba(230,57,70,0.15)";
+                bg = "rgba(26,19,99,0.15)";
                 break;
             case "Broken":
                 c = ACCENT;
-                bg = "rgba(230,57,70,0.22)";
+                bg = "rgba(26,19,99,0.22)";
                 break;
             case "Fair":
                 c = WARNING;
-                bg = "rgba(255,152,0,0.15)";
+                bg = "rgba(253,238,33,0.15)";
                 break;
             default:
                 c = TEXT_MUTED;
@@ -882,15 +882,15 @@ public class AddEquipmentScreen extends Application {
                 break;
         }
         b.setTextFill(Color.web(c));
-        b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 10; -fx-padding: 3 10 3 10;");
+        b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 18; -fx-padding: 3 10 3 10;");
         return b;
     }
 
     private Label makeTypeBadge(String type) {
         Label b = new Label(type);
-        b.setFont(Font.font("Verdana", 10));
+        b.setFont(Font.font("Poppins", 10));
         b.setTextFill(Color.web(INFO));
-        b.setStyle("-fx-background-color: rgba(33,150,243,0.13); -fx-background-radius: 10; -fx-padding: 3 10 3 10;");
+        b.setStyle("-fx-background-color: rgba(119,116,155,0.13); -fx-background-radius: 18; -fx-padding: 3 10 3 10;");
         return b;
     }
 
@@ -898,14 +898,17 @@ public class AddEquipmentScreen extends Application {
         HBox chip = new HBox(10);
         chip.setAlignment(Pos.CENTER_LEFT);
         chip.setPadding(new Insets(14, 20, 14, 20));
-        chip.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 10; -fx-border-color: " + BORDER + "; -fx-border-radius: 10; -fx-border-width: 1;");
+        chip.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 18; -fx-border-color: " + BORDER + "; -fx-border-radius: 18; -fx-border-width: 1;");
         HBox.setHgrow(chip, Priority.ALWAYS);
         DropShadow ds = new DropShadow(); ds.setColor(Color.web("#000", 0.2)); ds.setRadius(8); ds.setOffsetY(3); chip.setEffect(ds);
-        Text val = new Text(value); val.setFont(Font.font("Georgia", FontWeight.BOLD, 22)); val.setFill(Color.web(color));
-        Text lbl = new Text(label); lbl.setFont(Font.font("Verdana", 11)); lbl.setFill(Color.web(TEXT_MUTED));
+        Text val = new Text(value); val.setFont(Font.font("Poppins", FontWeight.BOLD, 22)); val.setFill(Color.web(color));
+        Text lbl = new Text(label); lbl.setFont(Font.font("Poppins", 11)); lbl.setFill(Color.web(TEXT_MUTED));
         chip.getChildren().add(new VBox(2, lbl, val));
         return chip;
     }
 
     public static void main(String[] args) { launch(args); }
 }
+
+
+

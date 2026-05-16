@@ -30,29 +30,29 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 
 /**
- * MJ23 Playgrind Gym – Help Screen
+ * MJ23 Playgrind Gym  Help Screen
  * Contains: Search help, FAQ accordion, module guides,
  * troubleshooting tips, and contact/support info.
  */
 public class HelpScreen extends Application {
 
-    static final String BG_MAIN     = "#1a1a2e";
-    static final String BG_SIDEBAR  = "#0d1b2a";
-    static final String BG_CARD     = "#1e2a3a";
-    static final String BG_ROW_ALT  = "#253545";
-    static final String ACCENT      = "#e63946";
-    static final String ACCENT_DARK = "#c0303b";
-    static final String TEXT_WHITE  = "#ffffff";
-    static final String TEXT_MUTED  = "#b0bec5";
-    static final String TEXT_DIM    = "#607080";
-    static final String BORDER      = "#253545";
-    static final String SUCCESS     = "#4caf50";
-    static final String WARNING     = "#ff9800";
-    static final String INFO        = "#2196f3";
+    static final String BG_MAIN     = "#F2F4F8";
+    static final String BG_SIDEBAR  = "#E9EDF6";
+    static final String BG_CARD     = "#F8F9FC";
+    static final String BG_ROW_ALT  = "#EEF2FA";
+    static final String ACCENT      = "#1A1363";
+    static final String ACCENT_DARK = "#332F4F";
+    static final String TEXT_WHITE  = "#1A1363";
+    static final String TEXT_MUTED  = "#77749B";
+    static final String TEXT_DIM    = "#4B4B4B";
+    static final String BORDER      = "#D9DDEA";
+    static final String SUCCESS     = "#2F6F5E";
+    static final String WARNING     = "#8A6D00";
+    static final String INFO        = "#1A1363";
 
     @Override
     public void start(Stage stage) {
-        stage.setTitle("MJ23 Playgrind Gym – Help & Support");
+        stage.setTitle("MJ23 Playgrind Gym  Help & Support");
         BorderPane root = new BorderPane();
         root.setPrefSize(1200, 720);
         root.setStyle("-fx-background-color: " + BG_MAIN + ";");
@@ -66,16 +66,16 @@ public class HelpScreen extends Application {
         stage.show();
     }
 
-    // ══════════════════════════════════════════════════════════════
+    // 
     // SIDEBAR
-    // ══════════════════════════════════════════════════════════════
+    // 
     private VBox buildSidebar() {
         VBox sidebar = new VBox();
         sidebar.setPrefWidth(230); sidebar.setMinWidth(230); sidebar.setMaxWidth(230);
         sidebar.setStyle("-fx-background-color: " + BG_SIDEBAR + ";");
 
         Rectangle topAccent = new Rectangle(230, 5);
-        topAccent.setFill(Color.web(ACCENT));
+        topAccent.setFill(Color.web("#FDEE21"));
 
         HBox logoArea = new HBox(12);
         logoArea.setAlignment(Pos.CENTER_LEFT);
@@ -83,23 +83,23 @@ public class HelpScreen extends Application {
         StackPane badge = new StackPane(); badge.setPrefSize(42, 42);
         Rectangle bb = new Rectangle(42, 42);
         bb.setArcWidth(10); bb.setArcHeight(10); bb.setFill(Color.web(ACCENT));
-        Text bt = new Text("MJ"); bt.setFont(Font.font("Georgia", FontWeight.BOLD, 16)); bt.setFill(Color.WHITE);
+        Text bt = new Text("MJ"); bt.setFont(Font.font("Poppins", FontWeight.BOLD, 16)); bt.setFill(Color.WHITE);
         badge.getChildren().addAll(bb, bt);
         VBox lt = new VBox(1);
-        Text l1 = new Text("MJ23 PLAYGRIND"); l1.setFont(Font.font("Georgia", FontWeight.BOLD, 11)); l1.setFill(Color.web(TEXT_WHITE));
-        Text l2 = new Text("GYM"); l2.setFont(Font.font("Georgia", FontWeight.BOLD, 11)); l2.setFill(Color.web(ACCENT));
+        Text l1 = new Text("MJ23 PLAYGRIND"); l1.setFont(Font.font("Poppins", FontWeight.BOLD, 11)); l1.setFill(Color.web(TEXT_WHITE));
+        Text l2 = new Text("GYM"); l2.setFont(Font.font("Poppins", FontWeight.BOLD, 11)); l2.setFill(Color.web(ACCENT));
         lt.getChildren().addAll(l1, l2);
         logoArea.getChildren().addAll(badge, lt);
 
         String[][] items = {
-            {"🏠","Dashboard"},{"👥","Member Management"},{"💳","Payment & Billing"},
-            {"📦","Inventory"},{"🏋","Equipment"},{"🛒","Point of Sale"},{"📊","Reports"}
+            {"","Dashboard"},{"","Member Management"},{"","Payment & Billing"},
+            {"","Inventory"},{"","Equipment"},{"","Point of Sale"},{"","Reports"}
         };
         VBox menu = new VBox(2); menu.setPadding(new Insets(0, 10, 0, 10));
         for (String[] it : items)
             menu.getChildren().add(buildMenuItem(it[0], it[1], false));
 
-        String[][] sys = {{"⚙","Settings"},{"❓","Help"},{"ℹ","About"}};
+        String[][] sys = {{"","Settings"},{"","Help"},{"","About"}};
         VBox sysMenu = new VBox(2); sysMenu.setPadding(new Insets(0, 10, 0, 10));
         for (String[] it : sys)
             sysMenu.getChildren().add(buildMenuItem(it[0], it[1], it[1].equals("Help")));
@@ -122,27 +122,27 @@ public class HelpScreen extends Application {
         bar.setFill(active ? Color.web(ACCENT) : Color.TRANSPARENT);
         Text ico = new Text(icon); ico.setFont(Font.font(14));
         Text lbl = new Text(label);
-        lbl.setFont(Font.font("Verdana", active ? FontWeight.BOLD : FontWeight.NORMAL, 12));
+        lbl.setFont(Font.font("Poppins", active ? FontWeight.BOLD : FontWeight.NORMAL, 12));
         lbl.setFill(active ? Color.web(TEXT_WHITE) : Color.web(TEXT_MUTED));
         item.getChildren().addAll(bar, ico, lbl);
         item.setStyle(active
-            ? "-fx-background-color: " + BG_CARD + "; -fx-background-radius: 8;"
-            : "-fx-background-color: transparent; -fx-background-radius: 8;");
+            ? "-fx-background-color: " + BG_CARD + "; -fx-background-radius: 16;"
+            : "-fx-background-color: transparent; -fx-background-radius: 16;");
         if (!active) {
-            item.setOnMouseEntered(e -> item.setStyle("-fx-background-color: rgba(255,255,255,0.04); -fx-background-radius: 8;"));
-            item.setOnMouseExited(e -> item.setStyle("-fx-background-color: transparent; -fx-background-radius: 8;"));
+            item.setOnMouseEntered(e -> item.setStyle("-fx-background-color: rgba(255,255,255,0.04); -fx-background-radius: 16;"));
+            item.setOnMouseExited(e -> item.setStyle("-fx-background-color: transparent; -fx-background-radius: 16;"));
         }
         return item;
     }
 
     private Label makeSecLbl(String t) {
-        Label l = new Label(t); l.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        Label l = new Label(t); l.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         l.setTextFill(Color.web(TEXT_DIM)); l.setPadding(new Insets(8, 0, 6, 20)); return l;
     }
 
-    // ══════════════════════════════════════════════════════════════
+    // 
     // MAIN CONTENT
-    // ══════════════════════════════════════════════════════════════
+    // 
     public VBox buildContent() {
         VBox content = new VBox(0);
         content.setStyle("-fx-background-color: " + BG_MAIN + ";");
@@ -158,10 +158,10 @@ public class HelpScreen extends Application {
             "-fx-border-width: 0 0 1 0;");
         VBox pg = new VBox(2);
         Text t1 = new Text("Help & Support");
-        t1.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        t1.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         t1.setFill(Color.web(TEXT_WHITE));
         Text t2 = new Text("Guides, FAQs, and troubleshooting for the MJ23 Management System");
-        t2.setFont(Font.font("Verdana", 11));
+        t2.setFont(Font.font("Poppins", 11));
         t2.setFill(Color.web(TEXT_MUTED));
         pg.getChildren().addAll(t1, t2);
         topBar.getChildren().add(pg);
@@ -175,29 +175,29 @@ public class HelpScreen extends Application {
         body.setPadding(new Insets(26, 28, 26, 28));
         body.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
-        // ── Hero Search Banner ─────────────────────────────────────
+        //  Hero Search Banner 
         VBox heroBanner = new VBox(14);
         heroBanner.setAlignment(Pos.CENTER);
         heroBanner.setPadding(new Insets(36, 40, 36, 40));
         heroBanner.setStyle(
             "-fx-background-color: linear-gradient(to right, " + BG_SIDEBAR + ", " + BG_CARD + ");" +
-            "-fx-background-radius: 14;" +
+            "-fx-background-radius: 24;" +
             "-fx-border-color: " + ACCENT + ";" +
-            "-fx-border-radius: 14;" +
+            "-fx-border-radius: 24;" +
             "-fx-border-width: 0 0 0 4;");
         DropShadow heroDs = new DropShadow(); heroDs.setColor(Color.web("#000", 0.35)); heroDs.setRadius(16); heroDs.setOffsetY(6);
         heroBanner.setEffect(heroDs);
 
-        Text heroIcon = new Text("❓");
+        Text heroIcon = new Text("");
         heroIcon.setFont(Font.font(40));
 
         Text heroTitle = new Text("How can we help you?");
-        heroTitle.setFont(Font.font("Georgia", FontWeight.BOLD, 24));
+        heroTitle.setFont(Font.font("Poppins", FontWeight.BOLD, 24));
         heroTitle.setFill(Color.web(TEXT_WHITE));
         heroTitle.setTextAlignment(TextAlignment.CENTER);
 
         Text heroSub = new Text("Search our help documentation or browse the topics below");
-        heroSub.setFont(Font.font("Verdana", 12));
+        heroSub.setFont(Font.font("Poppins", 12));
         heroSub.setFill(Color.web(TEXT_MUTED));
         heroSub.setTextAlignment(TextAlignment.CENTER);
 
@@ -217,12 +217,12 @@ public class HelpScreen extends Application {
             "-fx-text-fill: " + TEXT_WHITE + ";" +
             "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
             "-fx-padding: 0 14 0 14;" +
-            "-fx-font-family: Verdana;" +
+            "-fx-font-family: Poppins;" +
             "-fx-font-size: 12;");
         Button searchBtn = new Button("Search");
         searchBtn.setPrefHeight(46);
         searchBtn.setPadding(new Insets(0, 22, 0, 22));
-        searchBtn.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
+        searchBtn.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
         searchBtn.setStyle(
             "-fx-background-color: " + ACCENT + ";" +
             "-fx-text-fill: white;" +
@@ -238,16 +238,16 @@ public class HelpScreen extends Application {
 
         heroBanner.getChildren().addAll(heroIcon, heroTitle, heroSub, searchBox);
 
-        // ── Quick Topic Cards ──────────────────────────────────────
+        //  Quick Topic Cards 
         HBox topicRow = new HBox(14);
         String[][] topics = {
-            {"👥", "Members",     "Adding, editing, and\nmanaging members",       "#2196f3"},
-            {"💳", "Payments",    "Processing dues, billing\nand receipts",        "#4caf50"},
-            {"📦", "Inventory",   "Managing stock levels\nand item tracking",      "#ff9800"},
-            {"🏋", "Equipment",   "Equipment records and\nmaintenance scheduling", "#9c27b0"},
-            {"🛒", "POS",         "Point of sale transactions\nand sales records", "#e63946"},
-            {"SE", "Search",      "Find members, inventory,\nand transactions", "#03a9f4"},
-            {"📊", "Reports",     "Generating and exporting\nsystem reports",      "#00bcd4"},
+            {"", "Members",     "Adding, editing, and\nmanaging members",       "#77749B"},
+            {"", "Payments",    "Processing dues, billing\nand receipts",        "#4B4B4B"},
+            {"INV", "Inventory",   "Managing stock levels\nand item tracking",      "#FDEE21"},
+            {"EQ", "Equipment",   "Equipment records and\nmaintenance scheduling", "#332F4F"},
+            {"", "POS",         "Point of sale transactions\nand sales records", "#1A1363"},
+            {"SE", "Search",      "Find members, inventory,\nand transactions", "#77749B"},
+            {"REP", "Reports",     "Generating and exporting\nsystem reports",      "#4B4B4B"},
         };
         for (String[] topic : topics) {
             VBox topicCard = buildTopicCard(topic[0], topic[1], topic[2], topic[3]);
@@ -256,11 +256,11 @@ public class HelpScreen extends Application {
             topicRow.getChildren().add(topicCard);
         }
 
-        // ── Two-column: FAQ + Module Guide ─────────────────────────
+        //  Two-column: FAQ + Module Guide 
         HBox midRow = new HBox(22);
 
         // LEFT: FAQ Accordion
-        VBox faqCard = buildSectionCard("💬  Frequently Asked Questions", "Common questions and answers");
+        VBox faqCard = buildSectionCard("  Frequently Asked Questions", "Common questions and answers");
         Accordion faqAccordion = new Accordion();
         faqAccordion.setStyle("-fx-background-color: transparent;");
         faqRef[0] = faqAccordion;
@@ -268,7 +268,7 @@ public class HelpScreen extends Application {
         String[][] faqs = {
             {
                 "How do I add a new gym member?",
-                "Go to Member Management from the sidebar, then click the '＋ Add Member' button in the top-right. Fill in the member's personal details including name, phone, email, plan type, and date of registration. Click 'Save Member' to confirm."
+                "Go to Member Management from the sidebar, then click the ' Add Member' button in the top-right. Fill in the member's personal details including name, phone, email, plan type, and date of registration. Click 'Save Member' to confirm."
             },
             {
                 "How do I process a membership payment?",
@@ -276,11 +276,11 @@ public class HelpScreen extends Application {
             },
             {
                 "How do I add or update inventory items?",
-                "Go to Inventory from the sidebar. Click '＋ Add Item' to register a new product, or click the edit (✏) icon on any existing item to update its quantity, price, or details."
+                "Go to Inventory from the sidebar. Click ' Add Item' to register a new product, or click the edit () icon on any existing item to update its quantity, price, or details."
             },
             {
                 "How do I schedule equipment maintenance?",
-                "Open the Equipment module. Find the equipment in the table and click the wrench (🔧) icon to update its condition and set a new maintenance date."
+                "Open the Equipment module. Find the equipment in the table and click the wrench () icon to update its condition and set a new maintenance date."
             },
             {
                 "How do I generate a sales or payment report?",
@@ -313,14 +313,14 @@ public class HelpScreen extends Application {
             tp.setStyle(
                 "-fx-background-color: " + BG_MAIN + ";" +
                 "-fx-text-fill: " + TEXT_WHITE + ";" +
-                "-fx-font-family: Verdana;" +
+                "-fx-font-family: Poppins;" +
                 "-fx-font-size: 12;" +
                 "-fx-border-color: " + BORDER + ";" +
                 "-fx-border-width: 0 0 1 0;");
             tp.setText(faq[0]);
 
             Label answerLbl = new Label(faq[1]);
-            answerLbl.setFont(Font.font("Verdana", 11));
+            answerLbl.setFont(Font.font("Poppins", 11));
             answerLbl.setTextFill(Color.web(TEXT_MUTED));
             answerLbl.setWrapText(true);
             answerLbl.setPadding(new Insets(12, 16, 12, 16));
@@ -345,25 +345,25 @@ public class HelpScreen extends Application {
         rightCol.setMaxWidth(320);
 
         // Quick Guide Card
-        VBox guideCard = buildSectionCard("📖  Module Quick Guide", "Overview of each system module");
+        VBox guideCard = buildSectionCard("  Module Quick Guide", "Overview of each system module");
         String[][] modules = {
-            {"🏠", "Dashboard",        "Overview, stats, recent activity"},
-            {"👥", "Member Mgmt.",     "Add, edit, view all members"},
-            {"💳", "Payment & Billing","Process dues and track payments"},
-            {"📦", "Inventory",        "Manage supplies and stock"},
-            {"🏋", "Equipment",        "Track and maintain gym equipment"},
-            {"🛒", "POS",              "Process product sales"},
+            {"DB", "Dashboard",        "Overview, stats, recent activity"},
+            {"", "Member Mgmt.",     "Add, edit, view all members"},
+            {"PAY", "Payment & Billing","Process dues and track payments"},
+            {"INV", "Inventory",        "Manage supplies and stock"},
+            {"EQ", "Equipment",        "Track and maintain gym equipment"},
+            {"", "POS",              "Process product sales"},
             {"SE", "Search",           "Find records across modules"},
-            {"📊", "Reports",          "Generate and export reports"},
+            {"REP", "Reports",          "Generate and export reports"},
             {"MT", "Maintenance",      "Backup, restore, and tools"},
-            {"⚙",  "Settings",         "System config and security"},
+            {"",  "Settings",         "System config and security"},
         };
         VBox moduleList = new VBox(0);
         moduleList.setStyle(
             "-fx-background-color: " + BG_MAIN + ";" +
-            "-fx-background-radius: 8;" +
+            "-fx-background-radius: 16;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 8;" +
+            "-fx-border-radius: 16;" +
             "-fx-border-width: 1;");
         for (int i = 0; i < modules.length; i++) {
             String bg = (i % 2 == 0) ? BG_MAIN : BG_ROW_ALT;
@@ -373,10 +373,10 @@ public class HelpScreen extends Application {
             Text mIco = new Text(modules[i][0]); mIco.setFont(Font.font(15));
             VBox mInfo = new VBox(2);
             Label mName = new Label(modules[i][1]);
-            mName.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
+            mName.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
             mName.setTextFill(Color.web(TEXT_WHITE));
             Label mDesc = new Label(modules[i][2]);
-            mDesc.setFont(Font.font("Verdana", 10));
+            mDesc.setFont(Font.font("Poppins", 10));
             mDesc.setTextFill(Color.web(TEXT_DIM));
             mInfo.getChildren().addAll(mName, mDesc);
             mRow.getChildren().addAll(mIco, mInfo);
@@ -386,7 +386,7 @@ public class HelpScreen extends Application {
         rightCol.getChildren().add(guideCard);
 
         // Troubleshooting Card
-        VBox troubleCard = buildSectionCard("🔧  Troubleshooting", "Common issues and solutions");
+        VBox troubleCard = buildSectionCard("  Troubleshooting", "Common issues and solutions");
         String[][] issues = {
             {"Login not working",      "Check your username/password. Contact your admin to reset credentials if needed."},
             {"Data not saving",        "Ensure all required fields are filled. Check your database connection (MySQL)."},
@@ -401,19 +401,19 @@ public class HelpScreen extends Application {
             issueBox.setPadding(new Insets(12, 14, 12, 14));
             issueBox.setStyle(
                 "-fx-background-color: " + BG_MAIN + ";" +
-                "-fx-background-radius: 8;" +
+                "-fx-background-radius: 16;" +
                 "-fx-border-color: " + BORDER + ";" +
-                "-fx-border-radius: 8;" +
+                "-fx-border-radius: 16;" +
                 "-fx-border-width: 0 0 0 3;");
             // change left border per issue to warning color
             HBox issueHdr = new HBox(8); issueHdr.setAlignment(Pos.CENTER_LEFT);
-            Text issueIco = new Text("⚠"); issueIco.setFont(Font.font(13)); issueIco.setFill(Color.web(WARNING));
+            Text issueIco = new Text(""); issueIco.setFont(Font.font(13)); issueIco.setFill(Color.web(WARNING));
             Label issueTitle = new Label(issue[0]);
-            issueTitle.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
+            issueTitle.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
             issueTitle.setTextFill(Color.web(TEXT_WHITE));
             issueHdr.getChildren().addAll(issueIco, issueTitle);
             Label issueSol = new Label(issue[1]);
-            issueSol.setFont(Font.font("Verdana", 10));
+            issueSol.setFont(Font.font("Poppins", 10));
             issueSol.setTextFill(Color.web(TEXT_MUTED));
             issueSol.setWrapText(true);
             issueBox.getChildren().addAll(issueHdr, issueSol);
@@ -424,45 +424,45 @@ public class HelpScreen extends Application {
 
         midRow.getChildren().addAll(faqCard, rightCol);
 
-        // ── Contact / Support Card ─────────────────────────────────
+        //  Contact / Support Card 
         VBox contactCard = new VBox(20);
         contactCard.setPadding(new Insets(28, 32, 28, 32));
         contactCard.setAlignment(Pos.CENTER);
         contactCard.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 14;" +
+            "-fx-background-radius: 24;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 14;" +
+            "-fx-border-radius: 24;" +
             "-fx-border-width: 1;");
         DropShadow cDs = new DropShadow(); cDs.setColor(Color.web("#000", 0.25)); cDs.setRadius(12); cDs.setOffsetY(4);
         contactCard.setEffect(cDs);
 
         Text ctTitle = new Text("Still need help?");
-        ctTitle.setFont(Font.font("Georgia", FontWeight.BOLD, 18));
+        ctTitle.setFont(Font.font("Poppins", FontWeight.BOLD, 18));
         ctTitle.setFill(Color.web(TEXT_WHITE));
         ctTitle.setTextAlignment(TextAlignment.CENTER);
 
         Text ctSub = new Text("If you can't find what you're looking for in the guides above,\ncontact your system administrator or the development team.");
-        ctSub.setFont(Font.font("Verdana", 11));
+        ctSub.setFont(Font.font("Poppins", 11));
         ctSub.setFill(Color.web(TEXT_MUTED));
         ctSub.setTextAlignment(TextAlignment.CENTER);
 
         HBox contactInfo = new HBox(20);
         contactInfo.setAlignment(Pos.CENTER);
         contactInfo.getChildren().addAll(
-            makeContactChip("📧", "Email",    "group3@tip.edu.ph"),
-            makeContactChip("🏫", "School",   "TIP – Quezon City"),
-            makeContactChip("📚", "Subject",  "CS 301 – SE 1"),
-            makeContactChip("👨‍💻", "Dev Team", "Group 3 – CS31S4")
+            makeContactChip("", "Email",    "group3@tip.edu.ph"),
+            makeContactChip("", "School",   "TIP  Quezon City"),
+            makeContactChip("", "Subject",  "CS 301  SE 1"),
+            makeContactChip("", "Dev Team", "Group 3  CS31S4")
         );
 
         // System version info
         HBox versionRow = new HBox(24);
         versionRow.setAlignment(Pos.CENTER);
-        String[] versionItems = {"v1.0.0", "Java 17 + JavaFX", "MySQL 8", "© 2025 MJ23 Playgrind Gym"};
+        String[] versionItems = {"v1.0.0", "Java 17 + JavaFX", "MySQL 8", " 2025 MJ23 Playgrind Gym"};
         for (String vi : versionItems) {
             Label vLbl = new Label(vi);
-            vLbl.setFont(Font.font("Verdana", 10));
+            vLbl.setFont(Font.font("Poppins", 10));
             vLbl.setTextFill(Color.web(TEXT_DIM));
             versionRow.getChildren().add(vLbl);
         }
@@ -479,7 +479,7 @@ public class HelpScreen extends Application {
         return content;
     }
 
-    // ── Helpers ────────────────────────────────────────────────────
+    //  Helpers 
     private VBox buildTopicCard(String icon, String title, String desc, String color) {
         VBox card = new VBox(10);
         card.setPadding(new Insets(18, 16, 18, 16));
@@ -487,9 +487,9 @@ public class HelpScreen extends Application {
         card.setCursor(javafx.scene.Cursor.HAND);
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 12;" +
+            "-fx-background-radius: 22;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 12;" +
+            "-fx-border-radius: 22;" +
             "-fx-border-width: 0 0 0 4;");
         DropShadow ds = new DropShadow(); ds.setColor(Color.web("#000", 0.25)); ds.setRadius(10); ds.setOffsetY(4); card.setEffect(ds);
 
@@ -501,26 +501,26 @@ public class HelpScreen extends Application {
         iconCircle.getChildren().addAll(bg, ico);
 
         Text titleTxt = new Text(title);
-        titleTxt.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
+        titleTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
         titleTxt.setFill(Color.web(TEXT_WHITE));
 
         Text descTxt = new Text(desc);
-        descTxt.setFont(Font.font("Verdana", 10));
+        descTxt.setFont(Font.font("Poppins", 10));
         descTxt.setFill(Color.web(TEXT_MUTED));
         descTxt.setWrappingWidth(120);
 
         card.getChildren().addAll(iconCircle, titleTxt, descTxt);
         card.setOnMouseEntered(e -> card.setStyle(
             "-fx-background-color: " + BG_ROW_ALT + ";" +
-            "-fx-background-radius: 12;" +
+            "-fx-background-radius: 22;" +
             "-fx-border-color: " + color + ";" +
-            "-fx-border-radius: 12;" +
+            "-fx-border-radius: 22;" +
             "-fx-border-width: 0 0 0 4;"));
         card.setOnMouseExited(e -> card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 12;" +
+            "-fx-background-radius: 22;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 12;" +
+            "-fx-border-radius: 22;" +
             "-fx-border-width: 0 0 0 4;"));
         return card;
     }
@@ -571,13 +571,13 @@ public class HelpScreen extends Application {
         card.setPadding(new Insets(24));
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 12;" +
+            "-fx-background-radius: 22;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 12;" +
+            "-fx-border-radius: 22;" +
             "-fx-border-width: 1;");
         DropShadow ds = new DropShadow(); ds.setColor(Color.web("#000", 0.25)); ds.setRadius(10); ds.setOffsetY(4); card.setEffect(ds);
-        Text t = new Text(title); t.setFont(Font.font("Verdana", FontWeight.BOLD, 14)); t.setFill(Color.web(TEXT_WHITE));
-        Text s = new Text(sub); s.setFont(Font.font("Verdana", 11)); s.setFill(Color.web(TEXT_MUTED));
+        Text t = new Text(title); t.setFont(Font.font("Poppins", FontWeight.BOLD, 14)); t.setFill(Color.web(TEXT_WHITE));
+        Text s = new Text(sub); s.setFont(Font.font("Poppins", 11)); s.setFill(Color.web(TEXT_MUTED));
         Rectangle ul = new Rectangle(40, 2); ul.setFill(Color.web(ACCENT)); ul.setArcWidth(2); ul.setArcHeight(2);
         card.getChildren().addAll(new VBox(3, t, s, ul));
         return card;
@@ -589,16 +589,16 @@ public class HelpScreen extends Application {
         chip.setPadding(new Insets(14, 22, 14, 22));
         chip.setStyle(
             "-fx-background-color: " + BG_MAIN + ";" +
-            "-fx-background-radius: 10;" +
+            "-fx-background-radius: 18;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 10;" +
+            "-fx-border-radius: 18;" +
             "-fx-border-width: 1;");
         Text ico = new Text(icon); ico.setFont(Font.font(20));
         Label lbl = new Label(label);
-        lbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         lbl.setTextFill(Color.web(TEXT_DIM));
         Label val = new Label(value);
-        val.setFont(Font.font("Verdana", 11));
+        val.setFont(Font.font("Poppins", 11));
         val.setTextFill(Color.web(TEXT_WHITE));
         chip.getChildren().addAll(ico, lbl, val);
         return chip;
@@ -606,3 +606,6 @@ public class HelpScreen extends Application {
 
     public static void main(String[] args) { launch(args); }
 }
+
+
+

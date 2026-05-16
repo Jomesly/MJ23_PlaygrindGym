@@ -31,23 +31,23 @@ import javafx.stage.Stage;
 import mj23gym.dao.UserDAO;
 
 /**
- * Account Management Screen – Create and manage system user accounts
+ * Account Management Screen  Create and manage system user accounts
  */
 public class AccountManagementScreen extends Application {
 
-    static final String BG_MAIN     = "#1a1a2e";
-    static final String BG_SIDEBAR  = "#0d1b2a";
-    static final String BG_CARD     = "#1e2a3a";
-    static final String BG_ROW_ALT  = "#253545";
-    static final String ACCENT      = "#e63946";
-    static final String ACCENT_DARK = "#c0303b";
-    static final String TEXT_WHITE  = "#ffffff";
-    static final String TEXT_MUTED  = "#b0bec5";
-    static final String TEXT_DIM    = "#607080";
-    static final String BORDER      = "#253545";
-    static final String SUCCESS     = "#4caf50";
-    static final String WARNING     = "#ff9800";
-    static final String INFO        = "#2196f3";
+    static final String BG_MAIN     = "#F2F4F8";
+    static final String BG_SIDEBAR  = "#E9EDF6";
+    static final String BG_CARD     = "#F8F9FC";
+    static final String BG_ROW_ALT  = "#EEF2FA";
+    static final String ACCENT      = "#1A1363";
+    static final String ACCENT_DARK = "#332F4F";
+    static final String TEXT_WHITE  = "#1A1363";
+    static final String TEXT_MUTED  = "#77749B";
+    static final String TEXT_DIM    = "#4B4B4B";
+    static final String BORDER      = "#D9DDEA";
+    static final String SUCCESS     = "#2F6F5E";
+    static final String WARNING     = "#8A6D00";
+    static final String INFO        = "#1A1363";
 
     private UserDAO userDAO = new UserDAO();
     private TableView<UserRowData> usersTable;
@@ -75,7 +75,7 @@ public class AccountManagementScreen extends Application {
 
     @Override
     public void start(Stage stage) {
-        stage.setTitle("MJ23 Playgrind Gym – Account Management");
+        stage.setTitle("MJ23 Playgrind Gym  Account Management");
         BorderPane root = new BorderPane();
         root.setPrefSize(1200, 720);
         root.setStyle("-fx-background-color: " + BG_MAIN + ";");
@@ -89,30 +89,30 @@ public class AccountManagementScreen extends Application {
         stage.show();
     }
 
-    // ══════════════════════════════════════════════════════════════
+    // 
     // SIDEBAR
-    // ══════════════════════════════════════════════════════════════
+    // 
     private VBox buildSidebar() {
         VBox sidebar = new VBox();
         sidebar.setPrefWidth(230); sidebar.setMinWidth(230); sidebar.setMaxWidth(230);
         sidebar.setStyle("-fx-background-color: " + BG_SIDEBAR + ";");
-        Rectangle topAccent = new Rectangle(230, 5); topAccent.setFill(Color.web(ACCENT));
+        Rectangle topAccent = new Rectangle(230, 5); topAccent.setFill(Color.web("#FDEE21"));
         HBox logoArea = new HBox(12); logoArea.setAlignment(Pos.CENTER_LEFT); logoArea.setPadding(new Insets(22, 20, 22, 20));
         StackPane badge = new StackPane(); badge.setPrefSize(42, 42);
         Rectangle bb = new Rectangle(42, 42); bb.setArcWidth(10); bb.setArcHeight(10); bb.setFill(Color.web(ACCENT));
-        Text bt = new Text("MJ"); bt.setFont(Font.font("Georgia", FontWeight.BOLD, 16)); bt.setFill(Color.WHITE);
+        Text bt = new Text("MJ"); bt.setFont(Font.font("Poppins", FontWeight.BOLD, 16)); bt.setFill(Color.WHITE);
         badge.getChildren().addAll(bb, bt);
         VBox lt = new VBox(1);
-        Text l1 = new Text("MJ23 PLAYGRIND"); l1.setFont(Font.font("Georgia", FontWeight.BOLD, 11)); l1.setFill(Color.web(TEXT_WHITE));
-        Text l2 = new Text("GYM"); l2.setFont(Font.font("Georgia", FontWeight.BOLD, 11)); l2.setFill(Color.web(ACCENT));
+        Text l1 = new Text("MJ23 PLAYGRIND"); l1.setFont(Font.font("Poppins", FontWeight.BOLD, 11)); l1.setFill(Color.web(TEXT_WHITE));
+        Text l2 = new Text("GYM"); l2.setFont(Font.font("Poppins", FontWeight.BOLD, 11)); l2.setFill(Color.web(ACCENT));
         lt.getChildren().addAll(l1, l2); logoArea.getChildren().addAll(badge, lt);
         String[][] items = {
-            {"🏠","Dashboard"},{"👥","Member Management"},{"💳","Payment & Billing"},
-            {"📦","Inventory"},{"🏋","Equipment"},{"🛒","Point of Sale"},{"📊","Reports"}
+            {"","Dashboard"},{"","Member Management"},{"","Payment & Billing"},
+            {"","Inventory"},{"","Equipment"},{"","Point of Sale"},{"","Reports"}
         };
         VBox menu = new VBox(2); menu.setPadding(new Insets(0, 10, 0, 10));
         for (String[] it : items) menu.getChildren().add(buildMenuItem(it[0], it[1], false));
-        String[][] sys = {{"⚙","Accounts"},{"⚙","Settings"},{"❓","Help"}};
+        String[][] sys = {{"","Accounts"},{"","Settings"},{"","Help"}};
         VBox sysMenu = new VBox(2); sysMenu.setPadding(new Insets(0, 10, 0, 10));
         for (String[] it : sys) sysMenu.getChildren().add(buildMenuItem(it[0], it[1], it[1].equals("Accounts")));
         Region sp = new Region(); VBox.setVgrow(sp, Priority.ALWAYS);
@@ -126,23 +126,23 @@ public class AccountManagementScreen extends Application {
         HBox item = new HBox(12); item.setAlignment(Pos.CENTER_LEFT); item.setPadding(new Insets(11, 16, 11, 16)); item.setCursor(javafx.scene.Cursor.HAND);
         Rectangle bar = new Rectangle(3, 36); bar.setArcWidth(3); bar.setArcHeight(3); bar.setFill(active ? Color.web(ACCENT) : Color.TRANSPARENT);
         Text ico = new Text(icon); ico.setFont(Font.font(14));
-        Text lbl = new Text(label); lbl.setFont(Font.font("Verdana", active ? FontWeight.BOLD : FontWeight.NORMAL, 12)); lbl.setFill(active ? Color.web(TEXT_WHITE) : Color.web(TEXT_MUTED));
+        Text lbl = new Text(label); lbl.setFont(Font.font("Poppins", active ? FontWeight.BOLD : FontWeight.NORMAL, 12)); lbl.setFill(active ? Color.web(TEXT_WHITE) : Color.web(TEXT_MUTED));
         item.getChildren().addAll(bar, ico, lbl);
-        item.setStyle(active ? "-fx-background-color: " + BG_CARD + "; -fx-background-radius: 8;" : "-fx-background-color: transparent; -fx-background-radius: 8;");
+        item.setStyle(active ? "-fx-background-color: " + BG_CARD + "; -fx-background-radius: 16;" : "-fx-background-color: transparent; -fx-background-radius: 16;");
         if (!active) {
-            item.setOnMouseEntered(e -> item.setStyle("-fx-background-color: rgba(255,255,255,0.04); -fx-background-radius: 8;"));
-            item.setOnMouseExited(e -> item.setStyle("-fx-background-color: transparent; -fx-background-radius: 8;"));
+            item.setOnMouseEntered(e -> item.setStyle("-fx-background-color: rgba(255,255,255,0.04); -fx-background-radius: 16;"));
+            item.setOnMouseExited(e -> item.setStyle("-fx-background-color: transparent; -fx-background-radius: 16;"));
         }
         return item;
     }
 
     private Label makeSecLbl(String t) {
-        Label l = new Label(t); l.setFont(Font.font("Verdana", FontWeight.BOLD, 9)); l.setTextFill(Color.web(TEXT_DIM)); l.setPadding(new Insets(8, 0, 6, 20)); return l;
+        Label l = new Label(t); l.setFont(Font.font("Poppins", FontWeight.BOLD, 9)); l.setTextFill(Color.web(TEXT_DIM)); l.setPadding(new Insets(8, 0, 6, 20)); return l;
     }
 
-    // ══════════════════════════════════════════════════════════════
+    // 
     // CONTENT
-    // ══════════════════════════════════════════════════════════════
+    // 
     public VBox buildContent() {
         VBox content = new VBox(0);
         content.setStyle("-fx-background-color: " + BG_MAIN + ";");
@@ -156,10 +156,10 @@ public class AccountManagementScreen extends Application {
         
         VBox titleBox = new VBox(2);
         Text titleText = new Text("Registration / Verification");
-        titleText.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        titleText.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         titleText.setFill(Color.web(TEXT_WHITE));
         Text subtitleText = new Text("Register staff accounts, check details, and activate verified users");
-        subtitleText.setFont(Font.font("Verdana", 11));
+        subtitleText.setFont(Font.font("Poppins", 11));
         subtitleText.setFill(Color.web(TEXT_MUTED));
         titleBox.getChildren().addAll(titleText, subtitleText);
 
@@ -167,7 +167,7 @@ public class AccountManagementScreen extends Application {
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         Button addBtn = new Button("+  REGISTER STAFF");
-        addBtn.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
+        addBtn.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
         addBtn.setStyle(
             "-fx-background-color: " + ACCENT + ";" +
             "-fx-text-fill: " + TEXT_WHITE + ";" +
@@ -201,7 +201,7 @@ public class AccountManagementScreen extends Application {
 
         // Status label
         statusLabel = new Label();
-        statusLabel.setFont(Font.font("Verdana", 11));
+        statusLabel.setFont(Font.font("Poppins", 11));
         statusLabel.setPadding(new Insets(8, 28, 8, 28));
         statusLabel.setVisible(false);
 
@@ -284,12 +284,12 @@ public class AccountManagementScreen extends Application {
         }).start();
     }
 
-    // ══════════════════════════════════════════════════════════════
+    // 
     // CREATE ACCOUNT DIALOG
-    // ══════════════════════════════════════════════════════════════
+    // 
     private Button buildActionButton(String label, String color) {
         Button button = new Button(label);
-        button.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
+        button.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
         button.setStyle(
             "-fx-background-color: " + color + ";" +
             "-fx-text-fill: " + TEXT_WHITE + ";" +
@@ -345,7 +345,7 @@ public class AccountManagementScreen extends Application {
         form.setStyle("-fx-background-color: " + BG_CARD + ";");
 
         Text titleText = new Text("Register New Staff");
-        titleText.setFont(Font.font("Georgia", FontWeight.BOLD, 16));
+        titleText.setFont(Font.font("Poppins", FontWeight.BOLD, 16));
         titleText.setFill(Color.web(TEXT_WHITE));
 
         HBox usernameBox = buildInputField("Username", "staff01");
@@ -361,7 +361,7 @@ public class AccountManagementScreen extends Application {
         TextField phoneField = (TextField) phoneBox.getChildren().get(1);
 
         Label roleInfo = new Label("Role is automatically saved as staff. New staff stay inactive until verified.");
-        roleInfo.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
+        roleInfo.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
         roleInfo.setTextFill(Color.web(INFO));
         roleInfo.setWrapText(true);
 
@@ -378,7 +378,7 @@ public class AccountManagementScreen extends Application {
         ((HBox) confirmPassBox).getChildren().set(1, confirmPassField);
 
         Label msgLabel = new Label();
-        msgLabel.setFont(Font.font("Verdana", 10));
+        msgLabel.setFont(Font.font("Poppins", 10));
         msgLabel.setWrapText(true);
         msgLabel.setVisible(false);
 
@@ -447,7 +447,7 @@ public class AccountManagementScreen extends Application {
                     });
                 } catch (Exception ex) {
                     javafx.application.Platform.runLater(() -> {
-                        msgLabel.setText("⚠   Error: " + ex.getMessage());
+                        msgLabel.setText("Error: " + ex.getMessage());
                         msgLabel.setTextFill(Color.web(WARNING));
                         saveBtn.setDisable(false);
                     });
@@ -490,7 +490,7 @@ public class AccountManagementScreen extends Application {
     private HBox buildInputField(String label, String placeholder) {
         HBox box = new HBox(12);
         Label lbl = new Label(label);
-        lbl.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
         lbl.setTextFill(Color.web(TEXT_MUTED));
         lbl.setMinWidth(100);
         TextField field = new TextField();
@@ -525,12 +525,15 @@ public class AccountManagementScreen extends Application {
     }
 
     private void showStatus(String message, boolean isSuccess) {
-        statusLabel.setText((isSuccess ? "✔   " : "⚠   ") + message);
+        statusLabel.setText((isSuccess ? "" : "") + message);
         statusLabel.setTextFill(Color.web(isSuccess ? SUCCESS : WARNING));
         statusLabel.setStyle(
-            "-fx-background-color: " + (isSuccess ? "rgba(76,175,80,0.12)" : "rgba(255,152,0,0.12)") + ";" +
+            "-fx-background-color: " + (isSuccess ? "rgba(228,255,223,0.12)" : "rgba(253,238,33,0.12)") + ";" +
             "-fx-background-radius: 6;"
         );
         statusLabel.setVisible(true);
     }
 }
+
+
+

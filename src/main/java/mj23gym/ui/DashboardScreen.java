@@ -39,51 +39,51 @@ import mj23gym.dao.PosDAO;
 import mj23gym.dao.SearchDAO;
 
 /**
- * MJ23 Playgrind Gym – Dashboard Screen
+ * MJ23 Playgrind Gym  Dashboard Screen
  * Matches the official screen design color scheme:
- *   BG Main      : #1a1a2e
- *   Sidebar      : #0d1b2a
- *   Card         : #1e2a3a
- *   Accent       : #e63946
- *   Table rows   : #1e2a3a / #253545
- *   Text         : #ffffff / #b0bec5
+ *   BG Main      : #ECE9E9
+ *   Sidebar      : #FFFFFF
+ *   Card         : #FFFFFF
+ *   Accent       : #1A1363
+ *   Table rows   : #FFFFFF / #E4FFDF
+ *   Text         : #ffffff / #77749B
  */
 public class DashboardScreen extends Application {
 
-    // ── Palette ────────────────────────────────────────────────────
-    static final String BG_MAIN      = "#1a1a2e";
-    static final String BG_SIDEBAR   = "#0d1b2a";
-    static final String BG_CARD      = "#1e2a3a";
-    static final String BG_ROW_ALT   = "#253545";
-    static final String ACCENT       = "#e63946";
-    static final String ACCENT_DARK  = "#c0303b";
-    static final String TEXT_WHITE   = "#ffffff";
-    static final String TEXT_MUTED   = "#b0bec5";
-    static final String TEXT_DIM     = "#607080";
-    static final String BORDER       = "#253545";
-    static final String SUCCESS      = "#4caf50";
-    static final String WARNING      = "#ff9800";
-    static final String INFO         = "#2196f3";
+    //  Palette 
+    static final String BG_MAIN      = "#F2F4F8";
+    static final String BG_SIDEBAR   = "#E9EDF6";
+    static final String BG_CARD      = "#F8F9FC";
+    static final String BG_ROW_ALT   = "#EEF2FA";
+    static final String ACCENT       = "#1A1363";
+    static final String ACCENT_DARK  = "#332F4F";
+    static final String TEXT_WHITE   = "#1A1363";
+    static final String TEXT_MUTED   = "#77749B";
+    static final String TEXT_DIM     = "#4B4B4B";
+    static final String BORDER       = "#D9DDEA";
+    static final String SUCCESS      = "#2F6F5E";
+    static final String WARNING      = "#8A6D00";
+    static final String INFO         = "#1A1363";
 
     private String activeMenu = "Dashboard";
 
     @Override
     public void start(Stage stage) {
-        stage.setTitle("MJ23 Playgrind Gym – Dashboard");
+        stage.setTitle("MJ23 Playgrind Gym  Dashboard");
 
         BorderPane root = new BorderPane();
         root.setPrefSize(1200, 720);
         root.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
-        // ── SIDEBAR ────────────────────────────────────────────────
+        //  SIDEBAR 
         VBox sidebar = buildSidebar(root);
         root.setLeft(sidebar);
 
-        // ── MAIN CONTENT ───────────────────────────────────────────
+        //  MAIN CONTENT 
         VBox mainContent = buildDashboardContent();
         root.setCenter(mainContent);
 
-        // ── Fade in ────────────────────────────────────────────────
+        //  Fade in 
         FadeTransition ft = new FadeTransition(Duration.millis(400), mainContent);
         ft.setFromValue(0);
         ft.setToValue(1);
@@ -97,9 +97,9 @@ public class DashboardScreen extends Application {
         stage.show();
     }
 
-    // ══════════════════════════════════════════════════════════════
+    // 
     // SIDEBAR
-    // ══════════════════════════════════════════════════════════════
+    // 
     private VBox buildSidebar(BorderPane root) {
         VBox sidebar = new VBox();
         sidebar.setPrefWidth(230);
@@ -109,7 +109,7 @@ public class DashboardScreen extends Application {
 
         // Top red accent
         Rectangle topAccent = new Rectangle(230, 5);
-        topAccent.setFill(Color.web(ACCENT));
+        topAccent.setFill(Color.web("#FDEE21"));
 
         // Logo area
         HBox logoArea = new HBox(12);
@@ -123,16 +123,16 @@ public class DashboardScreen extends Application {
         logoBg.setArcHeight(10);
         logoBg.setFill(Color.web(ACCENT));
         Text logoTxt = new Text("MJ");
-        logoTxt.setFont(Font.font("Georgia", FontWeight.BOLD, 16));
+        logoTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 16));
         logoTxt.setFill(Color.WHITE);
         logoBadge.getChildren().addAll(logoBg, logoTxt);
 
         VBox logoText = new VBox(1);
         Text gymName = new Text("MJ23 PLAYGRIND");
-        gymName.setFont(Font.font("Georgia", FontWeight.BOLD, 11));
+        gymName.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
         gymName.setFill(Color.web(TEXT_WHITE));
         Text gymSub = new Text("GYM");
-        gymSub.setFont(Font.font("Georgia", FontWeight.BOLD, 11));
+        gymSub.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
         gymSub.setFill(Color.web(ACCENT));
         logoText.getChildren().addAll(gymName, gymSub);
 
@@ -146,13 +146,13 @@ public class DashboardScreen extends Application {
 
         // Menu items
         String[][] menuItems = {
-            {"🏠", "Dashboard"},
-            {"👥", "Member Management"},
-            {"💳", "Payment & Billing"},
-            {"📦", "Inventory"},
-            {"🏋", "Equipment"},
-            {"🛒", "Point of Sale"},
-            {"📊", "Reports"},
+            {"DB", "Dashboard"},
+            {"MB", "Member Management"},
+            {"PAY", "Payment & Billing"},
+            {"INV", "Inventory"},
+            {"EQ", "Equipment"},
+            {"POS", "Point of Sale"},
+            {"REP", "Reports"},
         };
 
         VBox menuBox = new VBox(2);
@@ -166,9 +166,9 @@ public class DashboardScreen extends Application {
         Label settingsLabel = makeSectionLabel("SYSTEM");
 
         String[][] sysItems = {
-            {"⚙", "Settings"},
-            {"❓", "Help"},
-            {"ℹ", "About"},
+            {"ST", "Settings"},
+            {"?", "Help"},
+            {"i", "About"},
         };
 
         VBox sysBox = new VBox(2);
@@ -195,21 +195,21 @@ public class DashboardScreen extends Application {
         Circle avatar = new Circle(18);
         avatar.setFill(Color.web(ACCENT));
         Text avatarTxt = new Text("A");
-        avatarTxt.setFont(Font.font("Verdana", FontWeight.BOLD, 13));
+        avatarTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
         avatarTxt.setFill(Color.WHITE);
         StackPane avatarStack = new StackPane(avatar, avatarTxt);
         avatarStack.setPrefSize(36, 36);
 
         VBox userInfo = new VBox(2);
         Text userName = new Text("Admin");
-        userName.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
+        userName.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
         userName.setFill(Color.web(TEXT_WHITE));
         Text userRole = new Text("Administrator");
-        userRole.setFont(Font.font("Verdana", 10));
+        userRole.setFont(Font.font("Poppins", 10));
         userRole.setFill(Color.web(TEXT_MUTED));
         userInfo.getChildren().addAll(userName, userRole);
 
-        Button logoutBtn = new Button("⏻");
+        Button logoutBtn = new Button("");
         logoutBtn.setStyle(
             "-fx-background-color: transparent;" +
             "-fx-text-fill: " + TEXT_MUTED + ";" +
@@ -260,7 +260,7 @@ public class DashboardScreen extends Application {
         iconTxt.setFont(Font.font(14));
 
         Text labelTxt = new Text(label);
-        labelTxt.setFont(Font.font("Verdana", active ? FontWeight.BOLD : FontWeight.NORMAL, 12));
+        labelTxt.setFont(Font.font("Poppins", active ? FontWeight.BOLD : FontWeight.NORMAL, 12));
         labelTxt.setFill(active ? Color.web(TEXT_WHITE) : Color.web(TEXT_MUTED));
 
         item.getChildren().addAll(activeBar, iconTxt, labelTxt);
@@ -268,15 +268,15 @@ public class DashboardScreen extends Application {
         if (active) {
             item.setStyle(
                 "-fx-background-color: " + BG_CARD + ";" +
-                "-fx-background-radius: 8;"
+                "-fx-background-radius: 16;"
             );
         } else {
-            item.setStyle("-fx-background-color: transparent; -fx-background-radius: 8;");
+            item.setStyle("-fx-background-color: transparent; -fx-background-radius: 16;");
             item.setOnMouseEntered(e -> item.setStyle(
-                "-fx-background-color: rgba(255,255,255,0.04); -fx-background-radius: 8;"
+                "-fx-background-color: rgba(255,255,255,0.04); -fx-background-radius: 16;"
             ));
             item.setOnMouseExited(e -> item.setStyle(
-                "-fx-background-color: transparent; -fx-background-radius: 8;"
+                "-fx-background-color: transparent; -fx-background-radius: 16;"
             ));
         }
 
@@ -311,20 +311,20 @@ public class DashboardScreen extends Application {
 
     private Label makeSectionLabel(String text) {
         Label lbl = new Label(text);
-        lbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         lbl.setTextFill(Color.web(TEXT_DIM));
         lbl.setPadding(new Insets(4, 0, 6, 20));
         return lbl;
     }
 
-    // ══════════════════════════════════════════════════════════════
+    // 
     // DASHBOARD MAIN CONTENT
-    // ══════════════════════════════════════════════════════════════
+    // 
     public VBox buildDashboardContent() {
         VBox content = new VBox(0);
         content.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
-        // ── Top Bar ────────────────────────────────────────────────
+        //  Top Bar 
         HBox topBar = new HBox();
         topBar.setAlignment(Pos.CENTER_LEFT);
         topBar.setPadding(new Insets(18, 28, 18, 28));
@@ -338,10 +338,10 @@ public class DashboardScreen extends Application {
         VBox pageTitle = new VBox(2);
         AppSession.User user = AppSession.currentUser();
         Text pgTitle = new Text("Dashboard");
-        pgTitle.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        pgTitle.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         pgTitle.setFill(Color.web(TEXT_WHITE));
-        Text pgSub = new Text("Welcome back, " + user.displayName() + "  •  " + LocalDate.now());
-        pgSub.setFont(Font.font("Verdana", 11));
+        Text pgSub = new Text("Welcome back, " + user.displayName() + " " + LocalDate.now());
+        pgSub.setFont(Font.font("Poppins", 11));
         pgSub.setFill(Color.web(TEXT_MUTED));
         pageTitle.getChildren().addAll(pgTitle, pgSub);
 
@@ -350,7 +350,7 @@ public class DashboardScreen extends Application {
 
         // Search bar
         TextField searchField = new TextField();
-        searchField.setPromptText("🔍  Search...");
+        searchField.setPromptText("Search...");
         searchField.setPrefWidth(220);
         searchField.setPrefHeight(36);
         searchField.setStyle(
@@ -361,12 +361,12 @@ public class DashboardScreen extends Application {
             "-fx-text-fill: " + TEXT_WHITE + ";" +
             "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
             "-fx-padding: 0 14 0 14;" +
-            "-fx-font-family: Verdana;" +
+            "-fx-font-family: Poppins;" +
             "-fx-font-size: 11;"
         );
 
         // Notification bell
-        Button notifBtn = new Button("🔔");
+        Button notifBtn = new Button("");
         notifBtn.setStyle(
             "-fx-background-color: " + BG_MAIN + ";" +
             "-fx-text-fill: " + TEXT_MUTED + ";" +
@@ -378,7 +378,7 @@ public class DashboardScreen extends Application {
 
         topBar.getChildren().addAll(pageTitle, topSpacer, searchField, notifBtn);
 
-        // ── Scrollable body ────────────────────────────────────────
+        //  Scrollable body 
         ScrollPane scrollPane = new ScrollPane();
         scrollPane.setFitToWidth(true);
         scrollPane.setStyle("-fx-background: " + BG_MAIN + "; -fx-background-color: " + BG_MAIN + ";");
@@ -388,7 +388,7 @@ public class DashboardScreen extends Application {
         body.setPadding(new Insets(28, 28, 28, 28));
         body.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
-        // ── Fetch data from DAOs ──────────────────────────────────
+        //  Fetch data from DAOs 
         MemberDAO memberDAO = new MemberDAO();
         PaymentDAO paymentDAO = new PaymentDAO();
         InventoryDAO inventoryDAO = new InventoryDAO();
@@ -406,20 +406,20 @@ public class DashboardScreen extends Application {
         
         List<PaymentDAO.PaymentRecord> recentPayments = paymentDAO.findRecentPayments(5);
 
-        // ── Summary Cards Row ──────────────────────────────────────
+        //  Summary Cards Row 
         HBox summaryCards = new HBox(18);
         summaryCards.setAlignment(Pos.CENTER_LEFT);
 
-        String revStr = String.format("₱%.0f", revenueToday);
+        String revStr = String.format("%.0f", revenueToday);
         summaryCards.getChildren().addAll(
-            makeSummaryCard("👥", "Total Members",    String.valueOf(totalMembers),  "+5 this month",  ACCENT,   true),
-            makeSummaryCard("💰", "Revenue Today",    revStr, "+₱820 vs. yesterday", SUCCESS, false),
-            makeSummaryCard("📦", "Low Stock Items",  String.valueOf(lowStockCount),    "Needs restocking", WARNING, false),
-            makeSummaryCard("🏋", "Maintenance Due", String.valueOf(maintDue),
+            makeSummaryCard("", "Total Members",    String.valueOf(totalMembers),  "+5 this month",  ACCENT,   true),
+            makeSummaryCard("", "Revenue Today",    revStr, "+820 vs. yesterday", SUCCESS, false),
+            makeSummaryCard("", "Low Stock Items",  String.valueOf(lowStockCount),    "Needs restocking", WARNING, false),
+            makeSummaryCard("", "Maintenance Due", String.valueOf(maintDue),
                 maintDue > 0 ? "Within 30 days" : "None due soon", INFO, false)
         );
 
-        // ── Recent Activity + Quick Stats row ─────────────────────
+        //  Recent Activity + Quick Stats row 
         HBox midRow = new HBox(18);
         HBox.setHgrow(midRow, Priority.ALWAYS);
 
@@ -470,18 +470,18 @@ public class DashboardScreen extends Application {
         for (int i = 0; i < recentPayments.size(); i++) {
             PaymentDAO.PaymentRecord p = recentPayments.get(i);
             paymentTableData[i][0] = p.memberName() != null ? p.memberName() : "Unknown";
-            paymentTableData[i][1] = String.format("₱%.2f", p.amount());
+            paymentTableData[i][1] = String.format("%.2f", p.amount());
             paymentTableData[i][2] = p.paymentMethod() != null ? p.paymentMethod() : "Cash";
             paymentTableData[i][3] = p.paymentDate() != null ? p.paymentDate().toString() : LocalDate.now().toString();
             paymentTableData[i][4] = p.status() != null ? p.status() : "Pending";
         }
 
-        // ── Recent Payments table ──────────────────────────────────
+        //  Recent Payments table 
         VBox paymentsCard = buildTableCard(
             "Recent Payments",
             new String[]{"Member", "Amount", "Method", "Date", "Status"},
             paymentTableData.length > 0 ? paymentTableData : new String[][]{
-                {"Loading...", "₱0.00", "Loading...", LocalDate.now().toString(), "Loading..."}
+                {"Loading...", "0.00", "Loading...", LocalDate.now().toString(), "Loading..."}
             }
         );
 
@@ -494,7 +494,7 @@ public class DashboardScreen extends Application {
         return content;
     }
 
-    // ── Summary stat card ──────────────────────────────────────────
+    //  Summary stat card 
     private VBox makeSummaryCard(String icon, String label, String value,
                                   String sub, String color, boolean highlighted) {
         VBox card = new VBox(10);
@@ -502,9 +502,9 @@ public class DashboardScreen extends Application {
         card.setPrefWidth(210);
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 12;" +
+            "-fx-background-radius: 22;" +
             "-fx-border-color: " + (highlighted ? color : BORDER) + ";" +
-            "-fx-border-radius: 12;" +
+            "-fx-border-radius: 22;" +
             "-fx-border-width: " + (highlighted ? "0 0 0 4" : "1") + ";"
         );
         DropShadow ds = new DropShadow();
@@ -524,15 +524,15 @@ public class DashboardScreen extends Application {
         iconCircle.getChildren().addAll(bg, iconTxt);
 
         Text valTxt = new Text(value);
-        valTxt.setFont(Font.font("Georgia", FontWeight.BOLD, 26));
+        valTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 26));
         valTxt.setFill(Color.web(TEXT_WHITE));
 
         Text lblTxt = new Text(label);
-        lblTxt.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
+        lblTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
         lblTxt.setFill(Color.web(TEXT_MUTED));
 
         Text subTxt = new Text(sub);
-        subTxt.setFont(Font.font("Verdana", 10));
+        subTxt.setFont(Font.font("Poppins", 10));
         subTxt.setFill(Color.web(color));
 
         HBox topRow = new HBox();
@@ -544,14 +544,14 @@ public class DashboardScreen extends Application {
         return card;
     }
 
-    // ── Data table card ────────────────────────────────────────────
+    //  Data table card 
     private VBox buildTableCard(String title, String[] headers, String[][] rows) {
         VBox card = new VBox(0);
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 12;" +
+            "-fx-background-radius: 22;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 12;" +
+            "-fx-border-radius: 22;" +
             "-fx-border-width: 1;"
         );
         DropShadow ds = new DropShadow();
@@ -569,7 +569,7 @@ public class DashboardScreen extends Application {
             "-fx-border-width: 0 0 1 0;"
         );
         Text titleTxt = new Text(title);
-        titleTxt.setFont(Font.font("Verdana", FontWeight.BOLD, 13));
+        titleTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
         titleTxt.setFill(Color.web(TEXT_WHITE));
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
         cardHeader.getChildren().addAll(titleTxt, sp);
@@ -581,7 +581,7 @@ public class DashboardScreen extends Application {
         // Header row
         for (int c = 0; c < headers.length; c++) {
             Label h = new Label(headers[c].toUpperCase());
-            h.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
+            h.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
             h.setTextFill(Color.web(TEXT_DIM));
             h.setPadding(new Insets(10, 14, 10, 14));
             h.setMaxWidth(Double.MAX_VALUE);
@@ -607,7 +607,7 @@ public class DashboardScreen extends Application {
                     table.add(badge, c, r + 1);
                 } else {
                     Label cell = new Label(cellVal);
-                    cell.setFont(Font.font("Verdana", 11));
+                    cell.setFont(Font.font("Poppins", 11));
                     cell.setTextFill(Color.web(TEXT_WHITE));
                     cell.setPadding(new Insets(10, 14, 10, 14));
                     cell.setMaxWidth(Double.MAX_VALUE);
@@ -631,31 +631,31 @@ public class DashboardScreen extends Application {
         return card;
     }
 
-    // ── Status badge ───────────────────────────────────────────────
+    //  Status badge 
     private Label makeStatusBadge(String status) {
         Label badge = new Label(status);
-        badge.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
+        badge.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         String color, bg;
         switch (status.toLowerCase()) {
             case "active": case "paid":
-                color = SUCCESS; bg = "rgba(76,175,80,0.15)"; break;
+                color = SUCCESS; bg = "rgba(228,255,223,0.15)"; break;
             case "expired": case "overdue":
-                color = ACCENT; bg = "rgba(230,57,70,0.15)"; break;
+                color = ACCENT; bg = "rgba(26,19,99,0.15)"; break;
             case "pending":
-                color = WARNING; bg = "rgba(255,152,0,0.15)"; break;
+                color = WARNING; bg = "rgba(253,238,33,0.15)"; break;
             default:
                 color = TEXT_MUTED; bg = "transparent"; break;
         }
         badge.setTextFill(Color.web(color));
         badge.setStyle(
             "-fx-background-color: " + bg + ";" +
-            "-fx-background-radius: 10;" +
+            "-fx-background-radius: 18;" +
             "-fx-padding: 3 10 3 10;"
         );
         return badge;
     }
 
-    // ── Quick stats side panel ─────────────────────────────────────
+    //  Quick stats side panel 
     private VBox buildQuickStats(
         int activeMembers,
         int expiredMembers,
@@ -667,9 +667,9 @@ public class DashboardScreen extends Application {
         VBox card = new VBox(0);
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 12;" +
+            "-fx-background-radius: 22;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 12;" +
+            "-fx-border-radius: 22;" +
             "-fx-border-width: 1;"
         );
         DropShadow ds = new DropShadow();
@@ -685,7 +685,7 @@ public class DashboardScreen extends Application {
             "-fx-border-width: 0 0 1 0;"
         );
         Text t = new Text("Quick Stats");
-        t.setFont(Font.font("Verdana", FontWeight.BOLD, 13));
+        t.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
         t.setFill(Color.web(TEXT_WHITE));
         header.getChildren().add(t);
 
@@ -693,7 +693,7 @@ public class DashboardScreen extends Application {
         String[][] statItems = {
             {"Active Members",    String.valueOf(activeMembers),   ACCENT},
             {"Expired Members",   String.valueOf(expiredMembers),  WARNING},
-            {"POS Sales Today",   String.format("₱%.0f", posToday), SUCCESS},
+            {"POS Sales Today",   String.format("%.0f", posToday), SUCCESS},
             {"Equipment OK",      String.valueOf(equipmentOk),     SUCCESS},
             {"Under Maintenance", String.valueOf(underMaintenance), WARNING},
             {"Low Stock Alerts",  String.valueOf(lowStockAlerts),   ACCENT},
@@ -706,12 +706,12 @@ public class DashboardScreen extends Application {
             row.setPadding(new Insets(12, 20, 12, 20));
             row.setStyle("-fx-background-color: " + bg + ";");
             Text label = new Text(statItems[i][0]);
-            label.setFont(Font.font("Verdana", 11));
+            label.setFont(Font.font("Poppins", 11));
             label.setFill(Color.web(TEXT_MUTED));
             Region sp = new Region();
             HBox.setHgrow(sp, Priority.ALWAYS);
             Text val = new Text(statItems[i][1]);
-            val.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
+            val.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
             val.setFill(Color.web(statItems[i][2]));
             row.getChildren().addAll(label, sp, val);
             stats.getChildren().add(row);
@@ -766,3 +766,6 @@ public class DashboardScreen extends Application {
 
     public static void main(String[] args) { launch(args); }
 }
+
+
+

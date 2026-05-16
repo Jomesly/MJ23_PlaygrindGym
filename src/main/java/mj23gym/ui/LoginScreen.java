@@ -34,46 +34,46 @@ import javafx.util.Duration;
 import mj23gym.dao.UserDAO;
 
 /**
- * MJ23 Playgrind Gym – Login Screen
+ * MJ23 Playgrind Gym  Login Screen
  *
  * Color scheme matched exactly from the official screen design mockups:
- *   BG Main      : #1a1a2e  (deep navy background)
- *   BG Darker    : #0d1b2a  (left panel / sidebar dark)
- *   BG Card      : #1e2a3a  (card/panel surface)
- *   Accent Red   : #e63946  (buttons, highlights, active states)
- *   Accent Dark  : #c0303b  (hover state for red)
+ *   BG Main      : #ECE9E9  (deep navy background)
+ *   BG Darker    : #FFFFFF  (left panel / sidebar dark)
+ *   BG Card      : #FFFFFF  (card/panel surface)
+ *   Accent Red   : #1A1363  (buttons, highlights, active states)
+ *   Accent Dark  : #332F4F  (hover state for red)
  *   Field BG     : #0f2030  (input background)
- *   Field Border : #253545  (input border default)
+ *   Field Border : #E4FFDF  (input border default)
  *   Text White   : #ffffff
- *   Text Muted   : #b0bec5
- *   Text Dim     : #607080
+ *   Text Muted   : #77749B
+ *   Text Dim     : #4B4B4B
  */
 public class LoginScreen extends Application {
 
-    // ── Palette ────────────────────────────────────────────────────
-    static final String BG_MAIN      = "#1a1a2e";
-    static final String BG_DARKER    = "#0d1b2a";
-    static final String BG_CARD      = "#1e2a3a";
-    static final String ACCENT       = "#e63946";
-    static final String ACCENT_DARK  = "#c0303b";
-    static final String FIELD_BG     = "#0f2030";
-    static final String FIELD_BORDER = "#253545";
-    static final String FIELD_FOCUS  = "#e63946";
-    static final String TEXT_WHITE   = "#ffffff";
-    static final String TEXT_MUTED   = "#b0bec5";
-    static final String TEXT_DIM     = "#607080";
+    //  Palette 
+    static final String BG_MAIN      = "#F2F4F8";
+    static final String BG_DARKER    = "#E9EDF6";
+    static final String BG_CARD      = "#F8F9FC";
+    static final String ACCENT       = "#1A1363";
+    static final String ACCENT_DARK  = "#332F4F";
+    static final String FIELD_BG     = "#FFFFFF";
+    static final String FIELD_BORDER = "#E4FFDF";
+    static final String FIELD_FOCUS  = "#1A1363";
+    static final String TEXT_WHITE   = "#1A1363";
+    static final String TEXT_MUTED   = "#77749B";
+    static final String TEXT_DIM     = "#4B4B4B";
 
     @Override
     public void start(Stage stage) {
-        stage.setTitle("MJ23 Playgrind Gym – Management System");
+        stage.setTitle("MJ23 Playgrind Gym  Management System");
 
-        // ── Root: left branding panel + right form panel ───────────
+        //  Root: left branding panel + right form panel 
         HBox root = new HBox();
         root.setPrefSize(950, 620);
 
-        // ═══════════════════════════════════════════════════════════
-        // LEFT PANEL – dark branding side
-        // ═══════════════════════════════════════════════════════════
+        // 
+        // LEFT PANEL  dark branding side
+        // 
         VBox left = new VBox();
         left.setPrefWidth(390);
         left.setMinWidth(390);
@@ -84,7 +84,7 @@ public class LoginScreen extends Application {
 
         // Top accent bar
         Rectangle topBar = new Rectangle(390, 5);
-        topBar.setFill(Color.web(ACCENT));
+        topBar.setFill(Color.web("#FDEE21"));
 
         // Spacer so content is vertically centered
         Region topSpacer = new Region();
@@ -105,20 +105,20 @@ public class LoginScreen extends Application {
         VBox badgeWords = new VBox(-6);
         badgeWords.setAlignment(Pos.CENTER);
         Text mj = new Text("MJ");
-        mj.setFont(Font.font("Georgia", FontWeight.BOLD, 36));
+        mj.setFont(Font.font("Poppins", FontWeight.BOLD, 36));
         mj.setFill(Color.WHITE);
         Text t23 = new Text("23");
-        t23.setFont(Font.font("Georgia", FontWeight.BOLD, 15));
+        t23.setFont(Font.font("Poppins", FontWeight.BOLD, 15));
         t23.setFill(Color.web("#ffffff", 0.80));
         badgeWords.getChildren().addAll(mj, t23);
         badge.getChildren().addAll(badgeBg, badgeWords);
 
         // Gym title
         Text line1 = new Text("MJ23 PLAYGRIND");
-        line1.setFont(Font.font("Georgia", FontWeight.BOLD, 22));
+        line1.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
         line1.setFill(Color.web(TEXT_WHITE));
         Text line2 = new Text("GYM");
-        line2.setFont(Font.font("Georgia", FontWeight.BOLD, 22));
+        line2.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
         line2.setFill(Color.web(ACCENT));
         VBox gymTitle = new VBox(0, line1, line2);
         gymTitle.setAlignment(Pos.CENTER);
@@ -131,14 +131,14 @@ public class LoginScreen extends Application {
 
         // Tagline
         Text tagline = new Text("Stronger Every Day.\nSmarter Every Session.");
-        tagline.setFont(Font.font("Verdana", 11));
+        tagline.setFont(Font.font("Poppins", 11));
         tagline.setFill(Color.web(TEXT_MUTED));
         tagline.setTextAlignment(TextAlignment.CENTER);
         tagline.setLineSpacing(5);
 
         // Info pills
-        HBox locPill  = makePill("📍  Taguig City, Philippines");
-        HBox verPill  = makePill("⚙   Management System v1.0");
+        HBox locPill  = makePill("  Taguig City, Philippines");
+        HBox verPill  = makePill("Management System v1.0");
         VBox pillBox  = new VBox(10, locPill, verPill);
         pillBox.setAlignment(Pos.CENTER);
 
@@ -146,8 +146,8 @@ public class LoginScreen extends Application {
         VBox.setVgrow(botSpacer, Priority.ALWAYS);
 
         // Footer text at bottom of left panel
-        Text leftFooter = new Text("CS 301 – Software Engineering 1  |  TIP-QC");
-        leftFooter.setFont(Font.font("Verdana", 9));
+        Text leftFooter = new Text("CS 301  Software Engineering 1  |  TIP-QC");
+        leftFooter.setFont(Font.font("Poppins", 9));
         leftFooter.setFill(Color.web(TEXT_DIM));
 
         // Assemble left panel with spacing
@@ -161,9 +161,9 @@ public class LoginScreen extends Application {
             new HBox(leftFooter) {{ setAlignment(Pos.CENTER); setPadding(new Insets(0, 0, 20, 0)); }}
         );
 
-        // ═══════════════════════════════════════════════════════════
-        // RIGHT PANEL – login form
-        // ═══════════════════════════════════════════════════════════
+        // 
+        // RIGHT PANEL  login form
+        // 
         VBox right = new VBox();
         right.setAlignment(Pos.CENTER);
         HBox.setHgrow(right, Priority.ALWAYS);
@@ -176,9 +176,9 @@ public class LoginScreen extends Application {
         card.setPadding(new Insets(38, 38, 38, 38));
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 14;" +
+            "-fx-background-radius: 24;" +
             "-fx-border-color: " + FIELD_BORDER + ";" +
-            "-fx-border-radius: 14;" +
+            "-fx-border-radius: 24;" +
             "-fx-border-width: 1;"
         );
         DropShadow cardShadow = new DropShadow();
@@ -189,10 +189,10 @@ public class LoginScreen extends Application {
 
         // Card header
         Text title = new Text("Sign In");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 26));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 26));
         title.setFill(Color.web(TEXT_WHITE));
         Text subtitle = new Text("Enter your credentials to continue");
-        subtitle.setFont(Font.font("Verdana", 11));
+        subtitle.setFont(Font.font("Poppins", 11));
         subtitle.setFill(Color.web(TEXT_MUTED));
         VBox cardHeader = new VBox(4, title, subtitle);
 
@@ -210,7 +210,7 @@ public class LoginScreen extends Application {
 
         // Forgot link
         Hyperlink forgot = new Hyperlink("Forgot Password?");
-        forgot.setFont(Font.font("Verdana", 10));
+        forgot.setFont(Font.font("Poppins", 10));
         forgot.setTextFill(Color.web(ACCENT));
         forgot.setBorder(Border.EMPTY);
         forgot.setPadding(Insets.EMPTY);
@@ -222,14 +222,14 @@ public class LoginScreen extends Application {
 
         // Message label
         Label msgLbl = new Label();
-        msgLbl.setFont(Font.font("Verdana", 11));
+        msgLbl.setFont(Font.font("Poppins", 11));
         msgLbl.setTextFill(Color.web(ACCENT));
         msgLbl.setWrapText(true);
         msgLbl.setMaxWidth(Double.MAX_VALUE);
         msgLbl.setVisible(false);
         msgLbl.setPadding(new Insets(8, 12, 8, 12));
         msgLbl.setStyle(
-            "-fx-background-color: rgba(230,57,70,0.12);" +
+            "-fx-background-color: rgba(26,19,99,0.12);" +
             "-fx-background-radius: 7;"
         );
 
@@ -237,7 +237,7 @@ public class LoginScreen extends Application {
         Button loginBtn = new Button("LOGIN");
         loginBtn.setMaxWidth(Double.MAX_VALUE);
         loginBtn.setPrefHeight(46);
-        loginBtn.setFont(Font.font("Verdana", FontWeight.BOLD, 13));
+        loginBtn.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
         styleBtn(loginBtn, false);
         loginBtn.setOnMouseEntered(e -> styleBtn(loginBtn, true));
         loginBtn.setOnMouseExited(e -> styleBtn(loginBtn, false));
@@ -247,13 +247,13 @@ public class LoginScreen extends Application {
             String u = usernameField.getText().trim();
             String p = passwordField.getText().trim();
             if (u.isEmpty() || p.isEmpty()) {
-                showMsg(msgLbl, "⚠   Please enter both username and password.", false);
+                showMsg(msgLbl, "Please enter both username and password.", false);
                 shakeCard(card);
                 return;
             }
             
             loginBtn.setDisable(true);
-            msgLbl.setText("🔄  Authenticating...");
+            msgLbl.setText("  Authenticating...");
             msgLbl.setVisible(true);
             
             // Try to authenticate with database
@@ -266,16 +266,16 @@ public class LoginScreen extends Application {
                     javafx.application.Platform.runLater(() -> {
                         if (user.isPresent()) {
                             UserDAO.UserRecord ur = user.get();
-                            showMsg(msgLbl, "✔   Login successful! Loading dashboard...", true);
+                            showMsg(msgLbl, "Login successful! Loading dashboard...", true);
                             AppSession.login(AppSession.User.fromUserRecord(ur));
                             try {
                                 new GymManagementApp().start(stage);
                             } catch (Exception ex) {
-                                showMsg(msgLbl, "⚠   Could not load dashboard: " + ex.getMessage(), false);
+                                showMsg(msgLbl, "Could not load dashboard: " + ex.getMessage(), false);
                                 loginBtn.setDisable(false);
                             }
                         } else {
-                            showMsg(msgLbl, "⚠   Invalid username or password. Try again.", false);
+                            showMsg(msgLbl, "Invalid username or password. Try again.", false);
                             passwordField.clear();
                             shakeCard(card);
                             loginBtn.setDisable(false);
@@ -283,7 +283,7 @@ public class LoginScreen extends Application {
                     });
                 } catch (Exception ex) {
                     javafx.application.Platform.runLater(() -> {
-                        showMsg(msgLbl, "⚠   Database error: " + ex.getMessage(), false);
+                        showMsg(msgLbl, "Database error: " + ex.getMessage(), false);
                         loginBtn.setDisable(false);
                     });
                 }
@@ -295,8 +295,8 @@ public class LoginScreen extends Application {
         usernameField.setOnAction(e -> passwordField.requestFocus());
 
         // Card footer
-        Text cardFooter = new Text("© 2025 MJ23 Playgrind Gym  •  All rights reserved");
-        cardFooter.setFont(Font.font("Verdana", 9));
+        Text cardFooter = new Text(" 2025 MJ23 Playgrind Gym    All rights reserved");
+        cardFooter.setFont(Font.font("Poppins", 9));
         cardFooter.setFill(Color.web(TEXT_DIM));
         HBox cardFooterBox = new HBox(cardFooter);
         cardFooterBox.setAlignment(Pos.CENTER);
@@ -314,7 +314,7 @@ public class LoginScreen extends Application {
 
         right.getChildren().add(card);
 
-        // ── Assemble & animate ─────────────────────────────────────
+        //  Assemble & animate 
         root.getChildren().addAll(left, right);
 
         card.setOpacity(0);
@@ -328,18 +328,18 @@ public class LoginScreen extends Application {
         ft.play();
         tt.play();
 
-        // ── Scene ─────────────────────────────────────────────────
+        //  Scene 
         Scene scene = new Scene(root, 950, 620);
         stage.setScene(scene);
         stage.setResizable(false);
         stage.show();
     }
 
-    // ── Field group builder ────────────────────────────────────────
+    //  Field group builder 
     private VBox buildFieldGroup(String label, String prompt, boolean isPass) {
         VBox g = new VBox(7);
         Label lbl = new Label(label);
-        lbl.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         lbl.setTextFill(Color.web(TEXT_MUTED));
 
         TextField f = isPass ? new PasswordField() : new TextField();
@@ -355,12 +355,12 @@ public class LoginScreen extends Application {
         f.setStyle(
             "-fx-background-color: " + FIELD_BG + ";" +
             "-fx-border-color: " + (focused ? FIELD_FOCUS : FIELD_BORDER) + ";" +
-            "-fx-border-radius: 8;" +
-            "-fx-background-radius: 8;" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
             "-fx-text-fill: " + TEXT_WHITE + ";" +
             "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
             "-fx-padding: 0 14 0 14;" +
-            "-fx-font-family: Verdana;" +
+            "-fx-font-family: Poppins;" +
             "-fx-font-size: 13;"
         );
     }
@@ -369,9 +369,9 @@ public class LoginScreen extends Application {
         b.setStyle(
             "-fx-background-color: " + (hovered ? ACCENT_DARK : ACCENT) + ";" +
             "-fx-text-fill: white;" +
-            "-fx-background-radius: 8;" +
+            "-fx-background-radius: 16;" +
             "-fx-cursor: hand;" +
-            "-fx-font-family: Verdana;" +
+            "-fx-font-family: Poppins;" +
             "-fx-font-weight: bold;" +
             "-fx-font-size: 13;"
         );
@@ -379,10 +379,10 @@ public class LoginScreen extends Application {
 
     private void showMsg(Label l, String msg, boolean success) {
         l.setText(msg);
-        l.setTextFill(success ? Color.web("#4caf50") : Color.web(ACCENT));
+        l.setTextFill(success ? Color.web("#4B4B4B") : Color.web(ACCENT));
         l.setStyle(
             "-fx-background-color: " + (success
-                ? "rgba(76,175,80,0.12)" : "rgba(230,57,70,0.12)") + ";" +
+                ? "rgba(228,255,223,0.12)" : "rgba(26,19,99,0.12)") + ";" +
             "-fx-background-radius: 7;"
         );
         l.setVisible(true);
@@ -409,7 +409,7 @@ public class LoginScreen extends Application {
             "-fx-border-width: 1;"
         );
         Label lbl = new Label(text);
-        lbl.setFont(Font.font("Verdana", 10));
+        lbl.setFont(Font.font("Poppins", 10));
         lbl.setTextFill(Color.web(TEXT_MUTED));
         pill.getChildren().add(lbl);
         return pill;
@@ -427,11 +427,11 @@ public class LoginScreen extends Application {
         root.setStyle("-fx-background-color: " + BG_CARD + ";");
 
         Text title = new Text("Forgot Username or Password");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         title.setFill(Color.web(TEXT_WHITE));
 
         Text subtitle = new Text("Verify your identity using your registered email or phone number.");
-        subtitle.setFont(Font.font("Verdana", 11));
+        subtitle.setFont(Font.font("Poppins", 11));
         subtitle.setFill(Color.web(TEXT_MUTED));
 
         TabPane tabs = new TabPane();
@@ -573,7 +573,7 @@ public class LoginScreen extends Application {
 
     private Text recoveryHint(String text) {
         Text hint = new Text(text);
-        hint.setFont(Font.font("Verdana", 10));
+        hint.setFont(Font.font("Poppins", 10));
         hint.setFill(Color.web(TEXT_MUTED));
         return hint;
     }
@@ -589,7 +589,7 @@ public class LoginScreen extends Application {
 
     private Label buildRecoveryMessage() {
         Label message = new Label();
-        message.setFont(Font.font("Verdana", 11));
+        message.setFont(Font.font("Poppins", 11));
         message.setWrapText(true);
         message.setVisible(false);
         message.setMaxWidth(Double.MAX_VALUE);
@@ -612,9 +612,9 @@ public class LoginScreen extends Application {
             "-fx-background-color: " + (hovered ? FIELD_BORDER : FIELD_BG) + ";" +
             "-fx-text-fill: " + TEXT_MUTED + ";" +
             "-fx-border-color: " + FIELD_BORDER + ";" +
-            "-fx-border-radius: 8;" +
-            "-fx-background-radius: 8;" +
-            "-fx-font-family: Verdana;" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
+            "-fx-font-family: Poppins;" +
             "-fx-font-weight: bold;" +
             "-fx-cursor: hand;"
         );
@@ -622,10 +622,10 @@ public class LoginScreen extends Application {
 
     private void setRecoveryMessage(Label label, String text, boolean success) {
         label.setText(text);
-        label.setTextFill(success ? Color.web("#4caf50") : Color.web(ACCENT));
+        label.setTextFill(success ? Color.web("#4B4B4B") : Color.web(ACCENT));
         label.setStyle(
             "-fx-background-color: " + (success
-                ? "rgba(76,175,80,0.12)" : "rgba(230,57,70,0.12)") + ";" +
+                ? "rgba(228,255,223,0.12)" : "rgba(26,19,99,0.12)") + ";" +
             "-fx-background-radius: 7;"
         );
         label.setVisible(true);
@@ -633,3 +633,6 @@ public class LoginScreen extends Application {
 
     public static void main(String[] args) { launch(args); }
 }
+
+
+

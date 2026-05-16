@@ -20,16 +20,16 @@ import javafx.util.Duration;
  * About / Info page for the MJ23 Playgrind Gym system.
  */
 public class AboutScreen {
-    static final String BG_MAIN     = "#1a1a2e";
-    static final String BG_CARD     = "#1e2a3a";
-    static final String ACCENT      = "#e63946";
-    static final String TEXT_WHITE  = "#ffffff";
-    static final String TEXT_MUTED  = "#b0bec5";
-    static final String TEXT_DIM    = "#607080";
-    static final String BORDER      = "#253545";
-    static final String SUCCESS     = "#4caf50";
-    static final String INFO        = "#2196f3";
-    static final String WARNING     = "#ff9800";
+    static final String BG_MAIN     = "#F2F4F8";
+    static final String BG_CARD     = "#F8F9FC";
+    static final String ACCENT      = "#1A1363";
+    static final String TEXT_WHITE  = "#1A1363";
+    static final String TEXT_MUTED  = "#77749B";
+    static final String TEXT_DIM    = "#4B4B4B";
+    static final String BORDER      = "#D9DDEA";
+    static final String SUCCESS     = "#2F6F5E";
+    static final String INFO        = "#1A1363";
+    static final String WARNING     = "#8A6D00";
 
     public VBox buildContent() {
         VBox content = new VBox(0);
@@ -41,10 +41,10 @@ public class AboutScreen {
         topBar.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
         VBox pg = new VBox(2);
         Text title = new Text("About");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         title.setFill(Color.web(TEXT_WHITE));
         Text sub = new Text("System information, modules, and project details");
-        sub.setFont(Font.font("Verdana", 11));
+        sub.setFont(Font.font("Poppins", 11));
         sub.setFill(Color.web(TEXT_MUTED));
         pg.getChildren().addAll(title, sub);
         topBar.getChildren().add(pg);
@@ -61,13 +61,13 @@ public class AboutScreen {
         VBox hero = card();
         hero.setAlignment(Pos.CENTER_LEFT);
         Text app = new Text("MJ23 Playgrind Gym Management System");
-        app.setFont(Font.font("Georgia", FontWeight.BOLD, 26));
+        app.setFont(Font.font("Poppins", FontWeight.BOLD, 26));
         app.setFill(Color.web(TEXT_WHITE));
         Text version = new Text("Version 1.0.0 | JavaFX + MySQL");
-        version.setFont(Font.font("Verdana", 12));
+        version.setFont(Font.font("Poppins", 12));
         version.setFill(Color.web(TEXT_MUTED));
         Text purpose = new Text("A desktop gym management system for members, staff registration, plans, billing, inventory, equipment, POS, reports, maintenance, search, help, and profiles.");
-        purpose.setFont(Font.font("Verdana", 12));
+        purpose.setFont(Font.font("Poppins", 12));
         purpose.setFill(Color.web(TEXT_MUTED));
         purpose.setWrappingWidth(850);
         hero.getChildren().addAll(app, version, purpose);
@@ -91,8 +91,8 @@ public class AboutScreen {
         for (String name : names) {
             Label row = new Label(name);
             row.setTextFill(Color.web(TEXT_WHITE));
-            row.setFont(Font.font("Verdana", 11));
-            row.setStyle("-fx-background-color: rgba(255,255,255,0.04); -fx-background-radius: 8; -fx-padding: 8 12;");
+            row.setFont(Font.font("Poppins", 11));
+            row.setStyle("-fx-background-color: rgba(255,255,255,0.04); -fx-background-radius: 16; -fx-padding: 8 12;");
             list.getChildren().add(row);
         }
         modules.getChildren().addAll(mt, list);
@@ -121,7 +121,7 @@ public class AboutScreen {
     private VBox card() {
         VBox card = new VBox(14);
         card.setPadding(new Insets(24));
-        card.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 12; -fx-border-color: " + BORDER + "; -fx-border-radius: 12; -fx-border-width: 1;");
+        card.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 22; -fx-border-color: " + BORDER + "; -fx-border-radius: 22; -fx-border-width: 1;");
         DropShadow ds = new DropShadow();
         ds.setColor(Color.web("#000", 0.25));
         ds.setRadius(10);
@@ -134,10 +134,10 @@ public class AboutScreen {
         VBox box = card();
         HBox.setHgrow(box, Priority.ALWAYS);
         Text v = new Text(value);
-        v.setFont(Font.font("Georgia", FontWeight.BOLD, 24));
+        v.setFont(Font.font("Poppins", FontWeight.BOLD, 24));
         v.setFill(Color.web(color));
         Text l = new Text(label);
-        l.setFont(Font.font("Verdana", 11));
+        l.setFont(Font.font("Poppins", 11));
         l.setFill(Color.web(TEXT_MUTED));
         box.getChildren().addAll(v, l);
         return box;
@@ -145,7 +145,7 @@ public class AboutScreen {
 
     private Text sectionTitle(String value) {
         Text t = new Text(value);
-        t.setFont(Font.font("Verdana", FontWeight.BOLD, 14));
+        t.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
         t.setFill(Color.web(TEXT_WHITE));
         return t;
     }
@@ -157,12 +157,15 @@ public class AboutScreen {
         marker.setFill(Color.web(ACCENT));
         Label l = new Label(label + ":");
         l.setTextFill(Color.web(TEXT_DIM));
-        l.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
+        l.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
         Label v = new Label(value);
         v.setTextFill(Color.web(TEXT_MUTED));
-        v.setFont(Font.font("Verdana", 11));
+        v.setFont(Font.font("Poppins", 11));
         v.setWrapText(true);
         row.getChildren().addAll(marker, l, v);
         return row;
     }
 }
+
+
+

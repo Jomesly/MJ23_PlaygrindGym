@@ -33,18 +33,18 @@ import mj23gym.dao.PlanDAO;
 
 public class PlanManagementScreen {
 
-    static final String BG_MAIN      = "#1a1a2e";
-    static final String BG_CARD      = "#1e2a3a";
-    static final String BG_ROW_ALT   = "#253545";
-    static final String BG_SIDEBAR   = "#0d1b2a";
-    static final String ACCENT       = "#e63946";
-    static final String ACCENT_DARK  = "#c0303b";
-    static final String TEXT_WHITE   = "#ffffff";
-    static final String TEXT_MUTED   = "#b0bec5";
-    static final String TEXT_DIM     = "#607080";
-    static final String BORDER       = "#253545";
-    static final String SUCCESS      = "#4caf50";
-    static final String WARNING      = "#ff9800";
+    static final String BG_MAIN      = "#F2F4F8";
+    static final String BG_CARD      = "#F8F9FC";
+    static final String BG_ROW_ALT   = "#EEF2FA";
+    static final String BG_SIDEBAR   = "#E9EDF6";
+    static final String ACCENT       = "#1A1363";
+    static final String ACCENT_DARK  = "#332F4F";
+    static final String TEXT_WHITE   = "#1A1363";
+    static final String TEXT_MUTED   = "#77749B";
+    static final String TEXT_DIM     = "#4B4B4B";
+    static final String BORDER       = "#D9DDEA";
+    static final String SUCCESS      = "#2F6F5E";
+    static final String WARNING      = "#8A6D00";
 
     private final PlanDAO dao = new PlanDAO();
 
@@ -65,10 +65,10 @@ public class PlanManagementScreen {
 
         VBox titleBox = new VBox(2);
         Text title = new Text("Manage Plans");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         title.setFill(Color.web(TEXT_WHITE));
         Text subtitle = new Text("Create, update, and remove membership pricing options");
-        subtitle.setFont(Font.font("Verdana", 11));
+        subtitle.setFont(Font.font("Poppins", 11));
         subtitle.setFill(Color.web(TEXT_MUTED));
         titleBox.getChildren().addAll(title, subtitle);
         topBar.getChildren().add(titleBox);
@@ -159,7 +159,7 @@ public class PlanManagementScreen {
         if (plans.isEmpty()) {
             Label empty = new Label("No membership plans found.");
             empty.setPadding(new Insets(18));
-            empty.setStyle("-fx-text-fill: " + TEXT_MUTED + "; -fx-font: 12 Verdana;");
+            empty.setStyle("-fx-text-fill: " + TEXT_MUTED + "; -fx-font: 12 Poppins;");
             rows.getChildren().add(empty);
         }
     }
@@ -176,7 +176,7 @@ public class PlanManagementScreen {
         root.setStyle("-fx-background-color: " + BG_CARD + ";");
 
         Text title = new Text(existing == null ? "Add Plan" : "Edit Plan");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         title.setFill(Color.web(TEXT_WHITE));
         Rectangle underline = new Rectangle(48, 3);
         underline.setArcWidth(3);
@@ -192,7 +192,7 @@ public class PlanManagementScreen {
         duration.setValue(existing != null ? PlanDAO.normalizePlanName(existing.duration()) : "Monthly");
         CheckBox active = new CheckBox("Active plan");
         active.setSelected(existing == null || existing.active());
-        active.setStyle("-fx-text-fill: " + TEXT_MUTED + "; -fx-font: 12 Verdana;");
+        active.setStyle("-fx-text-fill: " + TEXT_MUTED + "; -fx-font: 12 Poppins;");
 
         applyFieldStyle(name);
         applyFieldStyle(price);
@@ -285,7 +285,7 @@ public class PlanManagementScreen {
         GridPane grid = grid(widths);
         for (int i = 0; i < headers.length; i++) {
             Label label = new Label(headers[i].toUpperCase());
-            label.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+            label.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
             label.setTextFill(Color.web(TEXT_DIM));
             grid.add(label, i, 0);
         }
@@ -310,9 +310,9 @@ public class PlanManagementScreen {
         VBox card = new VBox(0);
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 12;" +
+            "-fx-background-radius: 22;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 12;" +
+            "-fx-border-radius: 22;" +
             "-fx-border-width: 1;"
         );
         DropShadow shadow = new DropShadow();
@@ -329,14 +329,14 @@ public class PlanManagementScreen {
         chip.setPadding(new Insets(14, 20, 14, 20));
         chip.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 10;" +
+            "-fx-background-radius: 18;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 10;" +
+            "-fx-border-radius: 18;" +
             "-fx-border-width: 1;"
         );
         HBox.setHgrow(chip, Priority.ALWAYS);
         Text labelNode = new Text(label);
-        labelNode.setFont(Font.font("Verdana", 11));
+        labelNode.setFont(Font.font("Poppins", 11));
         labelNode.setFill(Color.web(TEXT_MUTED));
         value.setFill(Color.web(color));
         chip.getChildren().add(new VBox(2, labelNode, value));
@@ -344,12 +344,12 @@ public class PlanManagementScreen {
     }
 
     private void styleStatValue(Text value) {
-        value.setFont(Font.font("Georgia", FontWeight.BOLD, 22));
+        value.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
     }
 
     private Label cell(String text, String color, boolean bold) {
         Label label = new Label(text);
-        label.setFont(Font.font("Verdana", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
+        label.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
         label.setTextFill(Color.web(color));
         label.setPadding(new Insets(0, 8, 0, 0));
         label.setWrapText(true);
@@ -358,10 +358,10 @@ public class PlanManagementScreen {
 
     private Label statusBadge(boolean active) {
         Label badge = new Label(active ? "Active" : "Inactive");
-        badge.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
+        badge.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         badge.setTextFill(Color.WHITE);
         badge.setPadding(new Insets(4, 8, 4, 8));
-        badge.setStyle("-fx-background-color: " + (active ? SUCCESS : TEXT_DIM) + "; -fx-background-radius: 10;");
+        badge.setStyle("-fx-background-color: " + (active ? SUCCESS : TEXT_DIM) + "; -fx-background-radius: 18;");
         return badge;
     }
 
@@ -369,23 +369,23 @@ public class PlanManagementScreen {
         Button button = new Button(text);
         button.setPrefHeight(38);
         button.setPadding(new Insets(0, 18, 0, 18));
-        button.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
+        button.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
         button.setStyle(
             "-fx-background-color: " + ACCENT + ";" +
             "-fx-text-fill: white;" +
-            "-fx-background-radius: 8;" +
+            "-fx-background-radius: 16;" +
             "-fx-cursor: hand;"
         );
         button.setOnMouseEntered(e -> button.setStyle(
             "-fx-background-color: " + ACCENT_DARK + ";" +
             "-fx-text-fill: white;" +
-            "-fx-background-radius: 8;" +
+            "-fx-background-radius: 16;" +
             "-fx-cursor: hand;"
         ));
         button.setOnMouseExited(e -> button.setStyle(
             "-fx-background-color: " + ACCENT + ";" +
             "-fx-text-fill: white;" +
-            "-fx-background-radius: 8;" +
+            "-fx-background-radius: 16;" +
             "-fx-cursor: hand;"
         ));
         return button;
@@ -395,11 +395,11 @@ public class PlanManagementScreen {
         Button button = new Button(text);
         button.setPrefHeight(38);
         button.setPadding(new Insets(0, 18, 0, 18));
-        button.setFont(Font.font("Verdana", 12));
+        button.setFont(Font.font("Poppins", 12));
         button.setStyle(
             "-fx-background-color: " + BG_MAIN + ";" +
             "-fx-text-fill: " + TEXT_MUTED + ";" +
-            "-fx-background-radius: 8;" +
+            "-fx-background-radius: 16;" +
             "-fx-cursor: hand;"
         );
         return button;
@@ -407,7 +407,7 @@ public class PlanManagementScreen {
 
     private Button smallButton(String text, String color) {
         Button button = new Button(text);
-        button.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
+        button.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         button.setPadding(new Insets(5, 9, 5, 9));
         button.setStyle(
             "-fx-background-color: " + color + ";" +
@@ -440,7 +440,7 @@ public class PlanManagementScreen {
 
     private Label formLabel(String text) {
         Label label = new Label(text);
-        label.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        label.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         label.setTextFill(Color.web(TEXT_MUTED));
         return label;
     }
@@ -450,12 +450,12 @@ public class PlanManagementScreen {
         field.setStyle(
             "-fx-background-color: " + BG_MAIN + ";" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 8;" +
-            "-fx-background-radius: 8;" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
             "-fx-text-fill: " + TEXT_WHITE + ";" +
             "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
             "-fx-padding: 0 12 0 12;" +
-            "-fx-font-family: Verdana;" +
+            "-fx-font-family: Poppins;" +
             "-fx-font-size: 12;"
         );
     }
@@ -465,11 +465,11 @@ public class PlanManagementScreen {
             "-fx-control-inner-background: " + BG_MAIN + ";" +
             "-fx-background-color: " + BG_MAIN + ";" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 8;" +
-            "-fx-background-radius: 8;" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
             "-fx-text-fill: " + TEXT_WHITE + ";" +
             "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
-            "-fx-font-family: Verdana;" +
+            "-fx-font-family: Poppins;" +
             "-fx-font-size: 12;"
         );
         area.setWrapText(true);
@@ -480,10 +480,10 @@ public class PlanManagementScreen {
         combo.setStyle(
             "-fx-background-color: " + BG_MAIN + ";" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 8;" +
-            "-fx-background-radius: 8;" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
             "-fx-text-fill: " + TEXT_WHITE + ";" +
-            "-fx-font-family: Verdana;" +
+            "-fx-font-family: Poppins;" +
             "-fx-font-size: 12;"
         );
     }
@@ -504,3 +504,6 @@ public class PlanManagementScreen {
         alert.showAndWait();
     }
 }
+
+
+

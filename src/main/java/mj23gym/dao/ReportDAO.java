@@ -144,25 +144,27 @@ public final class ReportDAO {
     public String buildNotes(String reportType, Date from, Date to, ReportMetrics m) {
         String type = normalizeReportType(reportType);
         StringBuilder sb = new StringBuilder();
-        sb.append("Report Type: ").append(type).append('\n');
+        sb.append("Report Type: ").append(reportType == null || reportType.isBlank() ? type : reportType).append('\n');
         sb.append("Period: ").append(from).append(" to ").append(to).append('\n');
         sb.append('\n');
-        sb.append("Financial Summary").append('\n');
-        sb.append("- Membership Revenue: PHP ").append(String.format("%.2f", m.membershipRevenue())).append('\n');
-        sb.append("- POS Revenue: PHP ").append(String.format("%.2f", m.posRevenue())).append('\n');
-        sb.append("- Total Revenue: PHP ").append(String.format("%.2f", m.totalRevenue())).append('\n');
-        sb.append("- Total Transactions: ").append(m.totalTransactions()).append('\n');
-        sb.append('\n');
-        sb.append("Membership and Attendance").append('\n');
-        sb.append("- New Members: ").append(m.newMembers()).append('\n');
-        sb.append("- Active Members: ").append(m.activeMembers()).append('\n');
-        sb.append("- Attendance Check-ins: ").append(m.attendanceCheckIns()).append('\n');
-        sb.append('\n');
-        sb.append("Operations").append('\n');
-        sb.append("- Active Inventory Items: ").append(m.activeInventoryItems()).append('\n');
-        sb.append("- Low Stock Items: ").append(m.lowStockItems()).append('\n');
-        sb.append("- Active Equipment: ").append(m.activeEquipment()).append('\n');
-        sb.append("- Equipment Needing Attention: ").append(m.equipmentNeedsAttention()).append('\n');
+        if ("Inventory".equals(type)) {
+            sb.append("Inventory Summary").append('\n');
+            sb.append("- Active Inventory Items: ").append(m.activeInventoryItems()).append('\n');
+            sb.append("- Low Stock Items: ").append(m.lowStockItems()).append('\n');
+            sb.append("- Active Equipment: ").append(m.activeEquipment()).append('\n');
+            sb.append("- Equipment Needing Attention: ").append(m.equipmentNeedsAttention()).append('\n');
+        } else if (reportType != null && reportType.toLowerCase().contains("payment")) {
+            sb.append("Payment Summary").append('\n');
+            sb.append("- Membership Revenue: PHP ").append(String.format("%.2f", m.membershipRevenue())).append('\n');
+            sb.append("- Payment Transactions: ").append(m.paymentTransactions()).append('\n');
+            sb.append("- New Members: ").append(m.newMembers()).append('\n');
+            sb.append("- Active Members: ").append(m.activeMembers()).append('\n');
+        } else {
+            sb.append("Sales Summary").append('\n');
+            sb.append("- POS Revenue: PHP ").append(String.format("%.2f", m.posRevenue())).append('\n');
+            sb.append("- POS Transactions: ").append(m.posTransactions()).append('\n');
+            sb.append("- Total Revenue: PHP ").append(String.format("%.2f", m.posRevenue())).append('\n');
+        }
         return sb.toString();
     }
 
@@ -170,15 +172,20 @@ public final class ReportDAO {
         if (reportType == null || reportType.isBlank()) {
             return "Other";
         }
-        if ("Sales".equalsIgnoreCase(reportType) || "Payment".equalsIgnoreCase(reportType)
-                || "Billing".equalsIgnoreCase(reportType) || "Financial".equalsIgnoreCase(reportType)) {
+        if ("Sales".equalsIgnoreCase(reportType)
+                || "Sales Report".equalsIgnoreCase(reportType)
+                || "Payment".equalsIgnoreCase(reportType)
+                || "Payment Report".equalsIgnoreCase(reportType)
+                || "Billing".equalsIgnoreCase(reportType)
+                || "Financial".equalsIgnoreCase(reportType)) {
             return "Financial";
         }
         if ("Membership".equalsIgnoreCase(reportType)
                 || "Attendance".equalsIgnoreCase(reportType)
                 || "Inventory".equalsIgnoreCase(reportType)
+                || "Inventory Report".equalsIgnoreCase(reportType)
                 || "Equipment".equalsIgnoreCase(reportType)) {
-            return capitalize(reportType);
+            return reportType.toLowerCase().contains("inventory") ? "Inventory" : capitalize(reportType);
         }
         return "Other";
     }

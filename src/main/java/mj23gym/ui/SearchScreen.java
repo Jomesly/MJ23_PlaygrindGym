@@ -27,19 +27,19 @@ import java.util.List;
  * Module 11 - Search: find records across members, inventory, and transactions.
  */
 public class SearchScreen {
-    static final String BG_MAIN     = "#1a1a2e";
-    static final String BG_CARD     = "#1e2a3a";
-    static final String BG_ROW_ALT  = "#253545";
-    static final String BG_SIDEBAR  = "#0d1b2a";
-    static final String ACCENT      = "#e63946";
-    static final String ACCENT_DARK = "#c0303b";
-    static final String TEXT_WHITE  = "#ffffff";
-    static final String TEXT_MUTED  = "#b0bec5";
-    static final String TEXT_DIM    = "#607080";
-    static final String BORDER      = "#253545";
-    static final String SUCCESS     = "#4caf50";
-    static final String WARNING     = "#ff9800";
-    static final String INFO        = "#2196f3";
+    static final String BG_MAIN     = "#F2F4F8";
+    static final String BG_CARD     = "#F8F9FC";
+    static final String BG_ROW_ALT  = "#EEF2FA";
+    static final String BG_SIDEBAR  = "#E9EDF6";
+    static final String ACCENT      = "#1A1363";
+    static final String ACCENT_DARK = "#332F4F";
+    static final String TEXT_WHITE  = "#1A1363";
+    static final String TEXT_MUTED  = "#77749B";
+    static final String TEXT_DIM    = "#4B4B4B";
+    static final String BORDER      = "#D9DDEA";
+    static final String SUCCESS     = "#2F6F5E";
+    static final String WARNING     = "#8A6D00";
+    static final String INFO        = "#1A1363";
 
     private final SearchDAO dao = new SearchDAO();
     private final VBox resultRows = new VBox(0);
@@ -59,10 +59,10 @@ public class SearchScreen {
         topBar.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
         VBox pg = new VBox(2);
         Text title = new Text("Search");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         title.setFill(Color.web(TEXT_WHITE));
         Text sub = new Text("Find member, inventory, payment, and POS transaction records");
-        sub.setFont(Font.font("Verdana", 11));
+        sub.setFont(Font.font("Poppins", 11));
         sub.setFill(Color.web(TEXT_MUTED));
         pg.getChildren().addAll(title, sub);
         topBar.getChildren().add(pg);
@@ -97,7 +97,7 @@ public class SearchScreen {
 
         VBox resultsCard = sectionCard("Search Results", "Matching records grouped by module.");
         resultCount.setTextFill(Color.web(TEXT_MUTED));
-        resultCount.setFont(Font.font("Verdana", 11));
+        resultCount.setFont(Font.font("Poppins", 11));
         resultRows.getChildren().add(emptyLabel("No search has been performed yet."));
         resultsCard.getChildren().addAll(resultCount, resultRows);
 
@@ -176,17 +176,17 @@ public class SearchScreen {
     private VBox sectionCard(String title, String subtitle) {
         VBox card = new VBox(16);
         card.setPadding(new Insets(22));
-        card.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 12; -fx-border-color: " + BORDER + "; -fx-border-radius: 12; -fx-border-width: 1;");
+        card.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 22; -fx-border-color: " + BORDER + "; -fx-border-radius: 22; -fx-border-width: 1;");
         DropShadow ds = new DropShadow();
         ds.setColor(Color.web("#000", 0.25));
         ds.setRadius(10);
         ds.setOffsetY(4);
         card.setEffect(ds);
         Text t = new Text(title);
-        t.setFont(Font.font("Verdana", FontWeight.BOLD, 14));
+        t.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
         t.setFill(Color.web(TEXT_WHITE));
         Text s = new Text(subtitle);
-        s.setFont(Font.font("Verdana", 11));
+        s.setFont(Font.font("Poppins", 11));
         s.setFill(Color.web(TEXT_MUTED));
         card.getChildren().addAll(t, s);
         return card;
@@ -195,7 +195,7 @@ public class SearchScreen {
     private TextField styledField() {
         TextField field = new TextField();
         field.setPrefHeight(42);
-        field.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 8; -fx-background-radius: 8; -fx-text-fill: " + TEXT_WHITE + "; -fx-prompt-text-fill: " + TEXT_DIM + "; -fx-padding: 0 12 0 12; -fx-font-family: Verdana;");
+        field.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 16; -fx-background-radius: 16; -fx-text-fill: " + TEXT_WHITE + "; -fx-prompt-text-fill: " + TEXT_DIM + "; -fx-padding: 0 12 0 12; -fx-font-family: Poppins;");
         return field;
     }
 
@@ -203,7 +203,7 @@ public class SearchScreen {
         CheckBox cb = new CheckBox(text);
         cb.setSelected(selected);
         cb.setTextFill(Color.web(TEXT_MUTED));
-        cb.setFont(Font.font("Verdana", 11));
+        cb.setFont(Font.font("Poppins", 11));
         return cb;
     }
 
@@ -211,16 +211,16 @@ public class SearchScreen {
         Button b = new Button(text);
         b.setPrefHeight(42);
         b.setPadding(new Insets(0, 22, 0, 22));
-        b.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
-        b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;");
-        b.setOnMouseEntered(e -> b.setStyle("-fx-background-color: " + ACCENT_DARK + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;"));
-        b.setOnMouseExited(e -> b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;"));
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;");
+        b.setOnMouseEntered(e -> b.setStyle("-fx-background-color: " + ACCENT_DARK + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;"));
+        b.setOnMouseExited(e -> b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;"));
         return b;
     }
 
     private Label cell(String text, String color, boolean bold) {
         Label label = new Label(text == null ? "" : text);
-        label.setFont(Font.font("Verdana", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
+        label.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
         label.setTextFill(Color.web(color));
         label.setWrapText(true);
         return label;
@@ -235,17 +235,17 @@ public class SearchScreen {
             default -> TEXT_MUTED;
         };
         Label badge = new Label(module);
-        badge.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
+        badge.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         badge.setTextFill(Color.web(color));
-        badge.setStyle("-fx-background-color: rgba(255,255,255,0.07); -fx-background-radius: 10; -fx-padding: 3 9 3 9;");
+        badge.setStyle("-fx-background-color: rgba(255,255,255,0.07); -fx-background-radius: 18; -fx-padding: 3 9 3 9;");
         return badge;
     }
 
     private Label statusBadge(String status) {
         Label badge = new Label(status == null ? "-" : status);
-        badge.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
+        badge.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         badge.setTextFill(Color.web(TEXT_WHITE));
-        badge.setStyle("-fx-background-color: rgba(76,175,80,0.15); -fx-background-radius: 10; -fx-padding: 3 9 3 9;");
+        badge.setStyle("-fx-background-color: rgba(228,255,223,0.15); -fx-background-radius: 18; -fx-padding: 3 9 3 9;");
         return badge;
     }
 
@@ -256,3 +256,6 @@ public class SearchScreen {
         return label;
     }
 }
+
+
+

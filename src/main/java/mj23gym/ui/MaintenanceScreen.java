@@ -36,19 +36,19 @@ import java.util.Optional;
  * Module 10 - Maintenance: backup, restore, and system tool management.
  */
 public class MaintenanceScreen {
-    static final String BG_MAIN     = "#1a1a2e";
-    static final String BG_CARD     = "#1e2a3a";
-    static final String BG_ROW_ALT  = "#253545";
-    static final String BG_SIDEBAR  = "#0d1b2a";
-    static final String ACCENT      = "#e63946";
-    static final String ACCENT_DARK = "#c0303b";
-    static final String TEXT_WHITE  = "#ffffff";
-    static final String TEXT_MUTED  = "#b0bec5";
-    static final String TEXT_DIM    = "#607080";
-    static final String BORDER      = "#253545";
-    static final String SUCCESS     = "#4caf50";
-    static final String WARNING     = "#ff9800";
-    static final String INFO        = "#2196f3";
+    static final String BG_MAIN     = "#F2F4F8";
+    static final String BG_CARD     = "#F8F9FC";
+    static final String BG_ROW_ALT  = "#EEF2FA";
+    static final String BG_SIDEBAR  = "#E9EDF6";
+    static final String ACCENT      = "#1A1363";
+    static final String ACCENT_DARK = "#332F4F";
+    static final String TEXT_WHITE  = "#1A1363";
+    static final String TEXT_MUTED  = "#77749B";
+    static final String TEXT_DIM    = "#4B4B4B";
+    static final String BORDER      = "#D9DDEA";
+    static final String SUCCESS     = "#2F6F5E";
+    static final String WARNING     = "#8A6D00";
+    static final String INFO        = "#1A1363";
 
     private final MaintenanceDAO dao = new MaintenanceDAO();
     private final VBox backupRows = new VBox(0);
@@ -67,10 +67,10 @@ public class MaintenanceScreen {
         topBar.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
         VBox pg = new VBox(2);
         Text title = new Text("Maintenance");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         title.setFill(Color.web(TEXT_WHITE));
         Text sub = new Text("Back up data, restore saved copies, and manage system tools");
-        sub.setFont(Font.font("Verdana", 11));
+        sub.setFont(Font.font("Poppins", 11));
         sub.setFill(Color.web(TEXT_MUTED));
         pg.getChildren().addAll(title, sub);
         topBar.getChildren().add(pg);
@@ -258,7 +258,7 @@ public class MaintenanceScreen {
         TextArea description = new TextArea(existing != null ? existing.description() : "");
         description.setPrefRowCount(4);
         description.setWrapText(true);
-        description.setStyle("-fx-control-inner-background: " + BG_CARD + "; -fx-text-fill: " + TEXT_WHITE + "; -fx-font-family: Verdana;");
+        description.setStyle("-fx-control-inner-background: " + BG_CARD + "; -fx-text-fill: " + TEXT_WHITE + "; -fx-font-family: Poppins;");
 
         box.getChildren().addAll(
             labeled("TOOL NAME", name),
@@ -302,17 +302,17 @@ public class MaintenanceScreen {
     private VBox sectionCard(String title, String subtitle) {
         VBox card = new VBox(16);
         card.setPadding(new Insets(22));
-        card.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 12; -fx-border-color: " + BORDER + "; -fx-border-radius: 12; -fx-border-width: 1;");
+        card.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 22; -fx-border-color: " + BORDER + "; -fx-border-radius: 22; -fx-border-width: 1;");
         DropShadow ds = new DropShadow();
         ds.setColor(Color.web("#000", 0.25));
         ds.setRadius(10);
         ds.setOffsetY(4);
         card.setEffect(ds);
         Text t = new Text(title);
-        t.setFont(Font.font("Verdana", FontWeight.BOLD, 14));
+        t.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
         t.setFill(Color.web(TEXT_WHITE));
         Text s = new Text(subtitle);
-        s.setFont(Font.font("Verdana", 11));
+        s.setFont(Font.font("Poppins", 11));
         s.setFill(Color.web(TEXT_MUTED));
         card.getChildren().addAll(t, s);
         return card;
@@ -326,7 +326,7 @@ public class MaintenanceScreen {
 
     private Text bodyText(String value) {
         Text text = new Text(value);
-        text.setFont(Font.font("Verdana", 11));
+        text.setFont(Font.font("Poppins", 11));
         text.setFill(Color.web(TEXT_MUTED));
         text.setWrappingWidth(440);
         return text;
@@ -340,7 +340,7 @@ public class MaintenanceScreen {
         HBox.setHgrow(grid, Priority.ALWAYS);
         for (int i = 0; i < headers.length; i++) {
             Label h = new Label(headers[i].toUpperCase());
-            h.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+            h.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
             h.setTextFill(Color.web(TEXT_DIM));
             grid.add(h, i, 0);
         }
@@ -369,7 +369,7 @@ public class MaintenanceScreen {
 
     private Label cell(String text, String color, boolean bold) {
         Label label = new Label(text == null ? "" : text);
-        label.setFont(Font.font("Verdana", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
+        label.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
         label.setTextFill(Color.web(color));
         label.setWrapText(true);
         return label;
@@ -384,9 +384,9 @@ public class MaintenanceScreen {
             default -> INFO;
         };
         Label badge = new Label(value);
-        badge.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
+        badge.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         badge.setTextFill(Color.web(color));
-        badge.setStyle("-fx-background-color: rgba(255,255,255,0.07); -fx-background-radius: 10; -fx-padding: 3 9 3 9;");
+        badge.setStyle("-fx-background-color: rgba(255,255,255,0.07); -fx-background-radius: 18; -fx-padding: 3 9 3 9;");
         return badge;
     }
 
@@ -401,33 +401,36 @@ public class MaintenanceScreen {
         Button b = new Button(text);
         b.setPrefHeight(38);
         b.setPadding(new Insets(0, 18, 0, 18));
-        b.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
-        b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;");
-        b.setOnMouseEntered(e -> b.setStyle("-fx-background-color: " + ACCENT_DARK + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;"));
-        b.setOnMouseExited(e -> b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;"));
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;");
+        b.setOnMouseEntered(e -> b.setStyle("-fx-background-color: " + ACCENT_DARK + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;"));
+        b.setOnMouseExited(e -> b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;"));
         return b;
     }
 
     private Button smallButton(String text, String color) {
         Button b = new Button(text);
-        b.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
-        b.setStyle("-fx-background-color: transparent; -fx-border-color: " + color + "; -fx-border-radius: 8; -fx-text-fill: " + color + "; -fx-cursor: hand;");
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        b.setStyle("-fx-background-color: transparent; -fx-border-color: " + color + "; -fx-border-radius: 16; -fx-text-fill: " + color + "; -fx-cursor: hand;");
         return b;
     }
 
     private TextField styledField(String text) {
         TextField field = new TextField(text);
         field.setPrefHeight(40);
-        field.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 8; -fx-background-radius: 8; -fx-text-fill: " + TEXT_WHITE + "; -fx-prompt-text-fill: " + TEXT_DIM + "; -fx-padding: 0 12 0 12; -fx-font-family: Verdana;");
+        field.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 16; -fx-background-radius: 16; -fx-text-fill: " + TEXT_WHITE + "; -fx-prompt-text-fill: " + TEXT_DIM + "; -fx-padding: 0 12 0 12; -fx-font-family: Poppins;");
         return field;
     }
 
     private VBox labeled(String label, javafx.scene.Node input) {
         VBox box = new VBox(6);
         Label l = new Label(label);
-        l.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        l.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         l.setTextFill(Color.web(TEXT_MUTED));
         box.getChildren().addAll(l, input);
         return box;
     }
 }
+
+
+

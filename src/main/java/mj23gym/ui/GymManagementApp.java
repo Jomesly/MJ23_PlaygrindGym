@@ -23,7 +23,7 @@ import mj23gym.dao.PlanDAO;
 import mj23gym.util.DatabaseConnection;
 
 /**
- * MJ23 Playgrind Gym – Main Application Launcher
+ * MJ23 Playgrind Gym  Main Application Launcher
  * Central application that integrates all screens
  * 
  * Technology Stack:
@@ -34,12 +34,12 @@ import mj23gym.util.DatabaseConnection;
  */
 public class GymManagementApp extends Application {
 
-    static final String BG_MAIN      = "#1a1a2e";
-    static final String BG_SIDEBAR   = "#0d1b2a";
-    static final String BG_CARD      = "#1e2a3a";
-    static final String ACCENT       = "#e63946";
-    static final String TEXT_WHITE   = "#ffffff";
-    static final String TEXT_MUTED   = "#b0bec5";
+    static final String BG_MAIN      = "#F2F4F8";
+    static final String BG_SIDEBAR   = "#E9EDF6";
+    static final String BG_CARD      = "#F8F9FC";
+    static final String ACCENT       = "#1A1363";
+    static final String TEXT_WHITE   = "#1A1363";
+    static final String TEXT_MUTED   = "#77749B";
 
     private BorderPane rootPane;
     private StackPane contentArea;
@@ -62,7 +62,7 @@ public class GymManagementApp extends Application {
             System.err.println("[APP WARNING] Could not verify database connection. Some features may not work.");
         }
         
-        primaryStage.setTitle("MJ23 Playgrind Gym – Management System");
+        primaryStage.setTitle("MJ23 Playgrind Gym  Management System");
         primaryStage.setWidth(1200);
         primaryStage.setHeight(720);
         primaryStage.setMinWidth(1000);
@@ -108,7 +108,7 @@ public class GymManagementApp extends Application {
 
         // Top accent bar
         Rectangle topAccent = new Rectangle(230, 5);
-        topAccent.setFill(Color.web(ACCENT));
+        topAccent.setFill(Color.web("#FDEE21"));
 
         // Logo section
         VBox logo = createLogoSection();
@@ -134,7 +134,7 @@ public class GymManagementApp extends Application {
         logo.setAlignment(Pos.CENTER);
 
         Text title = new Text("MJ23\nPLAYGRIND\nGYM");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 14));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
         title.setFill(Color.web(TEXT_WHITE));
 
         logo.getChildren().add(title);
@@ -146,15 +146,15 @@ public class GymManagementApp extends Application {
         menu.setPadding(new javafx.geometry.Insets(0, 10, 0, 10));
 
         String[][] items = {
-            {"🏠", "Dashboard", "dashboard"},
-            {"👥", "Member Management", "members"},
+            {"DB", "Dashboard", "dashboard"},
+            {"MB", "Member Management", "members"},
             {"PL", "Manage Plans", "plans"},
-            {"💳", "Payment & Billing", "payment"},
-            {"📦", "Inventory", "inventory"},
-            {"🏋", "Equipment", "equipment"},
-            {"🛒", "Point of Sale", "pos"},
+            {"PAY", "Payment & Billing", "payment"},
+            {"INV", "Inventory", "inventory"},
+            {"EQ", "Equipment", "equipment"},
+            {"POS", "Point of Sale", "pos"},
             {"SE", "Search", "search"},
-            {"📊", "Reports", "reports"}
+            {"REP", "Reports", "reports"}
         };
 
         for (String[] item : items) {
@@ -179,10 +179,10 @@ public class GymManagementApp extends Application {
                 {"i", "About", "about"}
             }
             : new String[][] {
-            {"👤", "Profile", "profile"},
-            {"⚙", "Settings", "settings"},
-            {"❓", "Help", "help"},
-            {"ℹ", "About", "about"}
+            {"PR", "Profile", "profile"},
+            {"ST", "Settings", "settings"},
+            {"?", "Help", "help"},
+            {"i", "About", "about"}
         };
 
         for (String[] item : items) {
@@ -214,16 +214,16 @@ public class GymManagementApp extends Application {
         avatarBg.setArcHeight(10);
         avatarBg.setFill(Color.web(ACCENT));
         Text avatarInitial = new Text(user.initial());
-        avatarInitial.setFont(Font.font("Verdana", FontWeight.BOLD, 13));
-        avatarInitial.setFill(Color.web(TEXT_WHITE));
+        avatarInitial.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
+        avatarInitial.setFill(Color.WHITE);
         avatar.getChildren().addAll(avatarBg, avatarInitial);
 
         VBox accountText = new VBox(2);
         Text name = new Text(user.displayName());
-        name.setFont(Font.font("Verdana", FontWeight.BOLD, 12));
+        name.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
         name.setFill(Color.web(TEXT_WHITE));
         Text role = new Text(user.role());
-        role.setFont(Font.font("Verdana", 10));
+        role.setFont(Font.font("Poppins", 10));
         role.setFill(Color.web(TEXT_MUTED));
         accountText.getChildren().addAll(name, role);
 
@@ -244,10 +244,10 @@ public class GymManagementApp extends Application {
         button.setStyle(
             "-fx-background-color: " + (hovered ? ACCENT : "transparent") + ";" +
             "-fx-border-color: " + ACCENT + ";" +
-            "-fx-border-radius: 8;" +
-            "-fx-background-radius: 8;" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
             "-fx-text-fill: " + (hovered ? "white" : ACCENT) + ";" +
-            "-fx-font: bold 12 Verdana;" +
+            "-fx-font: bold 12 Poppins;" +
             "-fx-padding: 9 12;" +
             "-fx-cursor: hand;"
         );
@@ -267,7 +267,7 @@ public class GymManagementApp extends Application {
         btn.setStyle(
             "-fx-background-color: transparent;" +
             "-fx-text-fill: " + TEXT_MUTED + ";" +
-            "-fx-font: 12 Verdana;" +
+            "-fx-font: 12 Poppins;" +
             "-fx-padding: 12 16;" +
             "-fx-alignment: CENTER_LEFT;" +
             "-fx-cursor: hand;"
@@ -283,9 +283,9 @@ public class GymManagementApp extends Application {
         // Hover effect
         btn.setOnMouseEntered(e ->
             btn.setStyle(
-                "-fx-background-color: rgba(230,57,70,0.15);" +
+                "-fx-background-color: rgba(26,19,99,0.15);" +
                 "-fx-text-fill: " + TEXT_WHITE + ";" +
-                "-fx-font: bold 12 Verdana;" +
+                "-fx-font: bold 12 Poppins;" +
                 "-fx-padding: 12 16;" +
                 "-fx-alignment: CENTER_LEFT;" +
                 "-fx-cursor: hand;"
@@ -296,7 +296,7 @@ public class GymManagementApp extends Application {
             btn.setStyle(
                 "-fx-background-color: transparent;" +
                 "-fx-text-fill: " + TEXT_MUTED + ";" +
-                "-fx-font: 12 Verdana;" +
+                "-fx-font: 12 Poppins;" +
                 "-fx-padding: 12 16;" +
                 "-fx-alignment: CENTER_LEFT;" +
                 "-fx-cursor: hand;"
@@ -348,11 +348,11 @@ public class GymManagementApp extends Application {
         vbox.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
         Text title = new Text("Access Restricted");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 28));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 28));
         title.setFill(Color.web(TEXT_WHITE));
 
         Label message = new Label("Account registration and verification are available to administrators only.");
-        message.setStyle("-fx-text-fill: " + TEXT_MUTED + "; -fx-font: 14 Verdana;");
+        message.setStyle("-fx-text-fill: " + TEXT_MUTED + "; -fx-font: 14 Poppins;");
 
         vbox.getChildren().addAll(title, message);
         return vbox;
@@ -364,7 +364,7 @@ public class GymManagementApp extends Application {
         vbox.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
         Text title = new Text("Dashboard");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 28));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 28));
         title.setFill(Color.web(TEXT_WHITE));
 
         Text subtitle = new Text("Welcome to MJ23 Playgrind Gym Management System");
@@ -372,7 +372,7 @@ public class GymManagementApp extends Application {
         subtitle.setFill(Color.web(TEXT_MUTED));
 
         Label content = new Label("Dashboard content - All screens are now integrated and working together!");
-        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Arial;");
+        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Poppins;");
 
         vbox.getChildren().addAll(title, subtitle, content);
         return vbox;
@@ -383,10 +383,10 @@ public class GymManagementApp extends Application {
         vbox.setPadding(new javafx.geometry.Insets(30));
         vbox.setStyle("-fx-background-color: " + BG_MAIN + ";");
         Text title = new Text("Member Management");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 28));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 28));
         title.setFill(Color.web(TEXT_WHITE));
         Label content = new Label("Member Management content loaded");
-        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Arial;");
+        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Poppins;");
         vbox.getChildren().addAll(title, content);
         return vbox;
     }
@@ -396,10 +396,10 @@ public class GymManagementApp extends Application {
         vbox.setPadding(new javafx.geometry.Insets(30));
         vbox.setStyle("-fx-background-color: " + BG_MAIN + ";");
         Text title = new Text("Payment & Billing");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 28));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 28));
         title.setFill(Color.web(TEXT_WHITE));
         Label content = new Label("Payment & Billing content loaded");
-        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Arial;");
+        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Poppins;");
         vbox.getChildren().addAll(title, content);
         return vbox;
     }
@@ -409,10 +409,10 @@ public class GymManagementApp extends Application {
         vbox.setPadding(new javafx.geometry.Insets(30));
         vbox.setStyle("-fx-background-color: " + BG_MAIN + ";");
         Text title = new Text("Inventory Management");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 28));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 28));
         title.setFill(Color.web(TEXT_WHITE));
         Label content = new Label("Inventory content loaded");
-        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Arial;");
+        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Poppins;");
         vbox.getChildren().addAll(title, content);
         return vbox;
     }
@@ -422,10 +422,10 @@ public class GymManagementApp extends Application {
         vbox.setPadding(new javafx.geometry.Insets(30));
         vbox.setStyle("-fx-background-color: " + BG_MAIN + ";");
         Text title = new Text("Equipment Management");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 28));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 28));
         title.setFill(Color.web(TEXT_WHITE));
         Label content = new Label("Equipment content loaded");
-        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Arial;");
+        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Poppins;");
         vbox.getChildren().addAll(title, content);
         return vbox;
     }
@@ -435,10 +435,10 @@ public class GymManagementApp extends Application {
         vbox.setPadding(new javafx.geometry.Insets(30));
         vbox.setStyle("-fx-background-color: " + BG_MAIN + ";");
         Text title = new Text("Point of Sale");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 28));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 28));
         title.setFill(Color.web(TEXT_WHITE));
         Label content = new Label("POS content loaded");
-        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Arial;");
+        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Poppins;");
         vbox.getChildren().addAll(title, content);
         return vbox;
     }
@@ -448,10 +448,10 @@ public class GymManagementApp extends Application {
         vbox.setPadding(new javafx.geometry.Insets(30));
         vbox.setStyle("-fx-background-color: " + BG_MAIN + ";");
         Text title = new Text("Reports");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 28));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 28));
         title.setFill(Color.web(TEXT_WHITE));
         Label content = new Label("Reports content loaded");
-        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Arial;");
+        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Poppins;");
         vbox.getChildren().addAll(title, content);
         return vbox;
     }
@@ -461,10 +461,10 @@ public class GymManagementApp extends Application {
         vbox.setPadding(new javafx.geometry.Insets(30));
         vbox.setStyle("-fx-background-color: " + BG_MAIN + ";");
         Text title = new Text("Settings");
-        title.setFont(Font.font("Georgia", FontWeight.BOLD, 28));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 28));
         title.setFill(Color.web(TEXT_WHITE));
         Label content = new Label("Settings content loaded");
-        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Arial;");
+        content.setStyle("-fx-text-fill: " + TEXT_WHITE + "; -fx-font: 14 Poppins;");
         vbox.getChildren().addAll(title, content);
         return vbox;
     }
@@ -474,3 +474,6 @@ public class GymManagementApp extends Application {
         LoginScreen.launch(LoginScreen.class, args);
     }
 }
+
+
+
