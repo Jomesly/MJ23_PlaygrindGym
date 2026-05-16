@@ -27,19 +27,19 @@ import java.util.List;
  * Module 11 - Search: find records across members, inventory, and transactions.
  */
 public class SearchScreen {
-    static final String BG_MAIN     = "#F2F4F8";
-    static final String BG_CARD     = "#F8F9FC";
-    static final String BG_ROW_ALT  = "#EEF2FA";
-    static final String BG_SIDEBAR  = "#E9EDF6";
-    static final String ACCENT      = "#1A1363";
-    static final String ACCENT_DARK = "#332F4F";
-    static final String TEXT_WHITE  = "#1A1363";
-    static final String TEXT_MUTED  = "#77749B";
-    static final String TEXT_DIM    = "#4B4B4B";
-    static final String BORDER      = "#D9DDEA";
-    static final String SUCCESS     = "#2F6F5E";
-    static final String WARNING     = "#8A6D00";
-    static final String INFO        = "#1A1363";
+    static final String BG_MAIN     = ModernDesignSystem.BG_LIGHT;
+    static final String BG_CARD     = ModernDesignSystem.CARD_BG;
+    static final String BG_ROW_ALT  = ModernDesignSystem.HOVER_EFFECT;
+    static final String BG_SIDEBAR  = ModernDesignSystem.SIDEBAR_BG;
+    static final String ACCENT      = ModernDesignSystem.PRIMARY;
+    static final String ACCENT_DARK = ModernDesignSystem.PRIMARY_DARK;
+    static final String TEXT_WHITE  = ModernDesignSystem.PRIMARY;
+    static final String TEXT_MUTED  = ModernDesignSystem.TEXT_MUTED;
+    static final String TEXT_DIM    = ModernDesignSystem.DARK_GRAY;
+    static final String BORDER      = ModernDesignSystem.BORDER_COLOR;
+    static final String SUCCESS     = ModernDesignSystem.SUCCESS;
+    static final String WARNING     = ModernDesignSystem.ACCENT_YELLOW;
+    static final String INFO        = ModernDesignSystem.PRIMARY;
 
     private final SearchDAO dao = new SearchDAO();
     private final VBox resultRows = new VBox(0);

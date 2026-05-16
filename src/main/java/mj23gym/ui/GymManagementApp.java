@@ -34,12 +34,13 @@ import mj23gym.util.DatabaseConnection;
  */
 public class GymManagementApp extends Application {
 
-    static final String BG_MAIN      = "#F2F4F8";
-    static final String BG_SIDEBAR   = "#E9EDF6";
-    static final String BG_CARD      = "#F8F9FC";
-    static final String ACCENT       = "#1A1363";
-    static final String TEXT_WHITE   = "#1A1363";
-    static final String TEXT_MUTED   = "#77749B";
+    // Use modern design system colors
+    private static final String BG_MAIN      = ModernDesignSystem.BG_LIGHT;
+    private static final String BG_SIDEBAR   = ModernDesignSystem.SIDEBAR_BG;
+    private static final String BG_CARD      = ModernDesignSystem.CARD_BG;
+    private static final String ACCENT       = ModernDesignSystem.PRIMARY;
+    private static final String TEXT_WHITE   = ModernDesignSystem.PRIMARY;
+    private static final String TEXT_MUTED   = ModernDesignSystem.TEXT_MUTED;
 
     private BorderPane rootPane;
     private StackPane contentArea;
@@ -103,12 +104,15 @@ public class GymManagementApp extends Application {
         sidebar.setPrefWidth(230);
         sidebar.setMinWidth(230);
         sidebar.setMaxWidth(230);
-        sidebar.setStyle("-fx-background-color: " + BG_SIDEBAR + ";");
+        sidebar.setStyle(
+            "-fx-background-color: " + BG_SIDEBAR + ";" +
+            "-fx-padding: 0;"
+        );
         sidebar.setSpacing(0);
 
-        // Top accent bar
-        Rectangle topAccent = new Rectangle(230, 5);
-        topAccent.setFill(Color.web("#FDEE21"));
+        // Top accent bar with modern styling
+        Rectangle topAccent = new Rectangle(230, 6);
+        topAccent.setFill(Color.web(ModernDesignSystem.ACCENT_YELLOW));
 
         // Logo section
         VBox logo = createLogoSection();
@@ -130,12 +134,13 @@ public class GymManagementApp extends Application {
 
     private VBox createLogoSection() {
         VBox logo = new VBox(8);
-        logo.setPadding(new javafx.geometry.Insets(20));
+        logo.setPadding(new Insets(20, 16, 16, 16));
         logo.setAlignment(Pos.CENTER);
+        logo.setStyle("-fx-background-color: transparent;");
 
         Text title = new Text("MJ23\nPLAYGRIND\nGYM");
-        title.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
-        title.setFill(Color.web(TEXT_WHITE));
+        title.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 13));
+        title.setFill(Color.web(ModernDesignSystem.PRIMARY));
 
         logo.getChildren().add(title);
         return logo;
@@ -199,8 +204,10 @@ public class GymManagementApp extends Application {
         VBox footer = new VBox(10);
         footer.setPadding(new Insets(14, 14, 16, 14));
         footer.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-border-color: rgba(255,255,255,0.08) transparent transparent transparent;" +
+            "-fx-background-color: " + ModernDesignSystem.CARD_BG + ";" +
+            "-fx-background-radius: " + ModernDesignSystem.RADIUS_MEDIUM + ";" +
+            "-fx-padding: 14 14 16 14;" +
+            "-fx-border-color: " + ModernDesignSystem.BORDER_COLOR + " transparent transparent transparent;" +
             "-fx-border-width: 1 0 0 0;"
         );
 
@@ -208,32 +215,66 @@ public class GymManagementApp extends Application {
         accountRow.setAlignment(Pos.CENTER_LEFT);
 
         StackPane avatar = new StackPane();
-        avatar.setPrefSize(34, 34);
-        Rectangle avatarBg = new Rectangle(34, 34);
+        avatar.setPrefSize(36, 36);
+        Rectangle avatarBg = new Rectangle(36, 36);
         avatarBg.setArcWidth(10);
         avatarBg.setArcHeight(10);
-        avatarBg.setFill(Color.web(ACCENT));
+        avatarBg.setFill(Color.web(ModernDesignSystem.PRIMARY));
+        avatarBg.setEffect(ModernDesignSystem.createElevation2());
         Text avatarInitial = new Text(user.initial());
-        avatarInitial.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
+        avatarInitial.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 14));
         avatarInitial.setFill(Color.WHITE);
         avatar.getChildren().addAll(avatarBg, avatarInitial);
 
         VBox accountText = new VBox(2);
         Text name = new Text(user.displayName());
-        name.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
-        name.setFill(Color.web(TEXT_WHITE));
+        name.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 11));
+        name.setFill(Color.web(ModernDesignSystem.PRIMARY));
         Text role = new Text(user.role());
-        role.setFont(Font.font("Poppins", 10));
-        role.setFill(Color.web(TEXT_MUTED));
+        role.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, 9));
+        role.setFill(Color.web(ModernDesignSystem.TEXT_MUTED));
         accountText.getChildren().addAll(name, role);
 
         accountRow.getChildren().addAll(avatar, accountText);
 
         Button logoutButton = new Button("Logout");
         logoutButton.setMaxWidth(Double.MAX_VALUE);
-        styleLogoutButton(logoutButton, false);
-        logoutButton.setOnMouseEntered(e -> styleLogoutButton(logoutButton, true));
-        logoutButton.setOnMouseExited(e -> styleLogoutButton(logoutButton, false));
+        logoutButton.setStyle(
+            "-fx-background-color: transparent;" +
+            "-fx-border-color: " + ModernDesignSystem.PRIMARY + ";" +
+            "-fx-border-radius: " + ModernDesignSystem.RADIUS_SMALL + ";" +
+            "-fx-background-radius: " + ModernDesignSystem.RADIUS_SMALL + ";" +
+            "-fx-text-fill: " + ModernDesignSystem.PRIMARY + ";" +
+            "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
+            "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
+            "-fx-font-weight: bold;" +
+            "-fx-padding: 9 12;" +
+            "-fx-cursor: hand;"
+        );
+        logoutButton.setOnMouseEntered(e -> logoutButton.setStyle(
+            "-fx-background-color: " + ModernDesignSystem.PRIMARY + ";" +
+            "-fx-border-color: " + ModernDesignSystem.PRIMARY + ";" +
+            "-fx-border-radius: " + ModernDesignSystem.RADIUS_SMALL + ";" +
+            "-fx-background-radius: " + ModernDesignSystem.RADIUS_SMALL + ";" +
+            "-fx-text-fill: " + ModernDesignSystem.WHITE + ";" +
+            "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
+            "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
+            "-fx-font-weight: bold;" +
+            "-fx-padding: 9 12;" +
+            "-fx-cursor: hand;"
+        ));
+        logoutButton.setOnMouseExited(e -> logoutButton.setStyle(
+            "-fx-background-color: transparent;" +
+            "-fx-border-color: " + ModernDesignSystem.PRIMARY + ";" +
+            "-fx-border-radius: " + ModernDesignSystem.RADIUS_SMALL + ";" +
+            "-fx-background-radius: " + ModernDesignSystem.RADIUS_SMALL + ";" +
+            "-fx-text-fill: " + ModernDesignSystem.PRIMARY + ";" +
+            "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
+            "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
+            "-fx-font-weight: bold;" +
+            "-fx-padding: 9 12;" +
+            "-fx-cursor: hand;"
+        ));
         logoutButton.setOnAction(e -> logout());
 
         footer.getChildren().addAll(accountRow, logoutButton);
@@ -241,16 +282,7 @@ public class GymManagementApp extends Application {
     }
 
     private void styleLogoutButton(Button button, boolean hovered) {
-        button.setStyle(
-            "-fx-background-color: " + (hovered ? ACCENT : "transparent") + ";" +
-            "-fx-border-color: " + ACCENT + ";" +
-            "-fx-border-radius: 16;" +
-            "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + (hovered ? "white" : ACCENT) + ";" +
-            "-fx-font: bold 12 Poppins;" +
-            "-fx-padding: 9 12;" +
-            "-fx-cursor: hand;"
-        );
+        // Method removed - styling now handled inline in createUserFooter()
     }
 
     private void logout() {
@@ -266,9 +298,10 @@ public class GymManagementApp extends Application {
         Button btn = new Button(icon + "  " + label);
         btn.setStyle(
             "-fx-background-color: transparent;" +
-            "-fx-text-fill: " + TEXT_MUTED + ";" +
-            "-fx-font: 12 Poppins;" +
-            "-fx-padding: 12 16;" +
+            "-fx-text-fill: " + ModernDesignSystem.TEXT_MUTED + ";" +
+            "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
+            "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
+            "-fx-padding: " + ModernDesignSystem.SPACING_M + " " + ModernDesignSystem.SPACING_L + ";" +
             "-fx-alignment: CENTER_LEFT;" +
             "-fx-cursor: hand;"
         );
@@ -280,24 +313,28 @@ public class GymManagementApp extends Application {
             updateNavButtonStyles();
         });
 
-        // Hover effect
+        // Hover effect with modern styling
         btn.setOnMouseEntered(e ->
             btn.setStyle(
-                "-fx-background-color: rgba(26,19,99,0.15);" +
-                "-fx-text-fill: " + TEXT_WHITE + ";" +
-                "-fx-font: bold 12 Poppins;" +
-                "-fx-padding: 12 16;" +
+                "-fx-background-color: " + ModernDesignSystem.HOVER_EFFECT + ";" +
+                "-fx-text-fill: " + ModernDesignSystem.PRIMARY + ";" +
+                "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
+                "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
+                "-fx-font-weight: bold;" +
+                "-fx-padding: " + ModernDesignSystem.SPACING_M + " " + ModernDesignSystem.SPACING_L + ";" +
                 "-fx-alignment: CENTER_LEFT;" +
-                "-fx-cursor: hand;"
+                "-fx-cursor: hand;" +
+                "-fx-background-radius: " + ModernDesignSystem.RADIUS_SMALL + ";"
             )
         );
 
         btn.setOnMouseExited(e ->
             btn.setStyle(
                 "-fx-background-color: transparent;" +
-                "-fx-text-fill: " + TEXT_MUTED + ";" +
-                "-fx-font: 12 Poppins;" +
-                "-fx-padding: 12 16;" +
+                "-fx-text-fill: " + ModernDesignSystem.TEXT_MUTED + ";" +
+                "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
+                "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
+                "-fx-padding: " + ModernDesignSystem.SPACING_M + " " + ModernDesignSystem.SPACING_L + ";" +
                 "-fx-alignment: CENTER_LEFT;" +
                 "-fx-cursor: hand;"
             )

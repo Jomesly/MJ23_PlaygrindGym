@@ -50,20 +50,20 @@ import mj23gym.dao.SearchDAO;
  */
 public class DashboardScreen extends Application {
 
-    //  Palette 
-    static final String BG_MAIN      = "#F2F4F8";
-    static final String BG_SIDEBAR   = "#E9EDF6";
-    static final String BG_CARD      = "#F8F9FC";
-    static final String BG_ROW_ALT   = "#EEF2FA";
-    static final String ACCENT       = "#1A1363";
-    static final String ACCENT_DARK  = "#332F4F";
-    static final String TEXT_WHITE   = "#1A1363";
-    static final String TEXT_MUTED   = "#77749B";
-    static final String TEXT_DIM     = "#4B4B4B";
-    static final String BORDER       = "#D9DDEA";
-    static final String SUCCESS      = "#2F6F5E";
-    static final String WARNING      = "#8A6D00";
-    static final String INFO         = "#1A1363";
+    // Use modern design system colors
+    static final String BG_MAIN      = ModernDesignSystem.BG_LIGHT;
+    static final String BG_SIDEBAR   = ModernDesignSystem.SIDEBAR_BG;
+    static final String BG_CARD      = ModernDesignSystem.CARD_BG;
+    static final String BG_ROW_ALT   = ModernDesignSystem.HOVER_EFFECT;
+    static final String ACCENT       = ModernDesignSystem.PRIMARY;
+    static final String ACCENT_DARK  = ModernDesignSystem.PRIMARY_DARK;
+    static final String TEXT_WHITE   = ModernDesignSystem.PRIMARY;
+    static final String TEXT_MUTED   = ModernDesignSystem.TEXT_MUTED;
+    static final String TEXT_DIM     = ModernDesignSystem.DARK_GRAY;
+    static final String BORDER       = ModernDesignSystem.BORDER_COLOR;
+    static final String SUCCESS      = ModernDesignSystem.SUCCESS;
+    static final String WARNING      = ModernDesignSystem.ACCENT_YELLOW;
+    static final String INFO         = ModernDesignSystem.PRIMARY;
 
     private String activeMenu = "Dashboard";
 
@@ -105,11 +105,14 @@ public class DashboardScreen extends Application {
         sidebar.setPrefWidth(230);
         sidebar.setMinWidth(230);
         sidebar.setMaxWidth(230);
-        sidebar.setStyle("-fx-background-color: " + BG_SIDEBAR + ";");
+        sidebar.setStyle(
+            "-fx-background-color: " + BG_SIDEBAR + ";" +
+            "-fx-padding: 0;"
+        );
 
-        // Top red accent
-        Rectangle topAccent = new Rectangle(230, 5);
-        topAccent.setFill(Color.web("#FDEE21"));
+        // Top accent with modern styling
+        Rectangle topAccent = new Rectangle(230, 6);
+        topAccent.setFill(Color.web(ModernDesignSystem.ACCENT_YELLOW));
 
         // Logo area
         HBox logoArea = new HBox(12);
@@ -119,21 +122,22 @@ public class DashboardScreen extends Application {
         StackPane logoBadge = new StackPane();
         logoBadge.setPrefSize(42, 42);
         Rectangle logoBg = new Rectangle(42, 42);
-        logoBg.setArcWidth(10);
-        logoBg.setArcHeight(10);
-        logoBg.setFill(Color.web(ACCENT));
+        logoBg.setArcWidth(ModernDesignSystem.RADIUS_MEDIUM);
+        logoBg.setArcHeight(ModernDesignSystem.RADIUS_MEDIUM);
+        logoBg.setFill(Color.web(ModernDesignSystem.PRIMARY));
+        logoBg.setEffect(ModernDesignSystem.createElevation2());
         Text logoTxt = new Text("MJ");
-        logoTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 16));
+        logoTxt.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 16));
         logoTxt.setFill(Color.WHITE);
         logoBadge.getChildren().addAll(logoBg, logoTxt);
 
         VBox logoText = new VBox(1);
         Text gymName = new Text("MJ23 PLAYGRIND");
-        gymName.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
-        gymName.setFill(Color.web(TEXT_WHITE));
+        gymName.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 11));
+        gymName.setFill(Color.web(ModernDesignSystem.PRIMARY));
         Text gymSub = new Text("GYM");
-        gymSub.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
-        gymSub.setFill(Color.web(ACCENT));
+        gymSub.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 11));
+        gymSub.setFill(Color.web(ModernDesignSystem.ACCENT_YELLOW));
         logoText.getChildren().addAll(gymName, gymSub);
 
         logoArea.getChildren().addAll(logoBadge, logoText);

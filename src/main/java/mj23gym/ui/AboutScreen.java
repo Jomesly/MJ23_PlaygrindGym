@@ -20,16 +20,16 @@ import javafx.util.Duration;
  * About / Info page for the MJ23 Playgrind Gym system.
  */
 public class AboutScreen {
-    static final String BG_MAIN     = "#F2F4F8";
-    static final String BG_CARD     = "#F8F9FC";
-    static final String ACCENT      = "#1A1363";
-    static final String TEXT_WHITE  = "#1A1363";
-    static final String TEXT_MUTED  = "#77749B";
-    static final String TEXT_DIM    = "#4B4B4B";
-    static final String BORDER      = "#D9DDEA";
-    static final String SUCCESS     = "#2F6F5E";
-    static final String INFO        = "#1A1363";
-    static final String WARNING     = "#8A6D00";
+    static final String BG_MAIN     = ModernDesignSystem.BG_LIGHT;
+    static final String BG_CARD     = ModernDesignSystem.CARD_BG;
+    static final String ACCENT      = ModernDesignSystem.PRIMARY;
+    static final String TEXT_WHITE  = ModernDesignSystem.PRIMARY;
+    static final String TEXT_MUTED  = ModernDesignSystem.TEXT_MUTED;
+    static final String TEXT_DIM    = ModernDesignSystem.DARK_GRAY;
+    static final String BORDER      = ModernDesignSystem.BORDER_COLOR;
+    static final String SUCCESS     = ModernDesignSystem.SUCCESS;
+    static final String INFO        = ModernDesignSystem.PRIMARY;
+    static final String WARNING     = ModernDesignSystem.ACCENT_YELLOW;
 
     public VBox buildContent() {
         VBox content = new VBox(0);

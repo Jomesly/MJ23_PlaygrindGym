@@ -50,18 +50,18 @@ import mj23gym.dao.UserDAO;
  */
 public class LoginScreen extends Application {
 
-    //  Palette 
-    static final String BG_MAIN      = "#F2F4F8";
-    static final String BG_DARKER    = "#E9EDF6";
-    static final String BG_CARD      = "#F8F9FC";
-    static final String ACCENT       = "#1A1363";
-    static final String ACCENT_DARK  = "#332F4F";
-    static final String FIELD_BG     = "#FFFFFF";
-    static final String FIELD_BORDER = "#E4FFDF";
-    static final String FIELD_FOCUS  = "#1A1363";
-    static final String TEXT_WHITE   = "#1A1363";
-    static final String TEXT_MUTED   = "#77749B";
-    static final String TEXT_DIM     = "#4B4B4B";
+    // Use modern design system colors
+    private static final String BG_MAIN      = ModernDesignSystem.BG_LIGHT;
+    private static final String BG_DARKER    = ModernDesignSystem.SIDEBAR_BG;
+    private static final String BG_CARD      = ModernDesignSystem.CARD_BG;
+    private static final String ACCENT       = ModernDesignSystem.PRIMARY;
+    private static final String ACCENT_DARK  = ModernDesignSystem.PRIMARY_DARK;
+    private static final String FIELD_BG     = ModernDesignSystem.WHITE;
+    private static final String FIELD_BORDER = ModernDesignSystem.SUCCESS;
+    private static final String FIELD_FOCUS  = ModernDesignSystem.PRIMARY;
+    private static final String TEXT_WHITE   = ModernDesignSystem.PRIMARY;
+    private static final String TEXT_MUTED   = ModernDesignSystem.TEXT_MUTED;
+    private static final String TEXT_DIM     = ModernDesignSystem.DARK_GRAY;
 
     @Override
     public void start(Stage stage) {
@@ -95,20 +95,17 @@ public class LoginScreen extends Application {
         badge.setPrefSize(96, 96);
         badge.setMaxSize(96, 96);
         Rectangle badgeBg = new Rectangle(96, 96);
-        badgeBg.setArcWidth(18);
-        badgeBg.setArcHeight(18);
-        badgeBg.setFill(Color.web(ACCENT));
-        DropShadow glow = new DropShadow();
-        glow.setColor(Color.web(ACCENT, 0.55));
-        glow.setRadius(22);
-        badgeBg.setEffect(glow);
+        badgeBg.setArcWidth(ModernDesignSystem.RADIUS_LARGE);
+        badgeBg.setArcHeight(ModernDesignSystem.RADIUS_LARGE);
+        badgeBg.setFill(Color.web(ModernDesignSystem.PRIMARY));
+        badgeBg.setEffect(ModernDesignSystem.createElevation4());
         VBox badgeWords = new VBox(-6);
         badgeWords.setAlignment(Pos.CENTER);
         Text mj = new Text("MJ");
-        mj.setFont(Font.font("Poppins", FontWeight.BOLD, 36));
+        mj.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 36));
         mj.setFill(Color.WHITE);
         Text t23 = new Text("23");
-        t23.setFont(Font.font("Poppins", FontWeight.BOLD, 15));
+        t23.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 15));
         t23.setFill(Color.web("#ffffff", 0.80));
         badgeWords.getChildren().addAll(mj, t23);
         badge.getChildren().addAll(badgeBg, badgeWords);
@@ -176,28 +173,24 @@ public class LoginScreen extends Application {
         card.setPadding(new Insets(38, 38, 38, 38));
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 24;" +
-            "-fx-border-color: " + FIELD_BORDER + ";" +
-            "-fx-border-radius: 24;" +
-            "-fx-border-width: 1;"
+            "-fx-background-radius: " + ModernDesignSystem.RADIUS_LARGE + ";" +
+            "-fx-border-color: " + ModernDesignSystem.BORDER_COLOR + ";" +
+            "-fx-border-radius: " + ModernDesignSystem.RADIUS_LARGE + ";" +
+            "-fx-border-width: 1.5;"
         );
-        DropShadow cardShadow = new DropShadow();
-        cardShadow.setColor(Color.web("#000000", 0.55));
-        cardShadow.setRadius(32);
-        cardShadow.setOffsetY(14);
-        card.setEffect(cardShadow);
+        card.setEffect(ModernDesignSystem.createElevation4());
 
         // Card header
         Text title = new Text("Sign In");
-        title.setFont(Font.font("Poppins", FontWeight.BOLD, 26));
+        title.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 26));
         title.setFill(Color.web(TEXT_WHITE));
         Text subtitle = new Text("Enter your credentials to continue");
-        subtitle.setFont(Font.font("Poppins", 11));
+        subtitle.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, 11));
         subtitle.setFill(Color.web(TEXT_MUTED));
         VBox cardHeader = new VBox(4, title, subtitle);
 
         Rectangle accentUnderline = new Rectangle(48, 3);
-        accentUnderline.setFill(Color.web(ACCENT));
+        accentUnderline.setFill(Color.web(ModernDesignSystem.ACCENT_YELLOW));
         accentUnderline.setArcWidth(3);
         accentUnderline.setArcHeight(3);
 
@@ -210,37 +203,33 @@ public class LoginScreen extends Application {
 
         // Forgot link
         Hyperlink forgot = new Hyperlink("Forgot Password?");
-        forgot.setFont(Font.font("Poppins", 10));
-        forgot.setTextFill(Color.web(ACCENT));
+        forgot.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, 10));
+        forgot.setTextFill(Color.web(ModernDesignSystem.ACCENT_YELLOW));
         forgot.setBorder(Border.EMPTY);
         forgot.setPadding(Insets.EMPTY);
-        forgot.setOnMouseEntered(e -> forgot.setTextFill(Color.web(ACCENT_DARK)));
-        forgot.setOnMouseExited(e -> forgot.setTextFill(Color.web(ACCENT)));
+        forgot.setOnMouseEntered(e -> forgot.setTextFill(Color.web(ModernDesignSystem.ACCENT_YELLOW_LT)));
+        forgot.setOnMouseExited(e -> forgot.setTextFill(Color.web(ModernDesignSystem.ACCENT_YELLOW)));
         forgot.setOnAction(e -> showForgotDialog(stage));
         HBox forgotRow = new HBox(forgot);
         forgotRow.setAlignment(Pos.CENTER_RIGHT);
 
         // Message label
         Label msgLbl = new Label();
-        msgLbl.setFont(Font.font("Poppins", 11));
-        msgLbl.setTextFill(Color.web(ACCENT));
+        msgLbl.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, 11));
+        msgLbl.setTextFill(Color.web(ModernDesignSystem.PRIMARY));
         msgLbl.setWrapText(true);
         msgLbl.setMaxWidth(Double.MAX_VALUE);
         msgLbl.setVisible(false);
         msgLbl.setPadding(new Insets(8, 12, 8, 12));
         msgLbl.setStyle(
-            "-fx-background-color: rgba(26,19,99,0.12);" +
-            "-fx-background-radius: 7;"
+            "-fx-background-color: " + ModernDesignSystem.SUCCESS + ";" +
+            "-fx-background-radius: " + ModernDesignSystem.RADIUS_SMALL + ";"
         );
 
         // Login button
-        Button loginBtn = new Button("LOGIN");
+        Button loginBtn = ModernDesignSystem.createPrimaryButton("LOGIN");
         loginBtn.setMaxWidth(Double.MAX_VALUE);
         loginBtn.setPrefHeight(46);
-        loginBtn.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
-        styleBtn(loginBtn, false);
-        loginBtn.setOnMouseEntered(e -> styleBtn(loginBtn, true));
-        loginBtn.setOnMouseExited(e -> styleBtn(loginBtn, false));
 
         // Login action
         Runnable doLogin = () -> {
@@ -339,8 +328,8 @@ public class LoginScreen extends Application {
     private VBox buildFieldGroup(String label, String prompt, boolean isPass) {
         VBox g = new VBox(7);
         Label lbl = new Label(label);
-        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
-        lbl.setTextFill(Color.web(TEXT_MUTED));
+        lbl.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 10));
+        lbl.setTextFill(Color.web(ModernDesignSystem.TEXT_MUTED));
 
         TextField f = isPass ? new PasswordField() : new TextField();
         f.setPromptText(prompt);
@@ -353,37 +342,33 @@ public class LoginScreen extends Application {
 
     private void fieldStyle(TextField f, boolean focused) {
         f.setStyle(
-            "-fx-background-color: " + FIELD_BG + ";" +
-            "-fx-border-color: " + (focused ? FIELD_FOCUS : FIELD_BORDER) + ";" +
-            "-fx-border-radius: 16;" +
-            "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
-            "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
+            "-fx-background-color: " + ModernDesignSystem.WHITE + ";" +
+            "-fx-border-color: " + (focused ? ModernDesignSystem.PRIMARY : ModernDesignSystem.BORDER_COLOR) + ";" +
+            "-fx-border-radius: " + ModernDesignSystem.RADIUS_MEDIUM + ";" +
+            "-fx-background-radius: " + ModernDesignSystem.RADIUS_MEDIUM + ";" +
+            "-fx-border-width: " + (focused ? "2" : "1.5") + ";" +
+            "-fx-text-fill: " + ModernDesignSystem.DARK_GRAY + ";" +
+            "-fx-prompt-text-fill: " + ModernDesignSystem.TEXT_MUTED + ";" +
             "-fx-padding: 0 14 0 14;" +
-            "-fx-font-family: Poppins;" +
-            "-fx-font-size: 13;"
+            "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
+            "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
+            "-fx-effect: " + (focused ? 
+                "dropshadow(gaussian, rgba(26, 19, 99, 0.12), 8, 0.0, 0, 2)" :
+                "dropshadow(gaussian, rgba(26, 19, 99, 0.05), 4, 0.0, 0, 1)") + ";"
         );
     }
 
     private void styleBtn(Button b, boolean hovered) {
-        b.setStyle(
-            "-fx-background-color: " + (hovered ? ACCENT_DARK : ACCENT) + ";" +
-            "-fx-text-fill: white;" +
-            "-fx-background-radius: 16;" +
-            "-fx-cursor: hand;" +
-            "-fx-font-family: Poppins;" +
-            "-fx-font-weight: bold;" +
-            "-fx-font-size: 13;"
-        );
+        // Method removed - use ModernDesignSystem.createPrimaryButton instead
     }
 
     private void showMsg(Label l, String msg, boolean success) {
         l.setText(msg);
-        l.setTextFill(success ? Color.web("#4B4B4B") : Color.web(ACCENT));
+        l.setTextFill(success ? Color.web(ModernDesignSystem.DARK_GRAY) : Color.web(ModernDesignSystem.PRIMARY));
         l.setStyle(
             "-fx-background-color: " + (success
-                ? "rgba(228,255,223,0.12)" : "rgba(26,19,99,0.12)") + ";" +
-            "-fx-background-radius: 7;"
+                ? ModernDesignSystem.SUCCESS : ModernDesignSystem.HOVER_EFFECT) + ";" +
+            "-fx-background-radius: " + ModernDesignSystem.RADIUS_SMALL + ";"
         );
         l.setVisible(true);
     }
