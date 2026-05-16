@@ -370,10 +370,10 @@ public class DashboardScreen extends Application {
         );
 
         // Notification bell
-        Button notifBtn = new Button("");
+        Button notifBtn = new Button("🔔");
         notifBtn.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
-            "-fx-text-fill: " + TEXT_MUTED + ";" +
+            "-fx-background-color: " + ModernDesignSystem.SIDEBAR_BG + ";" +
+            "-fx-text-fill: " + TEXT_WHITE + ";" +
             "-fx-background-radius: 50%;" +
             "-fx-font-size: 14;" +
             "-fx-cursor: hand;" +
