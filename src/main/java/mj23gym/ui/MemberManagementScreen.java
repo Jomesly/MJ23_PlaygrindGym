@@ -1,12 +1,33 @@
 package mj23gym.ui;
 
+import java.sql.Date;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import javafx.animation.FadeTransition;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.effect.DropShadow;
-import javafx.scene.layout.*;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
@@ -14,16 +35,9 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.animation.FadeTransition;
 import javafx.util.Duration;
-
-import java.sql.Date;
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-
 import mj23gym.dao.MemberDAO;
+import mj23gym.dao.PlanDAO;
 
 /**
  * MJ23 Playgrind Gym – Member Management Screen
@@ -263,12 +277,13 @@ public class MemberManagementScreen extends Application {
         );
 
         ComboBox<String> filterPlan = new ComboBox<>();
-        filterPlan.getItems().addAll("All Plans", "Monthly", "Daily", "Quarterly", "Yearly", "Per Session");
+        filterPlan.getItems().add("All Plans");
+        filterPlan.getItems().addAll(new PlanDAO().activePlanNames());
         filterPlan.setValue("All Plans");
         styleCombo(filterPlan);
 
         ComboBox<String> filterStatus = new ComboBox<>();
-        filterStatus.getItems().addAll("All Status", "Active", "Expired", "Suspended", "Cancelled");
+        filterStatus.getItems().addAll("All Status", "Active", "Expired", "Suspended", "Archived");
         filterStatus.setValue("All Status");
         styleCombo(filterStatus);
 
@@ -316,7 +331,7 @@ public class MemberManagementScreen extends Application {
 
         // Table header row
         String[] headers = {"Member ID","Full Name","Gender","Phone","Plan","Registered","Status","Actions"};
-        double[] colWidths = {8, 16, 7, 12, 10, 11, 9, 14};
+        double[] colWidths = {8, 15, 7, 11, 9, 10, 10, 22};
 
         // Header
         HBox tableHeaderRow = new HBox();
@@ -445,8 +460,9 @@ public class MemberManagementScreen extends Application {
                 }
             }
             if (!"All Status".equals(statusFilter)) {
+                String dbStatus = "Archived".equals(statusFilter) ? "Cancelled" : statusFilter;
                 String s = m.status();
-                if (s == null || !s.equalsIgnoreCase(statusFilter)) {
+                if (s == null || !s.equalsIgnoreCase(dbStatus)) {
                     continue;
                 }
             }
@@ -501,18 +517,31 @@ public class MemberManagementScreen extends Application {
                 );
                 a.showAndWait();
             });
+            viewBtn.setText("View");
+
+            Button editBtn = makeActionBtn("Edit", WARNING);
+            editBtn.setOnAction(e -> showEditMemberDialog(m, fullRefresh));
+
+            Button attendanceBtn = makeActionBtn("In", SUCCESS);
+            attendanceBtn.setOnAction(e -> recordMemberAttendance(dao, m, fullRefresh));
+
+            Button archiveBtn = makeActionBtn("Archive", TEXT_MUTED);
+            archiveBtn.setOnAction(e -> archiveMember(dao, m, fullRefresh));
             Button delBtn = makeActionBtn("🗑", ACCENT);
             delBtn.setOnAction(e -> {
                 Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
                 confirm.setTitle("Delete member");
                 confirm.setHeaderText("Remove " + m.fullName() + "?");
-                confirm.setContentText("This cannot be undone.");
+                confirm.setContentText("This permanently deletes the member after confirming the record exists. Use Archive for inactive members you want to keep.");
                 Optional<ButtonType> res = confirm.showAndWait();
-                if (res.isPresent() && res.get() == ButtonType.OK && dao.delete(m.memberId())) {
+                if (res.isPresent() && res.get() == ButtonType.OK
+                    && dao.findById(m.memberId()).isPresent()
+                    && dao.delete(m.memberId())) {
                     fullRefresh.run();
                 }
             });
-            actions.getChildren().addAll(viewBtn, delBtn);
+            delBtn.setText("Delete");
+            actions.getChildren().addAll(viewBtn, editBtn, attendanceBtn, archiveBtn, delBtn);
             rowGrid.add(actions, 7, 0);
 
             dataRow.getChildren().add(rowGrid);
@@ -526,6 +555,197 @@ public class MemberManagementScreen extends Application {
     }
 
     // ── Helper builders ────────────────────────────────────────────
+    private void showMemberDetails(MemberDAO.MemberRecord m) {
+        Alert a = new Alert(Alert.AlertType.INFORMATION);
+        a.setTitle("Member Details");
+        a.setHeaderText(m.fullName());
+        a.setContentText(
+            "Member ID: " + m.memberCode()
+                + "\nEmail: " + m.email()
+                + "\nPhone: " + m.contactNumber()
+                + "\nAddress: " + m.address()
+                + "\nGender: " + m.gender()
+                + "\nDate of Birth: " + textDate(m.dateOfBirth())
+                + "\nPlan: " + m.membershipType()
+                + "\nStart: " + textDate(m.membershipStartDate())
+                + "\nEnd: " + textDate(m.membershipEndDate())
+                + "\nStatus: " + statusText(m.status())
+                + "\nEmergency Contact: " + safeText(m.emergencyContact())
+                + "\nEmergency Phone: " + safeText(m.emergencyPhone())
+        );
+        a.showAndWait();
+    }
+
+    private void recordMemberAttendance(MemberDAO dao, MemberDAO.MemberRecord m, Runnable fullRefresh) {
+        if ("Cancelled".equalsIgnoreCase(m.status())) {
+            alertErr("Archived members cannot be checked in.");
+            return;
+        }
+        TextInputDialog notesDialog = new TextInputDialog("");
+        notesDialog.setTitle("Member Attendance");
+        notesDialog.setHeaderText("Record check-in for " + m.fullName());
+        notesDialog.setContentText("Notes (optional):");
+        Optional<String> notes = notesDialog.showAndWait();
+        if (notes.isPresent()) {
+            if (dao.recordAttendance(m.memberId(), m.membershipType(), notes.get().trim())) {
+                Alert ok = new Alert(Alert.AlertType.INFORMATION);
+                ok.setTitle("Attendance");
+                ok.setHeaderText("Check-in recorded");
+                ok.setContentText(m.fullName() + " was checked in with the current timestamp.");
+                ok.showAndWait();
+                fullRefresh.run();
+            } else {
+                alertErr("Could not record attendance. Please check the database connection.");
+            }
+        }
+    }
+
+    private void archiveMember(MemberDAO dao, MemberDAO.MemberRecord m, Runnable fullRefresh) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Archive member");
+        confirm.setHeaderText("Archive " + m.fullName() + "?");
+        confirm.setContentText("Archived members are kept in the database with Cancelled status instead of being deleted.");
+        Optional<ButtonType> res = confirm.showAndWait();
+        if (res.isPresent() && res.get() == ButtonType.OK && dao.updateStatus(m.memberId(), "Cancelled")) {
+            fullRefresh.run();
+        }
+    }
+
+    private void showEditMemberDialog(MemberDAO.MemberRecord m, Runnable onSaved) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Update Member");
+        dialog.setResizable(false);
+
+        VBox root = new VBox(14);
+        root.setPadding(new Insets(28));
+        root.setStyle("-fx-background-color: " + BG_CARD + ";");
+        root.setPrefWidth(520);
+
+        Text title = new Text("Update Member Details");
+        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFill(Color.web(TEXT_WHITE));
+
+        TextField firstName = new TextField(m.firstName());
+        TextField lastName = new TextField(m.lastName());
+        TextField phone = new TextField(m.contactNumber());
+        TextField email = new TextField(m.email());
+        TextField address = new TextField(m.address());
+        TextField dob = new TextField(textDate(m.dateOfBirth()));
+        TextField emergencyContact = new TextField(safeText(m.emergencyContact()));
+        TextField emergencyPhone = new TextField(safeText(m.emergencyPhone()));
+
+        ComboBox<String> plan = new ComboBox<>();
+        plan.getItems().addAll(new PlanDAO().activePlanNames());
+        plan.setValue(planValueOrDefault(m.membershipType(), plan.getItems()));
+        styleCombo(plan);
+
+        ComboBox<String> gender = new ComboBox<>();
+        gender.getItems().addAll("M", "F", "Other");
+        gender.setValue(m.gender() != null ? m.gender() : "M");
+        styleCombo(gender);
+
+        ComboBox<String> status = new ComboBox<>();
+        status.getItems().addAll("Active", "Expired", "Suspended", "Cancelled");
+        status.setValue(m.status() != null ? m.status() : "Active");
+        styleCombo(status);
+
+        root.getChildren().addAll(
+            title,
+            labeledField("FIRST NAME", firstName, "Enter first name"),
+            labeledField("LAST NAME", lastName, "Enter last name"),
+            labeledField("PHONE", phone, "09XXXXXXXXX"),
+            labeledField("EMAIL", email, "email@example.com"),
+            labeledField("ADDRESS", address, "Full address"),
+            labeledField("DATE OF BIRTH", dob, "YYYY-MM-DD"),
+            comboBoxField("PLAN", plan),
+            comboBoxField("GENDER", gender),
+            comboBoxField("STATUS", status),
+            labeledField("EMERGENCY CONTACT", emergencyContact, "Contact name"),
+            labeledField("EMERGENCY PHONE", emergencyPhone, "Contact phone")
+        );
+
+        HBox buttons = new HBox(12);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+        Button cancel = new Button("Cancel");
+        cancel.setOnAction(e -> dialog.close());
+        Button save = new Button("Save Changes");
+        save.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;");
+        save.setOnAction(e -> {
+            if (firstName.getText().trim().isEmpty() || lastName.getText().trim().isEmpty()
+                || phone.getText().trim().isEmpty() || email.getText().trim().isEmpty()
+                || address.getText().trim().isEmpty()) {
+                alertErr("First name, last name, phone, email, and address are required.");
+                return;
+            }
+
+            Date dobSql = null;
+            if (!dob.getText().trim().isEmpty()) {
+                try {
+                    dobSql = Date.valueOf(LocalDate.parse(dob.getText().trim()));
+                } catch (Exception ex) {
+                    alertErr("Invalid date of birth. Use YYYY-MM-DD.");
+                    return;
+                }
+            }
+
+            MemberDAO.MemberRecord updated = new MemberDAO.MemberRecord(
+                m.memberId(),
+                m.memberCode(),
+                firstName.getText().trim(),
+                lastName.getText().trim(),
+                phone.getText().trim(),
+                email.getText().trim(),
+                address.getText().trim(),
+                dobSql,
+                gender.getValue(),
+                plan.getValue(),
+                m.membershipStartDate(),
+                m.membershipEndDate(),
+                status.getValue(),
+                emergencyContact.getText().trim(),
+                emergencyPhone.getText().trim()
+            );
+
+            if (new MemberDAO().update(updated)) {
+                dialog.close();
+                onSaved.run();
+            } else {
+                alertErr("Could not update member details.");
+            }
+        });
+        buttons.getChildren().addAll(cancel, save);
+        root.getChildren().add(buttons);
+
+        ScrollPane scroll = new ScrollPane(root);
+        scroll.setFitToWidth(true);
+        scroll.setStyle("-fx-background: " + BG_CARD + ";");
+        dialog.setScene(new Scene(scroll, 560, 680));
+        dialog.showAndWait();
+    }
+
+    private VBox comboBoxField(String label, ComboBox<String> combo) {
+        VBox box = new VBox(6);
+        Label lbl = new Label(label);
+        lbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        lbl.setTextFill(Color.web(TEXT_MUTED));
+        combo.setPrefHeight(40);
+        box.getChildren().addAll(lbl, combo);
+        return box;
+    }
+
+    private String textDate(Date date) {
+        return date != null ? date.toString() : "";
+    }
+
+    private String safeText(String text) {
+        return text != null && !text.isBlank() ? text : "";
+    }
+
+    private String statusText(String status) {
+        return "Cancelled".equalsIgnoreCase(status) ? "Archived" : safeText(status);
+    }
+
     private Label makeCell(String text, String color, boolean bold) {
         Label l = new Label(text);
         l.setFont(Font.font("Verdana", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
@@ -535,12 +755,13 @@ public class MemberManagementScreen extends Application {
     }
 
     private Label makeStatusBadge(String status) {
-        Label b = new Label(status);
+        Label b = new Label(statusText(status));
         b.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
         String c, bg;
         switch (status.toLowerCase()) {
             case "active": c = SUCCESS; bg = "rgba(76,175,80,0.15)"; break;
             case "expired": c = ACCENT; bg = "rgba(230,57,70,0.15)"; break;
+            case "cancelled": c = TEXT_DIM; bg = "rgba(176,190,197,0.12)"; break;
             default: c = TEXT_MUTED; bg = "transparent"; break;
         }
         b.setTextFill(Color.web(c));
@@ -678,8 +899,8 @@ public class MemberManagementScreen extends Application {
         TextField address = new TextField();
         TextField dobField = new TextField();
         ComboBox<String> plan = new ComboBox<>();
-        plan.getItems().addAll("Daily", "Monthly", "Quarterly", "Yearly", "Per Session");
-        plan.setValue("Monthly");
+        plan.getItems().addAll(new PlanDAO().activePlanNames());
+        plan.setValue(planValueOrDefault("Monthly", plan.getItems()));
         styleCombo(plan);
         ComboBox<String> gender = new ComboBox<>();
         gender.getItems().addAll("M", "F", "Other");
@@ -815,13 +1036,24 @@ public class MemberManagementScreen extends Application {
             return start.plusMonths(1);
         }
         return switch (planType) {
-            case "Daily" -> start.plusDays(1);
+            case "Daily", "Per Session" -> start.plusDays(1);
             case "Monthly" -> start.plusMonths(1);
             case "Quarterly" -> start.plusMonths(3);
-            case "Yearly" -> start.plusYears(1);
-            case "Per Session" -> start.plusMonths(1);
+            case "Semi Annual" -> start.plusMonths(6);
+            case "Yearly", "Annual" -> start.plusYears(1);
             default -> start.plusMonths(1);
         };
+    }
+
+    private String planValueOrDefault(String requested, List<String> choices) {
+        String normalized = PlanDAO.normalizePlanName(requested);
+        if (choices.contains(normalized)) {
+            return normalized;
+        }
+        if (choices.contains("Monthly")) {
+            return "Monthly";
+        }
+        return choices.isEmpty() ? "Monthly" : choices.get(0);
     }
 
     private void alertErr(String msg) {

@@ -12,6 +12,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.animation.FadeTransition;
 import javafx.util.Duration;
@@ -185,6 +186,8 @@ public class PaymentScreen extends Application {
         MemberDAO memberDAO = new MemberDAO();
         PaymentDAO paymentDAO = new PaymentDAO();
         final MemberDAO.MemberRecord[] selectedMember = new MemberDAO.MemberRecord[1];
+        final int[] selectedBillingId = {0};
+        final int[] lastPaymentId = {0};
 
         // ── Stats row ──────────────────────────────────────────────
         double today = paymentDAO.todayRevenue();
@@ -280,6 +283,7 @@ public class PaymentScreen extends Application {
                     v.setText("—");
                     v.setTextFill(Color.web(TEXT_WHITE));
                 }
+                selectedBillingId[0] = 0;
                 return;
             }
             infoVals[0].setText("#" + m.memberCode());
@@ -371,6 +375,7 @@ public class PaymentScreen extends Application {
             String q = memberSearch.getText().trim();
             if (q.isEmpty()) {
                 selectedMember[0] = null;
+                selectedBillingId[0] = 0;
                 updateMemberInfo.run();
                 return;
             }
@@ -387,6 +392,7 @@ public class PaymentScreen extends Application {
             }
             if (hit.isEmpty()) {
                 selectedMember[0] = null;
+                selectedBillingId[0] = 0;
                 updateMemberInfo.run();
                 Alert a = new Alert(Alert.AlertType.WARNING);
                 a.setTitle("Member");
@@ -395,8 +401,19 @@ public class PaymentScreen extends Application {
                 return;
             }
             selectedMember[0] = hit.get();
+            selectedBillingId[0] = paymentDAO.ensureBillingForMember(
+                selectedMember[0].memberId(),
+                selectedMember[0].membershipType(),
+                selectedMember[0].membershipEndDate(),
+                AppSession.currentUser().userId()
+            );
             updateMemberInfo.run();
-            dueTf.setText("800");
+            double balance = paymentDAO.balanceDueForMember(selectedMember[0].memberId());
+            if (balance <= 0) {
+                balance = paymentDAO.planPriceForMembership(selectedMember[0].membershipType());
+            }
+            infoVals[4].setText(formatPeso(balance));
+            dueTf.setText(String.format("%.2f", balance));
             discountTf.setText("0");
             penaltyTf.setText("0");
             recalcTotal.run();
@@ -485,12 +502,25 @@ public class PaymentScreen extends Application {
             }
             ToggleButton sel = (ToggleButton) methodGroup2.getSelectedToggle();
             String method = sel != null && sel.getUserData() != null ? sel.getUserData().toString() : "Cash";
+            if (!"Cash".equals(method) && refField.getText().trim().isEmpty()) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("Reference number is required for GCash and bank transfer payments.");
+                a.showAndWait();
+                return;
+            }
             int uid = AppSession.currentUser().userId();
-            int pid = paymentDAO.insertPayment(
+            if (selectedBillingId[0] <= 0) {
+                selectedBillingId[0] = paymentDAO.ensureBillingForMember(
+                    selectedMember[0].memberId(),
+                    selectedMember[0].membershipType(),
+                    selectedMember[0].membershipEndDate(),
+                    uid
+                );
+            }
+            int pid = paymentDAO.processMembershipPayment(
                 selectedMember[0].memberId(),
-                null,
+                selectedBillingId[0],
                 method,
-                "Membership",
                 new Date(System.currentTimeMillis()),
                 amount,
                 refField.getText().trim(),
@@ -498,10 +528,19 @@ public class PaymentScreen extends Application {
                 uid
             );
             if (pid > 0) {
+                lastPaymentId[0] = pid;
                 refreshHist.run();
+                updateMemberInfo.run();
+                double balance = paymentDAO.balanceDueForMember(selectedMember[0].memberId());
+                infoVals[4].setText(formatPeso(balance));
+                dueTf.setText(String.format("%.2f", balance));
+                discountTf.setText("0");
+                penaltyTf.setText("0");
+                recalcTotal.run();
                 Alert ok = new Alert(Alert.AlertType.INFORMATION);
                 ok.setContentText("Payment recorded. Reference #" + pid);
                 ok.showAndWait();
+                showReceiptDialog(paymentDAO, pid);
             } else {
                 Alert er = new Alert(Alert.AlertType.ERROR);
                 er.setContentText("Payment failed. Check database connection.");
@@ -511,6 +550,8 @@ public class PaymentScreen extends Application {
         clearBtn.setOnAction(e -> {
             memberSearch.clear();
             selectedMember[0] = null;
+            selectedBillingId[0] = 0;
+            lastPaymentId[0] = 0;
             updateMemberInfo.run();
             refField.clear();
             notesArea.clear();
@@ -518,6 +559,15 @@ public class PaymentScreen extends Application {
             discountTf.setText("0");
             penaltyTf.setText("0");
             recalcTotal.run();
+        });
+        printBtn.setOnAction(e -> {
+            if (lastPaymentId[0] <= 0) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("Process a payment first before printing a receipt.");
+                a.showAndWait();
+                return;
+            }
+            showReceiptDialog(paymentDAO, lastPaymentId[0]);
         });
         btnRow.getChildren().addAll(clearBtn, printBtn, processBtn);
 
@@ -648,6 +698,85 @@ public class PaymentScreen extends Application {
     }
 
     // ── Helpers ────────────────────────────────────────────────────
+    private void showReceiptDialog(PaymentDAO paymentDAO, int paymentId) {
+        Optional<PaymentDAO.ReceiptRecord> receipt = paymentDAO.findReceipt(paymentId);
+        if (receipt.isEmpty()) {
+            Alert a = new Alert(Alert.AlertType.ERROR);
+            a.setContentText("Could not load receipt details.");
+            a.showAndWait();
+            return;
+        }
+
+        PaymentDAO.ReceiptRecord r = receipt.get();
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Payment Receipt");
+
+        VBox root = new VBox(14);
+        root.setPadding(new Insets(24));
+        root.setStyle("-fx-background-color: " + BG_CARD + ";");
+        root.setPrefWidth(430);
+
+        Text title = new Text("MJ23 PLAYGRIND GYM");
+        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFill(Color.web(TEXT_WHITE));
+        Text sub = new Text("Official Payment Receipt");
+        sub.setFont(Font.font("Verdana", 12));
+        sub.setFill(Color.web(TEXT_MUTED));
+
+        TextArea receiptText = new TextArea(buildReceiptText(r));
+        receiptText.setEditable(false);
+        receiptText.setWrapText(false);
+        receiptText.setPrefRowCount(17);
+        receiptText.setStyle(
+            "-fx-control-inner-background: " + BG_MAIN + ";" +
+            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-font-family: Consolas;" +
+            "-fx-font-size: 12;"
+        );
+
+        HBox buttons = new HBox(10);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+        Button close = new Button("Close");
+        close.setPrefHeight(36);
+        close.setPadding(new Insets(0, 18, 0, 18));
+        close.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-text-fill: " + TEXT_MUTED + "; -fx-background-radius: 8;");
+        close.setOnAction(e -> dialog.close());
+        buttons.getChildren().add(close);
+
+        root.getChildren().addAll(title, sub, receiptText, buttons);
+        dialog.setScene(new Scene(root));
+        dialog.showAndWait();
+    }
+
+    private String buildReceiptText(PaymentDAO.ReceiptRecord r) {
+        return ""
+            + "Receipt No.: " + r.paymentId() + "\n"
+            + "Date       : " + (r.paymentDate() != null ? r.paymentDate() : "") + "\n"
+            + "Member ID  : " + safe(r.memberCode()) + "\n"
+            + "Member     : " + safe(r.memberName()) + "\n"
+            + "Plan       : " + safe(r.planName()) + "\n"
+            + "Type       : " + safe(r.paymentType()) + "\n"
+            + "Method     : " + safe(r.paymentMethod()) + "\n"
+            + "Reference  : " + safe(r.transactionRef()) + "\n"
+            + "Processed  : " + safe(r.processedBy()) + "\n"
+            + "\n"
+            + "Invoice    : " + formatPeso(r.invoiceAmount()) + "\n"
+            + "Paid       : " + formatPeso(r.amountPaid()) + "\n"
+            + "Balance    : " + formatPeso(r.balanceAfter()) + "\n"
+            + "\n"
+            + "Notes      : " + safe(r.notes()) + "\n"
+            + "\nThank you for your payment.";
+    }
+
+    private static String formatPeso(double amount) {
+        return "PHP " + String.format("%,.2f", amount);
+    }
+
+    private static String safe(String value) {
+        return value == null || value.isBlank() ? "-" : value;
+    }
+
     private GridPane makePayGrid() {
         GridPane g = new GridPane();
         double[] widths = {28, 14, 18, 18, 14};

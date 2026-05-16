@@ -20,6 +20,8 @@ import javafx.util.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.sql.Date;
+import java.time.LocalDate;
 
 import mj23gym.dao.InventoryDAO;
 
@@ -231,7 +233,7 @@ public class InventoryScreen extends Application {
         styleCombo(catFilter);
 
         ComboBox<String> stockFilter = new ComboBox<>();
-        stockFilter.getItems().addAll("All Stock", "In Stock", "Low Stock", "Out of Stock");
+        stockFilter.getItems().addAll("All Stock", "In Stock", "Low Stock", "Out of Stock", "Archived");
         stockFilter.setValue("All Stock");
         styleCombo(stockFilter);
 
@@ -240,6 +242,18 @@ public class InventoryScreen extends Application {
         Button addBtn = makeAccentBtn("＋  Add Item");
 
         controls.getChildren().addAll(search, catFilter, stockFilter, sp, addBtn);
+
+        Label monitorAlert = new Label();
+        monitorAlert.setWrapText(true);
+        monitorAlert.setStyle(
+            "-fx-background-color: rgba(255,152,0,0.12);" +
+            "-fx-text-fill: " + WARNING + ";" +
+            "-fx-font: bold 12 Verdana;" +
+            "-fx-padding: 10 14;" +
+            "-fx-background-radius: 8;" +
+            "-fx-border-color: rgba(255,152,0,0.25);" +
+            "-fx-border-radius: 8;"
+        );
 
         // ── Table card ─────────────────────────────────────────────
         VBox tableCard = new VBox(0);
@@ -254,8 +268,8 @@ public class InventoryScreen extends Application {
         tableCard.setEffect(ds);
 
         // Header row
-        String[] headers = {"Item ID", "Item Name", "Category", "Qty", "Unit Price", "Stock Status", "Actions"};
-        double[] colW = {9, 22, 13, 8, 11, 14, 13};
+        String[] headers = {"Item ID", "Item Name", "Category", "Qty", "Unit Price", "Expiry", "Stock Status", "Actions"};
+        double[] colW = {8, 20, 12, 7, 10, 12, 13, 18};
 
         HBox tblHdr = new HBox();
         tblHdr.setPadding(new Insets(12, 20, 12, 20));
@@ -289,6 +303,7 @@ public class InventoryScreen extends Application {
                 refreshHolder[0]
             );
             refreshStats.run();
+            updateMonitorAlert(monitorAlert, inventoryDAO.findLowStock(), inventoryDAO.findExpiredOrExpiringSoon());
         };
         search.setOnAction(e -> refreshHolder[0].run());
         catFilter.setOnAction(e -> refreshHolder[0].run());
@@ -304,7 +319,7 @@ public class InventoryScreen extends Application {
         pag.getChildren().addAll(pgInfo, pgSp);
 
         tableCard.getChildren().addAll(tblHdr, rowsBox, pag);
-        body.getChildren().addAll(statsRow, controls, tableCard);
+        body.getChildren().addAll(statsRow, controls, monitorAlert, tableCard);
         scroll.setContent(body);
         content.getChildren().addAll(topBar, scroll);
         VBox.setVgrow(scroll, Priority.ALWAYS);
@@ -336,6 +351,7 @@ public class InventoryScreen extends Application {
         TextField unitTf = new TextField();
         TextField qtyTf = new TextField();
         TextField reorderTf = new TextField();
+        TextField expiryTf = new TextField();
         TextField supplierTf = new TextField();
         TextField notesTf = new TextField();
         ComboBox<String> catBox = new ComboBox<>();
@@ -359,6 +375,7 @@ public class InventoryScreen extends Application {
         form.add(labeledInv("SELLING PRICE", unitTf, "0.00"), 1, r++);
         form.add(labeledInv("INITIAL QUANTITY", qtyTf, "0"), 0, r);
         form.add(labeledInv("REORDER LEVEL", reorderTf, "10"), 1, r++);
+        form.add(labeledInv("EXPIRATION DATE", expiryTf, "YYYY-MM-DD optional"), 0, r++, 2, 1);
         form.add(labeledInv("SUPPLIER", supplierTf, "Supplier name"), 0, r++, 2, 1);
         form.add(labeledInv("NOTES", notesTf, "Optional"), 0, r++, 2, 1);
 
@@ -397,6 +414,7 @@ public class InventoryScreen extends Application {
                     "pcs",
                     supplierTf.getText().trim(),
                     null,
+                    parseDate(expiryTf.getText().trim()),
                     "",
                     notesTf.getText().trim(),
                     true
@@ -410,6 +428,8 @@ public class InventoryScreen extends Application {
                 }
             } catch (NumberFormatException ex) {
                 invAlert(Alert.AlertType.ERROR, "Invalid number in price, quantity, or reorder level.");
+            } catch (IllegalArgumentException ex) {
+                invAlert(Alert.AlertType.ERROR, "Invalid expiration date. Use YYYY-MM-DD.");
             }
         });
         btnRow.getChildren().addAll(cancel, save);
@@ -469,15 +489,22 @@ public class InventoryScreen extends Application {
         Runnable fullRefresh
     ) {
         rowsBox.getChildren().clear();
+        boolean archivedView = "Archived".equals(stockFilterVal);
         List<InventoryDAO.InventoryRecord> list =
-            keyword.isBlank() ? dao.findAll() : dao.search(keyword);
+            archivedView ? dao.findArchived() : (keyword.isBlank() ? dao.findAll() : dao.search(keyword));
         List<InventoryDAO.InventoryRecord> filtered = new ArrayList<>();
         for (InventoryDAO.InventoryRecord it : list) {
+            if (archivedView && !keyword.isBlank()
+                && !containsIgnoreCase(it.itemName(), keyword)
+                && !containsIgnoreCase(it.itemCode(), keyword)
+                && !containsIgnoreCase(it.category(), keyword)) {
+                continue;
+            }
             if (!"All Categories".equals(catFilterVal)
                 && (it.category() == null || !it.category().equalsIgnoreCase(catFilterVal))) {
                 continue;
             }
-            if (!"All Stock".equals(stockFilterVal)
+            if (!archivedView && !"All Stock".equals(stockFilterVal)
                 && (it.status() == null || !it.status().equalsIgnoreCase(stockFilterVal))) {
                 continue;
             }
@@ -496,25 +523,37 @@ public class InventoryScreen extends Application {
             HBox.setHgrow(rGrid, Priority.ALWAYS);
             String code = "#" + it.itemCode();
             int q = it.currentStock();
-            String qtyColor = q == 0 ? ACCENT : (q <= it.reorderLevel() ? WARNING : TEXT_WHITE);
+            String qtyColor = q <= it.reorderLevel() ? ACCENT : TEXT_WHITE;
             rGrid.add(makeCell(code, ACCENT, true), 0, 0);
             rGrid.add(makeCell(it.itemName(), TEXT_WHITE, false), 1, 0);
             rGrid.add(makeCatBadge(it.category()), 2, 0);
             rGrid.add(makeCell(String.valueOf(q), qtyColor, true), 3, 0);
             rGrid.add(makeCell(String.format("₱%.2f", it.sellingPrice()), TEXT_MUTED, false), 4, 0);
-            rGrid.add(makeStockBadge(it.status()), 5, 0);
+            rGrid.add(makeExpiryBadge(it.expirationDate()), 5, 0);
+            rGrid.add(makeStockBadge(it.status()), 6, 0);
             Button del = makeActionBtn("🗑", ACCENT);
             del.setOnAction(e -> {
                 Alert c = new Alert(Alert.AlertType.CONFIRMATION);
-                c.setContentText("Deactivate " + it.itemName() + "?");
+                c.setContentText("Archive " + it.itemName() + "? It will be removed from active inventory but kept for reference.");
                 Optional<ButtonType> res = c.showAndWait();
                 if (res.isPresent() && res.get() == ButtonType.OK && dao.deactivate(it.itemId())) {
                     fullRefresh.run();
                 }
             });
-            HBox actions = new HBox(6, del);
+            del.setText(it.isActive() ? "Archive" : "Archived");
+            Button edit = makeActionBtn("Edit", WARNING);
+            edit.setOnAction(e -> showEditItemDialog(it, fullRefresh));
+            Button stock = makeActionBtn("Stock", INFO);
+            stock.setOnAction(e -> showStockDialog(dao, it, fullRefresh));
+            Button restore = makeActionBtn("Restore", SUCCESS);
+            restore.setOnAction(e -> {
+                if (dao.reactivate(it.itemId())) {
+                    fullRefresh.run();
+                }
+            });
+            HBox actions = it.isActive() ? new HBox(6, edit, stock, del) : new HBox(6, restore);
             actions.setAlignment(Pos.CENTER_LEFT);
-            rGrid.add(actions, 6, 0);
+            rGrid.add(actions, 7, 0);
             row.getChildren().add(rGrid);
             String fBg = bg;
             row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: rgba(230,57,70,0.06);"));
@@ -525,6 +564,186 @@ public class InventoryScreen extends Application {
     }
 
     // ── Helpers ────────────────────────────────────────────────────
+    private void showEditItemDialog(InventoryDAO.InventoryRecord item, Runnable onSaved) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Update Item");
+        dialog.setResizable(false);
+
+        VBox root = new VBox(16);
+        root.setPadding(new Insets(28));
+        root.setStyle("-fx-background-color: " + BG_CARD + ";");
+        root.setPrefWidth(500);
+
+        Text title = new Text("Update Inventory Item");
+        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFill(Color.web(TEXT_WHITE));
+
+        TextField nameTf = new TextField(item.itemName());
+        TextField descTf = new TextField(safe(item.description()));
+        TextField qtyTf = new TextField(String.valueOf(item.quantity()));
+        TextField stockTf = new TextField(String.valueOf(item.currentStock()));
+        TextField reorderTf = new TextField(String.valueOf(item.reorderLevel()));
+        TextField unitPriceTf = new TextField(String.format("%.2f", item.unitPrice()));
+        TextField sellingTf = new TextField(String.format("%.2f", item.sellingPrice()));
+        TextField expiryTf = new TextField(item.expirationDate() != null ? item.expirationDate().toString() : "");
+        TextField supplierTf = new TextField(safe(item.supplier()));
+        TextField notesTf = new TextField(safe(item.notes()));
+        ComboBox<String> catBox = new ComboBox<>();
+        catBox.getItems().addAll("Supplements", "Drinks", "Equipment", "Accessories", "Snacks", "Other");
+        catBox.setValue(item.category() != null ? item.category() : "Other");
+        styleCombo(catBox);
+
+        GridPane form = new GridPane();
+        form.setHgap(16);
+        form.setVgap(14);
+        ColumnConstraints c1 = new ColumnConstraints(); c1.setPercentWidth(50);
+        ColumnConstraints c2 = new ColumnConstraints(); c2.setPercentWidth(50);
+        form.getColumnConstraints().addAll(c1, c2);
+
+        int r = 0;
+        form.add(labeledInv("ITEM NAME", nameTf, "Item name"), 0, r++, 2, 1);
+        form.add(new VBox(6, formLabel("CATEGORY"), catBox), 0, r);
+        form.add(labeledInv("DESCRIPTION", descTf, "Optional"), 1, r++);
+        form.add(labeledInv("QUANTITY", qtyTf, "0"), 0, r);
+        form.add(labeledInv("CURRENT STOCK", stockTf, "0"), 1, r++);
+        form.add(labeledInv("REORDER LEVEL", reorderTf, "10"), 0, r);
+        form.add(labeledInv("UNIT PRICE", unitPriceTf, "0.00"), 1, r++);
+        form.add(labeledInv("SELLING PRICE", sellingTf, "0.00"), 0, r);
+        form.add(labeledInv("SUPPLIER", supplierTf, "Supplier"), 1, r++);
+        form.add(labeledInv("EXPIRATION DATE", expiryTf, "YYYY-MM-DD optional"), 0, r++, 2, 1);
+        form.add(labeledInv("NOTES", notesTf, "Optional"), 0, r++, 2, 1);
+
+        HBox btnRow = new HBox(12);
+        btnRow.setAlignment(Pos.CENTER_RIGHT);
+        Button cancel = new Button("Cancel");
+        cancel.setPrefHeight(40);
+        cancel.setPadding(new Insets(0, 20, 0, 20));
+        cancel.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-text-fill: " + TEXT_MUTED + "; -fx-background-radius: 8;");
+        cancel.setOnAction(e -> dialog.close());
+        Button save = makeAccentBtn("Update Item");
+        save.setOnAction(e -> {
+            try {
+                if (nameTf.getText().trim().isEmpty()) {
+                    invAlert(Alert.AlertType.WARNING, "Item name is required.");
+                    return;
+                }
+                int quantity = Integer.parseInt(qtyTf.getText().trim());
+                int stock = Integer.parseInt(stockTf.getText().trim());
+                int reorder = Integer.parseInt(reorderTf.getText().trim());
+                InventoryDAO.InventoryRecord updated = new InventoryDAO.InventoryRecord(
+                    item.itemId(), item.itemCode(), nameTf.getText().trim(), catBox.getValue(),
+                    descTf.getText().trim(), quantity, stock, reorder, reorder,
+                    parseAmount(unitPriceTf.getText()), parseAmount(sellingTf.getText()),
+                    item.unitOfMeasure() != null ? item.unitOfMeasure() : "pcs",
+                    supplierTf.getText().trim(), item.lastRestock(), parseDate(expiryTf.getText().trim()), item.status(),
+                    notesTf.getText().trim(), item.isActive()
+                );
+                if (new InventoryDAO().update(updated)) {
+                    dialog.close();
+                    onSaved.run();
+                } else {
+                    invAlert(Alert.AlertType.ERROR, "Could not update item.");
+                }
+            } catch (NumberFormatException ex) {
+                invAlert(Alert.AlertType.ERROR, "Invalid quantity, stock, reorder level, or price.");
+            } catch (IllegalArgumentException ex) {
+                invAlert(Alert.AlertType.ERROR, "Invalid expiration date. Use YYYY-MM-DD.");
+            }
+        });
+        btnRow.getChildren().addAll(cancel, save);
+        root.getChildren().addAll(title, form, btnRow);
+        dialog.setScene(new Scene(root));
+        dialog.showAndWait();
+    }
+
+    private void showStockDialog(InventoryDAO dao, InventoryDAO.InventoryRecord item, Runnable onSaved) {
+        TextInputDialog dialog = new TextInputDialog(String.valueOf(item.currentStock()));
+        dialog.setTitle("Update Stock");
+        dialog.setHeaderText("Set current stock for " + item.itemName());
+        dialog.setContentText("Current stock:");
+        Optional<String> value = dialog.showAndWait();
+        if (value.isPresent()) {
+            try {
+                int stock = Integer.parseInt(value.get().trim());
+                if (stock < 0) {
+                    invAlert(Alert.AlertType.WARNING, "Stock cannot be negative.");
+                    return;
+                }
+                if (dao.adjustStock(item.itemId(), stock)) {
+                    onSaved.run();
+                } else {
+                    invAlert(Alert.AlertType.ERROR, "Could not update stock.");
+                }
+            } catch (NumberFormatException ex) {
+                invAlert(Alert.AlertType.ERROR, "Enter a valid stock quantity.");
+            }
+        }
+    }
+
+    private void updateMonitorAlert(
+        Label monitorAlert,
+        List<InventoryDAO.InventoryRecord> lowStock,
+        List<InventoryDAO.InventoryRecord> expiring
+    ) {
+        if (lowStock.isEmpty() && expiring.isEmpty()) {
+            monitorAlert.setText("Inventory monitor: All active stock levels are above reorder level.");
+            monitorAlert.setStyle("-fx-background-color: rgba(76,175,80,0.12); -fx-text-fill: " + SUCCESS + "; -fx-font: bold 12 Verdana; -fx-padding: 10 14; -fx-background-radius: 8; -fx-border-color: rgba(76,175,80,0.25); -fx-border-radius: 8;");
+            return;
+        }
+        List<String> alerts = new ArrayList<>();
+        List<String> names = new ArrayList<>();
+        for (InventoryDAO.InventoryRecord item : lowStock) {
+            names.add(item.itemName() + " (" + item.currentStock() + " left)");
+            if (names.size() == 5) break;
+        }
+        if (!names.isEmpty()) {
+            alerts.add("Restock: " + String.join(", ", names));
+        }
+        List<String> expiringNames = new ArrayList<>();
+        for (InventoryDAO.InventoryRecord item : expiring) {
+            expiringNames.add(item.itemName() + " (" + expiryText(item.expirationDate()) + ")");
+            if (expiringNames.size() == 5) break;
+        }
+        if (!expiringNames.isEmpty()) {
+            alerts.add("Expiry: " + String.join(", ", expiringNames));
+        }
+        monitorAlert.setText(String.join(" | ", alerts));
+        monitorAlert.setStyle("-fx-background-color: rgba(255,152,0,0.12); -fx-text-fill: " + WARNING + "; -fx-font: bold 12 Verdana; -fx-padding: 10 14; -fx-background-radius: 8; -fx-border-color: rgba(255,152,0,0.25); -fx-border-radius: 8;");
+    }
+
+    private Label formLabel(String text) {
+        Label label = new Label(text);
+        label.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        label.setTextFill(Color.web(TEXT_MUTED));
+        return label;
+    }
+
+    private boolean containsIgnoreCase(String value, String keyword) {
+        return value != null && value.toLowerCase().contains(keyword.toLowerCase());
+    }
+
+    private double parseAmount(String raw) {
+        if (raw == null || raw.trim().isEmpty()) return 0;
+        return Double.parseDouble(raw.replace("PHP", "").replace("â‚±", "").replace(",", "").trim());
+    }
+
+    private Date parseDate(String raw) {
+        if (raw == null || raw.isBlank()) return null;
+        return Date.valueOf(LocalDate.parse(raw.trim()));
+    }
+
+    private String expiryText(Date expirationDate) {
+        if (expirationDate == null) return "No expiry";
+        LocalDate expiry = expirationDate.toLocalDate();
+        if (expiry.isBefore(LocalDate.now())) return "Expired " + expiry;
+        return expiry.toString();
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
+    }
+
     private GridPane makeGrid(double[] widths) {
         GridPane g = new GridPane();
         for (double w : widths) {
@@ -616,9 +835,32 @@ public class InventoryScreen extends Application {
         String c, bg;
         switch (status) {
             case "In Stock":     c = SUCCESS; bg = "rgba(76,175,80,0.15)";  break;
-            case "Low Stock":    c = WARNING; bg = "rgba(255,152,0,0.15)";  break;
+            case "Low Stock":    c = ACCENT; bg = "rgba(230,57,70,0.15)";  break;
             case "Out of Stock": c = ACCENT;  bg = "rgba(230,57,70,0.15)";  break;
             default:             c = TEXT_MUTED; bg = "transparent";        break;
+        }
+        b.setTextFill(Color.web(c));
+        b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 10; -fx-padding: 3 10 3 10;");
+        return b;
+    }
+
+    private Label makeExpiryBadge(Date expirationDate) {
+        Label b = new Label(expiryText(expirationDate));
+        b.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
+        String c = TEXT_MUTED;
+        String bg = "rgba(255,255,255,0.06)";
+        if (expirationDate != null) {
+            LocalDate expiry = expirationDate.toLocalDate();
+            if (expiry.isBefore(LocalDate.now())) {
+                c = ACCENT;
+                bg = "rgba(230,57,70,0.15)";
+            } else if (!expiry.isAfter(LocalDate.now().plusDays(30))) {
+                c = WARNING;
+                bg = "rgba(255,152,0,0.15)";
+            } else {
+                c = SUCCESS;
+                bg = "rgba(76,175,80,0.12)";
+            }
         }
         b.setTextFill(Color.web(c));
         b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 10; -fx-padding: 3 10 3 10;");

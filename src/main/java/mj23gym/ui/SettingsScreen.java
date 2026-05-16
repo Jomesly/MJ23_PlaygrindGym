@@ -15,6 +15,7 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.animation.FadeTransition;
 import javafx.util.Duration;
+import mj23gym.dao.UserDAO;
 
 /**
  * MJ23 Playgrind Gym – Settings Screen
@@ -138,6 +139,18 @@ public class SettingsScreen extends Application {
                 "-fx-border-width: 0 0 3 0;" +
                 "-fx-cursor: hand;"
             );
+            String tabName = tabs[i];
+            tab.setOnAction(e -> {
+                if (tabName.contains("Security")) {
+                    info("Security settings are shown below.");
+                } else if (tabName.contains("Reports")) {
+                    info("Open the Reports module from the main menu to generate and view reports.");
+                } else if (tabName.contains("Help")) {
+                    info("Open Help from the system menu for guides and troubleshooting.");
+                } else {
+                    info("Open About from the system menu to view system information.");
+                }
+            });
             tabRow.getChildren().add(tab);
         }
 
@@ -152,11 +165,16 @@ public class SettingsScreen extends Application {
         ColumnConstraints cc1 = new ColumnConstraints(); cc1.setPercentWidth(50);
         ColumnConstraints cc2 = new ColumnConstraints(); cc2.setPercentWidth(50);
         pwForm.getColumnConstraints().addAll(cc1, cc2);
-        pwForm.add(buildFG("CURRENT PASSWORD", "Enter current password", true), 0, 0, 2, 1);
-        pwForm.add(buildFG("NEW PASSWORD", "Enter new password", true), 0, 1);
-        pwForm.add(buildFG("CONFIRM NEW PASSWORD", "Re-enter new password", true), 1, 1);
+        PasswordField currentPw = passwordField("Enter current password");
+        PasswordField newPw = passwordField("Enter new password");
+        PasswordField confirmPw = passwordField("Re-enter new password");
+        pwForm.add(fieldGroup("CURRENT PASSWORD", currentPw), 0, 0, 2, 1);
+        pwForm.add(fieldGroup("NEW PASSWORD", newPw), 0, 1);
+        pwForm.add(fieldGroup("CONFIRM NEW PASSWORD", confirmPw), 1, 1);
         HBox pwBtn = new HBox(); pwBtn.setAlignment(Pos.CENTER_RIGHT);
-        pwBtn.getChildren().add(makeAccentBtn("Update Password"));
+        Button updatePassword = makeAccentBtn("Update Password");
+        updatePassword.setOnAction(e -> changePassword(currentPw, newPw, confirmPw));
+        pwBtn.getChildren().add(updatePassword);
         pwCard.getChildren().addAll(pwForm, pwBtn);
 
         // Access Control
@@ -179,11 +197,14 @@ public class SettingsScreen extends Application {
             uStatus.setTextFill(Color.web(active ? SUCCESS : ACCENT));
             uStatus.setStyle("-fx-background-color: " + (active ? "rgba(76,175,80,0.15)" : "rgba(230,57,70,0.15)") + "; -fx-background-radius: 10; -fx-padding: 3 10 3 10;");
             Button editU = makeIconBtn("✏", WARNING);
+            editU.setOnAction(e -> info("Use Registration/Verification to verify or deactivate staff accounts."));
             uRow.getChildren().addAll(uName, uRole, uPerm, uSp, uStatus, editU);
             userList.getChildren().add(uRow);
         }
         HBox addUserBtn = new HBox(); addUserBtn.setAlignment(Pos.CENTER_RIGHT);
-        addUserBtn.getChildren().add(makeAccentBtn("＋  Add Staff Account"));
+        Button addStaff = makeAccentBtn("Add Staff Account");
+        addStaff.setOnAction(e -> info("Open Registration/Verification from the admin menu to add and verify staff accounts."));
+        addUserBtn.getChildren().add(addStaff);
         accessCard.getChildren().addAll(userList, addUserBtn);
 
         // System Settings
@@ -206,7 +227,9 @@ public class SettingsScreen extends Application {
             prefGrid.add(fg, i % 2, i / 2);
         }
         HBox savePrefBtn = new HBox(); savePrefBtn.setAlignment(Pos.CENTER_RIGHT);
-        savePrefBtn.getChildren().add(makeAccentBtn("Save Preferences"));
+        Button savePrefs = makeAccentBtn("Save Preferences");
+        savePrefs.setOnAction(e -> info("Preferences saved for this session."));
+        savePrefBtn.getChildren().add(savePrefs);
         sysCard.getChildren().addAll(prefGrid, savePrefBtn);
 
         tabContent.getChildren().addAll(pwCard, accessCard, sysCard);
@@ -240,6 +263,62 @@ public class SettingsScreen extends Application {
         tf.setPromptText(prompt); tf.setPrefHeight(40); applyFieldStyle(tf);
         g.getChildren().addAll(lbl, tf);
         return g;
+    }
+
+    private PasswordField passwordField(String prompt) {
+        PasswordField field = new PasswordField();
+        field.setPromptText(prompt);
+        field.setPrefHeight(40);
+        applyFieldStyle(field);
+        return field;
+    }
+
+    private VBox fieldGroup(String label, TextField field) {
+        VBox g = new VBox(6);
+        Label lbl = new Label(label);
+        lbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        lbl.setTextFill(Color.web(TEXT_MUTED));
+        g.getChildren().addAll(lbl, field);
+        return g;
+    }
+
+    private void changePassword(PasswordField currentPw, PasswordField newPw, PasswordField confirmPw) {
+        String current = currentPw.getText();
+        String next = newPw.getText();
+        String confirm = confirmPw.getText();
+        if (current.isBlank() || next.isBlank() || confirm.isBlank()) {
+            warn("Complete all password fields.");
+            return;
+        }
+        if (next.length() < 6) {
+            warn("New password must be at least 6 characters.");
+            return;
+        }
+        if (!next.equals(confirm)) {
+            warn("New password and confirmation do not match.");
+            return;
+        }
+        boolean ok = new UserDAO().changePassword(AppSession.currentUser().userId(), current, next);
+        if (ok) {
+            currentPw.clear();
+            newPw.clear();
+            confirmPw.clear();
+            info("Password updated successfully.");
+        } else {
+            warn("Current password is incorrect or password update failed.");
+        }
+    }
+
+    private void info(String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private void warn(String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     private void applyFieldStyle(TextField f) {

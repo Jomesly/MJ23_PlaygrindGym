@@ -9,6 +9,7 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import mj23gym.util.DatabaseConnection;
 
@@ -18,6 +19,18 @@ import mj23gym.util.DatabaseConnection;
 public final class PosDAO {
 
     public record SaleLine(int itemId, String itemName, int quantity, double unitPrice) {}
+
+    public record ReceiptLine(String itemName, int quantity, double unitPrice, double subtotal) {}
+
+    public record PosReceipt(
+        int transactionId,
+        Date saleDate,
+        String paymentMethod,
+        String referenceNumber,
+        double totalAmount,
+        String processedBy,
+        List<ReceiptLine> lines
+    ) {}
 
     /** One line from POS history for reporting. */
     public record SaleDetailRow(
@@ -104,6 +117,53 @@ public final class PosDAO {
             return rs.next() ? rs.getDouble(1) : 0;
         } catch (SQLException e) {
             return 0;
+        }
+    }
+
+    public Optional<PosReceipt> findReceipt(int transactionId) {
+        String txSql =
+            "SELECT pt.transaction_id, DATE(pt.sale_date) AS sale_day, pt.payment_method," +
+            " pt.reference_number, pt.total_amount, u.full_name AS processed_by_name" +
+            " FROM pos_transactions pt" +
+            " LEFT JOIN users u ON pt.processed_by = u.user_id" +
+            " WHERE pt.transaction_id=?";
+        String lineSql =
+            "SELECT item_name, quantity, unit_price, subtotal FROM pos_transaction_items" +
+            " WHERE transaction_id=? ORDER BY transaction_item_id";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement txPs = conn.prepareStatement(txSql)) {
+            txPs.setInt(1, transactionId);
+            try (ResultSet txRs = txPs.executeQuery()) {
+                if (!txRs.next()) {
+                    return Optional.empty();
+                }
+                List<ReceiptLine> lines = new ArrayList<>();
+                try (PreparedStatement linePs = conn.prepareStatement(lineSql)) {
+                    linePs.setInt(1, transactionId);
+                    try (ResultSet rs = linePs.executeQuery()) {
+                        while (rs.next()) {
+                            lines.add(new ReceiptLine(
+                                rs.getString("item_name"),
+                                rs.getInt("quantity"),
+                                rs.getDouble("unit_price"),
+                                rs.getDouble("subtotal")
+                            ));
+                        }
+                    }
+                }
+                return Optional.of(new PosReceipt(
+                    txRs.getInt("transaction_id"),
+                    txRs.getDate("sale_day"),
+                    txRs.getString("payment_method"),
+                    txRs.getString("reference_number"),
+                    txRs.getDouble("total_amount"),
+                    txRs.getString("processed_by_name"),
+                    lines
+                ));
+            }
+        } catch (SQLException e) {
+            System.err.println("[PosDAO] findReceipt error: " + e.getMessage());
+            return Optional.empty();
         }
     }
 

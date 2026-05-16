@@ -10,6 +10,7 @@ import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import mj23gym.util.DatabaseConnection;
 
@@ -50,6 +51,22 @@ public class PaymentDAO {
         String    memberCode
     ) {}
 
+    public record ReceiptRecord(
+        int paymentId,
+        String memberCode,
+        String memberName,
+        String planName,
+        String paymentMethod,
+        String paymentType,
+        Date paymentDate,
+        double amountPaid,
+        double invoiceAmount,
+        double balanceAfter,
+        String transactionRef,
+        String notes,
+        String processedBy
+    ) {}
+
     // ── BILLING READ ──────────────────────────────────────────────
 
     public List<BillingRecord> findBillingByMember(int memberId) {
@@ -57,6 +74,44 @@ public class PaymentDAO {
             "SELECT * FROM billing WHERE member_id=? ORDER BY billing_date DESC",
             ps -> ps.setInt(1, memberId)
         );
+    }
+
+    public Optional<BillingRecord> findOpenBillingByMember(int memberId) {
+        List<BillingRecord> rows = billingQuery(
+            "SELECT * FROM billing WHERE member_id=? AND payment_status <> 'Paid' " +
+            "AND status <> 'Cancelled' ORDER BY due_date ASC, billing_id DESC LIMIT 1",
+            ps -> ps.setInt(1, memberId)
+        );
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+    }
+
+    public double balanceDueForMember(int memberId) {
+        Optional<BillingRecord> billing = findOpenBillingByMember(memberId);
+        if (billing.isEmpty()) {
+            return 0;
+        }
+        BillingRecord b = billing.get();
+        return Math.max(0, b.amountDue() - b.amountPaid());
+    }
+
+    public double planPriceForMembership(String membershipType) {
+        String normalized = mj23gym.dao.PlanDAO.normalizePlanName(membershipType);
+        String sql =
+            "SELECT price FROM plans WHERE (plan_name=? OR duration=?) AND is_active=TRUE " +
+            "ORDER BY price DESC LIMIT 1";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, normalized);
+            ps.setString(2, normalized);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble("price");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[PaymentDAO] planPriceForMembership error: " + e.getMessage());
+        }
+        return fallbackPlanPrice(normalized);
     }
 
     public List<BillingRecord> findOverdue() {
@@ -87,6 +142,28 @@ public class PaymentDAO {
             System.err.println("[PaymentDAO] insertBilling error: " + e.getMessage());
             return -1;
         }
+    }
+
+    public int ensureBillingForMember(int memberId, String membershipType, Date dueDate, int createdBy) {
+        Optional<BillingRecord> existing = findOpenBillingByMember(memberId);
+        if (existing.isPresent()) {
+            return existing.get().billingId();
+        }
+        String normalized = mj23gym.dao.PlanDAO.normalizePlanName(membershipType);
+        int planId = findPlanId(normalized);
+        double amount = planPriceForMembership(normalized);
+        BillingRecord billing = new BillingRecord(
+            0,
+            memberId,
+            planId,
+            new Date(System.currentTimeMillis()),
+            dueDate,
+            amount,
+            0,
+            "Unpaid",
+            "Active"
+        );
+        return insertBilling(billing, createdBy);
     }
 
     // ── PAYMENT RECORDS ───────────────────────────────────────────
@@ -248,16 +325,94 @@ public class PaymentDAO {
         }
     }
 
+    public int processMembershipPayment(int memberId, int billingId, String method,
+                                        Date paymentDate, double amount, String txRef,
+                                        String notes, int processedBy) {
+        String sql =
+            "INSERT INTO payment_records (member_id, billing_id, payment_method, payment_type," +
+            " payment_date, amount, transaction_ref, status, notes, processed_by)" +
+            " VALUES (?,?,?,?,?,?,?,'Completed',?,?)";
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            int paymentId;
+            try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setInt(1, memberId);
+                if (billingId > 0) ps.setInt(2, billingId); else ps.setNull(2, Types.INTEGER);
+                ps.setString(3, method);
+                ps.setString(4, "Membership");
+                ps.setDate(5, paymentDate);
+                ps.setDouble(6, amount);
+                ps.setString(7, txRef);
+                ps.setString(8, notes);
+                if (processedBy > 0) ps.setInt(9, processedBy); else ps.setNull(9, Types.INTEGER);
+                ps.executeUpdate();
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    paymentId = keys.next() ? keys.getInt(1) : -1;
+                }
+            }
+            if (paymentId > 0 && billingId > 0) {
+                updateBillingAfterPayment(conn, billingId, amount);
+            }
+            conn.commit();
+            return paymentId;
+        } catch (SQLException e) {
+            System.err.println("[PaymentDAO] processMembershipPayment error: " + e.getMessage());
+            return -1;
+        }
+    }
+
+    public Optional<ReceiptRecord> findReceipt(int paymentId) {
+        String sql =
+            "SELECT pr.payment_id, pr.payment_method, pr.payment_type, pr.payment_date, pr.amount," +
+            " pr.transaction_ref, pr.notes, m.unique_member_code, CONCAT(m.first_name,' ',m.last_name) AS member_name," +
+            " m.membership_type, b.amount_due, b.amount_paid, u.full_name AS processed_by_name" +
+            " FROM payment_records pr" +
+            " JOIN members m ON pr.member_id = m.member_id" +
+            " LEFT JOIN billing b ON pr.billing_id = b.billing_id" +
+            " LEFT JOIN users u ON pr.processed_by = u.user_id" +
+            " WHERE pr.payment_id=?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, paymentId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    double due = rs.getDouble("amount_due");
+                    double paid = rs.getDouble("amount_paid");
+                    return Optional.of(new ReceiptRecord(
+                        rs.getInt("payment_id"),
+                        rs.getString("unique_member_code"),
+                        rs.getString("member_name"),
+                        rs.getString("membership_type"),
+                        rs.getString("payment_method"),
+                        rs.getString("payment_type"),
+                        rs.getDate("payment_date"),
+                        rs.getDouble("amount"),
+                        due,
+                        Math.max(0, due - paid),
+                        rs.getString("transaction_ref"),
+                        rs.getString("notes"),
+                        rs.getString("processed_by_name")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[PaymentDAO] findReceipt error: " + e.getMessage());
+        }
+        return Optional.empty();
+    }
+
     // ── Helpers ───────────────────────────────────────────────────
 
     private void updateBillingAfterPayment(Connection conn, int billingId, double paidAmount) {
-        String sql = "UPDATE billing SET amount_paid = amount_paid + ?," +
+        String sql = "UPDATE billing SET" +
                      " payment_status = CASE WHEN amount_paid + ? >= amount_due THEN 'Paid' ELSE 'Unpaid' END," +
-                     " status = 'Completed', updated_at=NOW() WHERE billing_id=?";
+                     " status = CASE WHEN amount_paid + ? >= amount_due THEN 'Completed' ELSE 'Active' END," +
+                     " amount_paid = amount_paid + ?, updated_at=NOW() WHERE billing_id=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDouble(1, paidAmount);
             ps.setDouble(2, paidAmount);
-            ps.setInt(3, billingId);
+            ps.setDouble(3, paidAmount);
+            ps.setInt(4, billingId);
             ps.executeUpdate();
         } catch (SQLException ignored) {}
     }
@@ -345,5 +500,27 @@ public class PaymentDAO {
         } catch (SQLException e) {
             return 0;
         }
+    }
+
+    private int findPlanId(String planName) {
+        String sql = "SELECT plan_id FROM plans WHERE plan_name=? OR duration=? ORDER BY is_active DESC LIMIT 1";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, planName);
+            ps.setString(2, planName);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt("plan_id") : 0;
+            }
+        } catch (SQLException e) {
+            return 0;
+        }
+    }
+
+    private double fallbackPlanPrice(String planName) {
+        if ("Per Session".equalsIgnoreCase(planName) || "Daily".equalsIgnoreCase(planName)) return 100;
+        if ("Quarterly".equalsIgnoreCase(planName)) return 1988;
+        if ("Semi Annual".equalsIgnoreCase(planName)) return 3288;
+        if ("Annual".equalsIgnoreCase(planName) || "Yearly".equalsIgnoreCase(planName)) return 4988;
+        return 788;
     }
 }

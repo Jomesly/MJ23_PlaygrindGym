@@ -152,6 +152,21 @@ public class UserDAO {
         return list;
     }
 
+    public Optional<UserRecord> findById(int userId) {
+        String sql = "SELECT user_id, username, full_name, email, phone, role, status, last_login " +
+                     "FROM users WHERE user_id=?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return Optional.of(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] findById error: " + e.getMessage());
+        }
+        return Optional.empty();
+    }
+
     public boolean insert(String username, String fullName, String email,
                           String phone, String role, String plainPassword) {
         String sql = "INSERT INTO users (username, password, full_name, email, phone, role) " +

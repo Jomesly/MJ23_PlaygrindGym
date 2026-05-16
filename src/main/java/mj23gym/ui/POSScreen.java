@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import javafx.animation.FadeTransition;
 import javafx.application.Application;
@@ -15,7 +16,9 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.effect.DropShadow;
@@ -32,6 +35,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import mj23gym.dao.InventoryDAO;
@@ -151,6 +155,7 @@ public class POSScreen extends Application {
         InventoryDAO inventoryDAO = new InventoryDAO();
         PosDAO posDAO = new PosDAO();
         Map<Integer, Integer> cart = new LinkedHashMap<>();
+        final int[] lastTransactionId = {0};
 
         // Search + filter
         HBox searchRow = new HBox(12);
@@ -209,7 +214,16 @@ public class POSScreen extends Application {
                 String priceStr = String.format("₱%.0f", it.sellingPrice());
                 String catStr = it.category() != null ? it.category() : "Other";
                 VBox card = buildProductCard(it.itemName(), priceStr, catStr, () -> {
-                    cart.merge(it.itemId(), 1, Integer::sum);
+                    int qty = promptQuantity(it);
+                    if (qty <= 0) {
+                        return;
+                    }
+                    int existing = cart.getOrDefault(it.itemId(), 0);
+                    if (existing + qty > it.currentStock()) {
+                        showWarning("Not enough stock. Available: " + it.currentStock() + ", already in cart: " + existing + ".");
+                        return;
+                    }
+                    cart.merge(it.itemId(), qty, Integer::sum);
                     if (refreshCartRef[0] != null) {
                         refreshCartRef[0].run();
                     }
@@ -356,6 +370,11 @@ public class POSScreen extends Application {
         }
         pmBtns.getChildren().setAll(tg.getToggles().stream().map(t -> (ToggleButton) t).toArray(ToggleButton[]::new));
 
+        TextField refField = new TextField();
+        refField.setPromptText("Reference number for GCash / Bank");
+        refField.setPrefHeight(38);
+        applyFieldStyle(refField);
+
         Button checkoutBtn = new Button("✔  Process Sale");
         checkoutBtn.setMaxWidth(Double.MAX_VALUE);
         checkoutBtn.setPrefHeight(46);
@@ -365,39 +384,63 @@ public class POSScreen extends Application {
         checkoutBtn.setOnMouseExited(e -> checkoutBtn.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;"));
         checkoutBtn.setOnAction(e -> {
             if (cart.isEmpty()) {
-                Alert a = new Alert(Alert.AlertType.WARNING);
-                a.setContentText("Cart is empty.");
-                a.showAndWait();
+                showWarning("Cart is empty.");
                 return;
             }
             List<PosDAO.SaleLine> lines = new ArrayList<>();
             for (Map.Entry<Integer, Integer> en : cart.entrySet()) {
-                inventoryDAO.findById(en.getKey()).ifPresent(inv ->
-                    lines.add(new PosDAO.SaleLine(inv.itemId(), inv.itemName(), en.getValue(), inv.sellingPrice()))
-                );
+                Optional<InventoryDAO.InventoryRecord> found = inventoryDAO.findById(en.getKey());
+                if (found.isEmpty() || !found.get().isActive()) {
+                    showWarning("An item in the cart no longer exists in active inventory.");
+                    return;
+                }
+                InventoryDAO.InventoryRecord inv = found.get();
+                if (en.getValue() > inv.currentStock()) {
+                    showWarning(inv.itemName() + " only has " + inv.currentStock() + " available.");
+                    return;
+                }
+                lines.add(new PosDAO.SaleLine(inv.itemId(), inv.itemName(), en.getValue(), inv.sellingPrice()));
             }
             if (lines.isEmpty()) {
                 return;
             }
             ToggleButton sel = (ToggleButton) tg.getSelectedToggle();
             String method = sel != null && sel.getUserData() != null ? sel.getUserData().toString() : "Cash";
+            String ref = refField.getText().trim();
+            if (!"Cash".equals(method) && ref.isEmpty()) {
+                showWarning("Reference number is required for GCash and bank transfer sales.");
+                return;
+            }
             int uid = AppSession.currentUser().userId();
-            int tx = posDAO.completeSale(null, method, null, uid, lines);
+            int tx = posDAO.completeSale(null, method, ref, uid, lines);
             if (tx > 0) {
+                lastTransactionId[0] = tx;
                 cart.clear();
+                refField.clear();
                 refreshCart.run();
                 rebuildProductGrid.run();
-                Alert ok = new Alert(Alert.AlertType.INFORMATION);
-                ok.setContentText("Sale saved. Transaction #" + tx);
-                ok.showAndWait();
+                showReceiptDialog(posDAO, tx);
             } else {
                 Alert er = new Alert(Alert.AlertType.ERROR);
-                er.setContentText("Sale failed. Check stock and database.");
+                er.setContentText("Sale failed. Check item stock and database connection.");
                 er.showAndWait();
             }
         });
 
-        summary.getChildren().addAll(pmLbl, pmBtns, checkoutBtn);
+        Button receiptBtn = new Button("Receipt");
+        receiptBtn.setMaxWidth(Double.MAX_VALUE);
+        receiptBtn.setPrefHeight(36);
+        receiptBtn.setFont(Font.font("Verdana", FontWeight.BOLD, 11));
+        receiptBtn.setStyle("-fx-background-color: " + INFO + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;");
+        receiptBtn.setOnAction(e -> {
+            if (lastTransactionId[0] <= 0) {
+                showWarning("Complete a sale first before viewing a receipt.");
+                return;
+            }
+            showReceiptDialog(posDAO, lastTransactionId[0]);
+        });
+
+        summary.getChildren().addAll(pmLbl, pmBtns, refField, checkoutBtn, receiptBtn);
         cartCard.getChildren().addAll(cartHeader, cartItems, summary);
         cartCol.getChildren().add(cartCard);
         VBox.setVgrow(cartCard, Priority.ALWAYS);
@@ -410,6 +453,126 @@ public class POSScreen extends Application {
         FadeTransition ft = new FadeTransition(Duration.millis(350), body);
         ft.setFromValue(0); ft.setToValue(1); ft.play();
         return content;
+    }
+
+    private int promptQuantity(InventoryDAO.InventoryRecord item) {
+        Optional<InventoryDAO.InventoryRecord> current = new InventoryDAO().findById(item.itemId());
+        if (current.isEmpty() || !current.get().isActive()) {
+            showWarning("Item does not exist in active inventory.");
+            return 0;
+        }
+        int available = current.get().currentStock();
+        if (available <= 0) {
+            showWarning(item.itemName() + " is out of stock.");
+            return 0;
+        }
+
+        TextInputDialog dialog = new TextInputDialog("1");
+        dialog.setTitle("Enter Quantity");
+        dialog.setHeaderText(item.itemName() + " - available stock: " + available);
+        dialog.setContentText("Quantity:");
+        Optional<String> answer = dialog.showAndWait();
+        if (answer.isEmpty()) {
+            return 0;
+        }
+        try {
+            int qty = Integer.parseInt(answer.get().trim());
+            if (qty <= 0) {
+                showWarning("Quantity must be greater than zero.");
+                return 0;
+            }
+            if (qty > available) {
+                showWarning("Not enough stock. Available: " + available + ".");
+                return 0;
+            }
+            return qty;
+        } catch (NumberFormatException ex) {
+            showWarning("Enter a valid quantity.");
+            return 0;
+        }
+    }
+
+    private void showReceiptDialog(PosDAO posDAO, int transactionId) {
+        Optional<PosDAO.PosReceipt> receipt = posDAO.findReceipt(transactionId);
+        if (receipt.isEmpty()) {
+            Alert a = new Alert(Alert.AlertType.ERROR);
+            a.setContentText("Receipt details could not be loaded.");
+            a.showAndWait();
+            return;
+        }
+
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("POS Receipt");
+
+        VBox root = new VBox(14);
+        root.setPadding(new Insets(24));
+        root.setStyle("-fx-background-color: " + BG_CARD + ";");
+        root.setPrefWidth(460);
+
+        Text title = new Text("MJ23 PLAYGRIND GYM");
+        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFill(Color.web(TEXT_WHITE));
+        Text subtitle = new Text("POS Sales Receipt");
+        subtitle.setFont(Font.font("Verdana", 12));
+        subtitle.setFill(Color.web(TEXT_MUTED));
+
+        TextArea details = new TextArea(buildReceiptText(receipt.get()));
+        details.setEditable(false);
+        details.setWrapText(false);
+        details.setPrefRowCount(18);
+        details.setStyle(
+            "-fx-control-inner-background: " + BG_MAIN + ";" +
+            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-font-family: Consolas;" +
+            "-fx-font-size: 12;"
+        );
+
+        Button close = new Button("Close");
+        close.setPrefHeight(36);
+        close.setPadding(new Insets(0, 18, 0, 18));
+        close.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 8;");
+        close.setOnAction(e -> dialog.close());
+        HBox buttons = new HBox(close);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+
+        root.getChildren().addAll(title, subtitle, details, buttons);
+        dialog.setScene(new Scene(root));
+        dialog.showAndWait();
+    }
+
+    private String buildReceiptText(PosDAO.PosReceipt receipt) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Transaction: ").append(receipt.transactionId()).append('\n');
+        sb.append("Date       : ").append(receipt.saleDate() != null ? receipt.saleDate() : "").append('\n');
+        sb.append("Method     : ").append(safe(receipt.paymentMethod())).append('\n');
+        sb.append("Reference  : ").append(safe(receipt.referenceNumber())).append('\n');
+        sb.append("Cashier    : ").append(safe(receipt.processedBy())).append('\n');
+        sb.append("----------------------------------------\n");
+        for (PosDAO.ReceiptLine line : receipt.lines()) {
+            sb.append(line.itemName()).append('\n');
+            sb.append("  ")
+                .append(line.quantity())
+                .append(" x PHP ")
+                .append(String.format("%,.2f", line.unitPrice()))
+                .append(" = PHP ")
+                .append(String.format("%,.2f", line.subtotal()))
+                .append('\n');
+        }
+        sb.append("----------------------------------------\n");
+        sb.append("TOTAL      : PHP ").append(String.format("%,.2f", receipt.totalAmount())).append('\n');
+        sb.append("\nInventory updated successfully.");
+        return sb.toString();
+    }
+
+    private void showWarning(String message) {
+        Alert a = new Alert(Alert.AlertType.WARNING);
+        a.setContentText(message);
+        a.showAndWait();
+    }
+
+    private String safe(String value) {
+        return value == null || value.isBlank() ? "-" : value;
     }
 
     private VBox buildProductCard(String name, String price, String cat, Runnable onAdd) {

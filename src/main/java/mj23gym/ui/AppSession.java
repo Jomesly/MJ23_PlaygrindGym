@@ -20,6 +20,10 @@ final class AppSession {
         currentUser = null;
     }
 
+    static void updateCurrentUser(mj23gym.dao.UserDAO.UserRecord userRecord) {
+        currentUser = User.fromUserRecord(userRecord);
+    }
+
     static User currentUser() {
         if (currentUser == null) {
             return User.guest();

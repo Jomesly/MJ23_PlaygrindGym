@@ -25,6 +25,7 @@ import java.util.Map;
 
 import mj23gym.dao.PaymentDAO;
 import mj23gym.dao.PosDAO;
+import mj23gym.dao.ReportDAO;
 
 /**
  * MJ23 Playgrind Gym – Reports Screen
@@ -179,6 +180,7 @@ public class ReportsScreen extends Application {
 
         PaymentDAO paymentDAO = new PaymentDAO();
         PosDAO posDAO = new PosDAO();
+        ReportDAO reportDAO = new ReportDAO();
 
         Text revVal = new Text("₱0");
         Text trxVal = new Text("0");
@@ -229,20 +231,22 @@ public class ReportsScreen extends Application {
         );
 
         ComboBox<String> groupBy = new ComboBox<>();
-        groupBy.getItems().addAll("By Day", "By Week", "By Month");
-        groupBy.setValue("By Day");
+        groupBy.getItems().addAll("Financial", "Membership", "Attendance", "Inventory", "Equipment", "Other");
+        groupBy.setValue("Financial");
         styleCombo(groupBy);
         VBox groupBox = new VBox(6);
-        Label gLbl = new Label("GROUP BY");
+        Label gLbl = new Label("REPORT TYPE");
         gLbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
         gLbl.setTextFill(Color.web(TEXT_MUTED));
         groupBox.getChildren().addAll(gLbl, groupBy);
+
+        VBox savedReportRows = new VBox(0);
 
         Region fSp = new Region();
         HBox.setHgrow(fSp, Priority.ALWAYS);
         Button genBtn = makeAccentBtn("📊  Generate Report");
         genBtn.setPrefHeight(42);
-        genBtn.setOnAction(e -> refreshAll.run());
+        genBtn.setOnAction(e -> generateAndSaveReport(tfFrom, tfTo, groupBy, refreshAll, reportDAO, savedReportRows));
 
         filterRow.getChildren().addAll(dateFrom, dateTo, groupBox, fSp, genBtn);
         filterCard.getChildren().addAll(filterTitle, filterRow);
@@ -261,8 +265,9 @@ public class ReportsScreen extends Application {
 
         VBox salesTable = buildSalesTableShell(salesHdr, salesRows, salesTotalRow);
         VBox paymentSummary = buildPaymentSummaryShell(payHdr, payRows);
+        VBox savedReports = buildSavedReportsShell(savedReportRows, reportDAO);
 
-        body.getChildren().addAll(typeRow, filterCard, summaryStats, salesTable, paymentSummary);
+        body.getChildren().addAll(typeRow, filterCard, summaryStats, salesTable, paymentSummary, savedReports);
         scroll.setContent(body);
         content.getChildren().addAll(topBar, scroll);
         VBox.setVgrow(scroll, Priority.ALWAYS);
@@ -274,6 +279,48 @@ public class ReportsScreen extends Application {
 
         refreshAll.run();
         return content;
+    }
+
+    private void generateAndSaveReport(
+        TextField tfFrom,
+        TextField tfTo,
+        ComboBox<String> reportType,
+        Runnable refreshAll,
+        ReportDAO reportDAO,
+        VBox savedReportRows
+    ) {
+        LocalDate fromLd;
+        LocalDate toLd;
+        try {
+            fromLd = LocalDate.parse(tfFrom.getText().trim());
+            toLd = LocalDate.parse(tfTo.getText().trim());
+        } catch (Exception ex) {
+            new Alert(Alert.AlertType.WARNING, "Use YYYY-MM-DD for both dates.").showAndWait();
+            return;
+        }
+        if (toLd.isBefore(fromLd)) {
+            new Alert(Alert.AlertType.WARNING, "End date must be on or after start date.").showAndWait();
+            return;
+        }
+
+        refreshAll.run();
+
+        Date from = Date.valueOf(fromLd);
+        Date to = Date.valueOf(toLd);
+        String type = reportDAO.normalizeReportType(reportType.getValue());
+        ReportDAO.ReportMetrics metrics = reportDAO.buildMetrics(from, to);
+        String notes = reportDAO.buildNotes(type, from, to, metrics);
+        String name = type + " Report - " + fromLd + " to " + toLd;
+        int reportId = reportDAO.saveReport(name, type, from, to, notes, AppSession.currentUser().userId());
+        if (reportId <= 0) {
+            new Alert(Alert.AlertType.ERROR, "Report was generated on screen but could not be saved. Check database connection.").showAndWait();
+            return;
+        }
+
+        populateSavedReportRows(savedReportRows, reportDAO);
+        showReportDialog(reportDAO.findReport(reportId).orElse(
+            new ReportDAO.ReportRecord(reportId, name, type, from, to, notes, AppSession.currentUser().displayName(), null)
+        ));
     }
 
     private void styleSummaryValue(Text t) {
@@ -610,6 +657,141 @@ public class ReportsScreen extends Application {
 
         card.getChildren().addAll(hdr, tblHdr, rowsBox);
         return card;
+    }
+
+    private VBox buildSavedReportsShell(VBox rowsBox, ReportDAO reportDAO) {
+        VBox card = new VBox(0);
+        card.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-radius: 12;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 12;" +
+            "-fx-border-width: 1;");
+        DropShadow ds = new DropShadow();
+        ds.setColor(Color.web("#000", 0.25));
+        ds.setRadius(10);
+        ds.setOffsetY(4);
+        card.setEffect(ds);
+
+        HBox hdr = new HBox();
+        hdr.setPadding(new Insets(16, 20, 14, 20));
+        hdr.setAlignment(Pos.CENTER_LEFT);
+        hdr.setStyle("-fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
+        Text title = new Text("Generated Reports");
+        title.setFont(Font.font("Verdana", FontWeight.BOLD, 13));
+        title.setFill(Color.web(TEXT_WHITE));
+        Region sp = new Region();
+        HBox.setHgrow(sp, Priority.ALWAYS);
+        Button refreshBtn = new Button("Refresh");
+        refreshBtn.setStyle(
+            "-fx-background-color: transparent;" +
+            "-fx-text-fill: " + ACCENT + ";" +
+            "-fx-font-size: 11;" +
+            "-fx-cursor: hand;");
+        refreshBtn.setOnAction(e -> populateSavedReportRows(rowsBox, reportDAO));
+        hdr.getChildren().addAll(title, sp, refreshBtn);
+
+        String[] headers = {"Report", "Type", "Period", "Generated By", "Generated At", "Action"};
+        double[] colW = {25, 12, 20, 15, 18, 10};
+        HBox tblHdr = new HBox();
+        tblHdr.setPadding(new Insets(10, 20, 10, 20));
+        tblHdr.setStyle("-fx-background-color: " + BG_SIDEBAR + ";");
+        GridPane hGrid = makeGrid(colW);
+        hGrid.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(hGrid, Priority.ALWAYS);
+        for (int i = 0; i < headers.length; i++) {
+            Label h = new Label(headers[i].toUpperCase());
+            h.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+            h.setTextFill(Color.web(TEXT_DIM));
+            hGrid.add(h, i, 0);
+        }
+        tblHdr.getChildren().add(hGrid);
+
+        populateSavedReportRows(rowsBox, reportDAO);
+        card.getChildren().addAll(hdr, tblHdr, rowsBox);
+        return card;
+    }
+
+    private void populateSavedReportRows(VBox rowsBox, ReportDAO reportDAO) {
+        rowsBox.getChildren().clear();
+        List<ReportDAO.ReportRecord> reports = reportDAO.findRecentReports(20);
+        if (reports.isEmpty()) {
+            Label empty = new Label("No generated reports saved yet.");
+            empty.setTextFill(Color.web(TEXT_MUTED));
+            empty.setPadding(new Insets(16, 20, 16, 20));
+            rowsBox.getChildren().add(empty);
+            return;
+        }
+
+        double[] colW = {25, 12, 20, 15, 18, 10};
+        int rowIndex = 0;
+        for (ReportDAO.ReportRecord report : reports) {
+            String bg = (rowIndex % 2 == 0) ? BG_CARD : BG_ROW_ALT;
+            HBox row = new HBox();
+            row.setPadding(new Insets(10, 20, 10, 20));
+            row.setStyle("-fx-background-color: " + bg + ";");
+            GridPane grid = makeGrid(colW);
+            grid.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(grid, Priority.ALWAYS);
+
+            String period = report.periodStart() + " to " + report.periodEnd();
+            String generatedAt = report.generatedAt() != null ? report.generatedAt().toLocalDateTime().toString().replace('T', ' ') : "";
+            Button viewBtn = new Button("View");
+            viewBtn.setFont(Font.font("Verdana", FontWeight.BOLD, 10));
+            viewBtn.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 8; -fx-cursor: hand;");
+            viewBtn.setOnAction(e -> showReportDialog(report));
+
+            grid.add(makeCell(report.reportName(), TEXT_WHITE, false), 0, 0);
+            grid.add(makeStatusBadge(report.reportType()), 1, 0);
+            grid.add(makeCell(period, TEXT_MUTED, false), 2, 0);
+            grid.add(makeCell(report.generatedBy(), TEXT_MUTED, false), 3, 0);
+            grid.add(makeCell(generatedAt, TEXT_MUTED, false), 4, 0);
+            grid.add(viewBtn, 5, 0);
+
+            row.getChildren().add(grid);
+            String fBg = bg;
+            row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: rgba(230,57,70,0.05);"));
+            row.setOnMouseExited(e -> row.setStyle("-fx-background-color: " + fBg + ";"));
+            rowsBox.getChildren().add(row);
+            rowIndex++;
+        }
+    }
+
+    private void showReportDialog(ReportDAO.ReportRecord report) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Generated Report");
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+
+        VBox box = new VBox(12);
+        box.setPadding(new Insets(18));
+        box.setPrefWidth(640);
+        box.setStyle("-fx-background-color: " + BG_MAIN + ";");
+
+        Text title = new Text(report.reportName());
+        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFill(Color.web(TEXT_WHITE));
+        Label meta = new Label(
+            "Type: " + report.reportType() +
+            " | Period: " + report.periodStart() + " to " + report.periodEnd() +
+            " | Generated by: " + report.generatedBy()
+        );
+        meta.setTextFill(Color.web(TEXT_MUTED));
+        meta.setWrapText(true);
+
+        TextArea body = new TextArea(report.notes() != null ? report.notes() : "");
+        body.setEditable(false);
+        body.setWrapText(true);
+        body.setPrefRowCount(18);
+        body.setStyle(
+            "-fx-control-inner-background: " + BG_CARD + ";" +
+            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-font-family: Consolas;" +
+            "-fx-font-size: 12;");
+
+        box.getChildren().addAll(title, meta, body);
+        dialog.getDialogPane().setContent(box);
+        dialog.getDialogPane().setStyle("-fx-background-color: " + BG_MAIN + ";");
+        dialog.showAndWait();
     }
 
     private VBox makeStatCard(String label, Text value, Text sub, String color) {

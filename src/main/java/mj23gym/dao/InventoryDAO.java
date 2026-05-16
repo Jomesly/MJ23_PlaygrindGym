@@ -33,6 +33,7 @@ public class InventoryDAO {
         String  unitOfMeasure,
         String  supplier,
         Date    lastRestock,
+        Date    expirationDate,
         String  status,
         String  notes,
         boolean isActive
@@ -41,7 +42,13 @@ public class InventoryDAO {
     // ── READ ──────────────────────────────────────────────────────
 
     public List<InventoryRecord> findAll() {
+        ensureExpirationColumn();
         return query("SELECT * FROM inventory WHERE is_active=TRUE ORDER BY item_name", ps -> {});
+    }
+
+    public List<InventoryRecord> findArchived() {
+        ensureExpirationColumn();
+        return query("SELECT * FROM inventory WHERE is_active=FALSE ORDER BY item_name", ps -> {});
     }
 
     public List<InventoryRecord> findByCategory(String category) {
@@ -64,6 +71,15 @@ public class InventoryDAO {
     public List<InventoryRecord> findLowStock() {
         return query("SELECT * FROM inventory WHERE current_stock <= reorder_level AND is_active=TRUE ORDER BY item_name",
                      ps -> {});
+    }
+
+    public List<InventoryRecord> findExpiredOrExpiringSoon() {
+        ensureExpirationColumn();
+        return query(
+            "SELECT * FROM inventory WHERE is_active=TRUE AND expiration_date IS NOT NULL " +
+            "AND expiration_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) ORDER BY expiration_date, item_name",
+            ps -> {}
+        );
     }
 
     public Optional<InventoryRecord> findById(int id) {
@@ -89,10 +105,11 @@ public class InventoryDAO {
         String sql =
             "INSERT INTO inventory (item_code, item_name, category, description, quantity," +
             " current_stock, minimum_stock, reorder_level, unit_price, selling_price," +
-            " unit_of_measure, supplier, last_restock, status, notes, is_active, created_by)" +
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,TRUE,?)";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            " unit_of_measure, supplier, last_restock, expiration_date, status, notes, is_active, created_by)" +
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,TRUE,?)";
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            ensureExpirationColumn(conn);
+            try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1,  code);
             ps.setString(2,  item.itemName());
             ps.setString(3,  item.category());
@@ -106,12 +123,14 @@ public class InventoryDAO {
             ps.setString(11, item.unitOfMeasure());
             ps.setString(12, item.supplier());
             ps.setDate(13,   item.lastRestock());
-            ps.setString(14, deriveStatus(item.currentStock(), item.reorderLevel()));
-            ps.setString(15, item.notes());
-            if (createdBy > 0) ps.setInt(16, createdBy); else ps.setNull(16, Types.INTEGER);
+            ps.setDate(14,   item.expirationDate());
+            ps.setString(15, deriveStatus(item.currentStock(), item.reorderLevel()));
+            ps.setString(16, item.notes());
+            if (createdBy > 0) ps.setInt(17, createdBy); else ps.setNull(17, Types.INTEGER);
             ps.executeUpdate();
             try (ResultSet gk = ps.getGeneratedKeys()) {
                 return gk.next() ? gk.getInt(1) : -1;
+            }
             }
         } catch (SQLException e) {
             System.err.println("[InventoryDAO] insert error: " + e.getMessage());
@@ -125,10 +144,11 @@ public class InventoryDAO {
         String sql =
             "UPDATE inventory SET item_name=?, category=?, description=?, quantity=?," +
             " current_stock=?, minimum_stock=?, reorder_level=?, unit_price=?, selling_price=?," +
-            " unit_of_measure=?, supplier=?, last_restock=?, status=?, notes=?, updated_at=NOW()" +
+            " unit_of_measure=?, supplier=?, last_restock=?, expiration_date=?, status=?, notes=?, updated_at=NOW()" +
             " WHERE item_id=?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            ensureExpirationColumn(conn);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1,  item.itemName());
             ps.setString(2,  item.category());
             ps.setString(3,  item.description());
@@ -141,10 +161,12 @@ public class InventoryDAO {
             ps.setString(10, item.unitOfMeasure());
             ps.setString(11, item.supplier());
             ps.setDate(12,   item.lastRestock());
-            ps.setString(13, deriveStatus(item.currentStock(), item.reorderLevel()));
-            ps.setString(14, item.notes());
-            ps.setInt(15,    item.itemId());
+            ps.setDate(13,   item.expirationDate());
+            ps.setString(14, deriveStatus(item.currentStock(), item.reorderLevel()));
+            ps.setString(15, item.notes());
+            ps.setInt(16,    item.itemId());
             return ps.executeUpdate() > 0;
+            }
         } catch (SQLException e) {
             System.err.println("[InventoryDAO] update error: " + e.getMessage());
             return false;
@@ -177,6 +199,19 @@ public class InventoryDAO {
             return ps.executeUpdate() > 0;
         } catch (SQLException e) {
             System.err.println("[InventoryDAO] deactivate error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /** Restore an archived item to active listings. */
+    public boolean reactivate(int itemId) {
+        String sql = "UPDATE inventory SET is_active=TRUE, updated_at=NOW() WHERE item_id=?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, itemId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[InventoryDAO] reactivate error: " + e.getMessage());
             return false;
         }
     }
@@ -216,6 +251,7 @@ public class InventoryDAO {
             rs.getString("unit_of_measure"),
             rs.getString("supplier"),
             rs.getDate("last_restock"),
+            getOptionalDate(rs, "expiration_date"),
             rs.getString("status"),
             rs.getString("notes"),
             rs.getBoolean("is_active")
@@ -258,6 +294,38 @@ public class InventoryDAO {
             return String.format("INV-%03d", n);
         } catch (SQLException e) {
             return "INV-" + System.currentTimeMillis();
+        }
+    }
+
+    private Date getOptionalDate(ResultSet rs, String column) {
+        try {
+            return rs.getDate(column);
+        } catch (SQLException e) {
+            return null;
+        }
+    }
+
+    private void ensureExpirationColumn() {
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            ensureExpirationColumn(conn);
+        } catch (SQLException e) {
+            System.err.println("[InventoryDAO] ensureExpirationColumn error: " + e.getMessage());
+        }
+    }
+
+    private void ensureExpirationColumn(Connection conn) {
+        try (ResultSet rs = conn.getMetaData().getColumns(null, null, "inventory", "expiration_date")) {
+            if (rs.next()) {
+                return;
+            }
+        } catch (SQLException e) {
+            System.err.println("[InventoryDAO] check expiration_date error: " + e.getMessage());
+            return;
+        }
+        try (Statement st = conn.createStatement()) {
+            st.executeUpdate("ALTER TABLE inventory ADD COLUMN expiration_date DATE NULL AFTER last_restock");
+        } catch (SQLException e) {
+            System.err.println("[InventoryDAO] add expiration_date error: " + e.getMessage());
         }
     }
 }

@@ -204,6 +204,18 @@ public class AddEquipmentScreen extends Application {
         HBox.setHgrow(ctrlSp, Priority.ALWAYS);
         controls.getChildren().addAll(search, catFilter, condFilter, ctrlSp);
 
+        Label monitorAlert = new Label();
+        monitorAlert.setWrapText(true);
+        monitorAlert.setStyle(
+            "-fx-background-color: rgba(255,152,0,0.12);" +
+            "-fx-text-fill: " + WARNING + ";" +
+            "-fx-font: bold 12 Verdana;" +
+            "-fx-padding: 10 14;" +
+            "-fx-background-radius: 8;" +
+            "-fx-border-color: rgba(255,152,0,0.25);" +
+            "-fx-border-radius: 8;"
+        );
+
         HBox mainRow = new HBox(20);
 
         VBox rows = new VBox(0);
@@ -246,6 +258,7 @@ public class AddEquipmentScreen extends Application {
                 refreshHolder[0]
             );
             refreshStats.run();
+            updateEquipmentMonitor(monitorAlert, equipmentDAO);
         };
 
         search.setOnAction(e -> refreshHolder[0].run());
@@ -268,7 +281,7 @@ public class AddEquipmentScreen extends Application {
         addCard.setMaxWidth(320);
 
         mainRow.getChildren().addAll(tableCard, addCard);
-        body.getChildren().addAll(stats, controls, mainRow);
+        body.getChildren().addAll(stats, controls, monitorAlert, mainRow);
         scroll.setContent(body);
         content.getChildren().addAll(topBar, scroll);
         VBox.setVgrow(scroll, Priority.ALWAYS);
@@ -372,17 +385,22 @@ public class AddEquipmentScreen extends Application {
             rg.add(makeCell(String.valueOf(eq.quantity()), TEXT_WHITE, true), 3, 0);
             rg.add(makeCondBadge(eq.condition() != null ? eq.condition() : "Good"), 4, 0);
             rg.add(makeCell(next, TEXT_MUTED, false), 5, 0);
+            Button editBtn = makeActionBtn("Edit", WARNING);
+            editBtn.setOnAction(e -> showEditEquipmentDialog(eq, fullRefresh));
+            Button maintBtn = makeActionBtn("Maint", INFO);
+            maintBtn.setOnAction(e -> showMaintenanceDialog(dao, eq, fullRefresh));
 
             Button delBtn = makeActionBtn("🗑", ACCENT);
+            delBtn.setText("Delete");
             delBtn.setOnAction(e -> {
                 Alert c = new Alert(Alert.AlertType.CONFIRMATION);
-                c.setContentText("Deactivate " + eq.equipmentName() + "?");
+                c.setContentText("Remove obsolete equipment " + eq.equipmentName() + " from active records?");
                 Optional<ButtonType> res = c.showAndWait();
                 if (res.isPresent() && res.get() == ButtonType.OK && dao.deactivate(eq.equipmentId())) {
                     fullRefresh.run();
                 }
             });
-            HBox actions = new HBox(6, delBtn);
+            HBox actions = new HBox(6, editBtn, maintBtn, delBtn);
             actions.setAlignment(Pos.CENTER_LEFT);
             rg.add(actions, 6, 0);
 
@@ -393,6 +411,190 @@ public class AddEquipmentScreen extends Application {
             rows.getChildren().add(row);
             r++;
         }
+    }
+
+    private void showEditEquipmentDialog(EquipmentDAO.EquipmentRecord eq, Runnable onSaved) {
+        Stage dialog = new Stage();
+        dialog.setTitle("Update Equipment");
+        dialog.setResizable(false);
+
+        VBox root = new VBox(14);
+        root.setPadding(new Insets(28));
+        root.setStyle("-fx-background-color: " + BG_CARD + ";");
+        root.setPrefWidth(520);
+
+        Text title = new Text("Update Equipment");
+        title.setFont(Font.font("Georgia", FontWeight.BOLD, 20));
+        title.setFill(Color.web(TEXT_WHITE));
+
+        TextField name = new TextField(eq.equipmentName());
+        TextField brand = new TextField(safe(eq.brandModel()));
+        TextField qty = new TextField(String.valueOf(eq.quantity()));
+        TextField location = new TextField(safe(eq.location()));
+        TextField purchaseCost = new TextField(String.format("%.2f", eq.purchaseCost()));
+        TextField purchaseDate = new TextField(dateText(eq.purchaseDate()));
+        TextField lastMaint = new TextField(dateText(eq.lastMaintenance()));
+        TextField nextMaint = new TextField(dateText(eq.nextMaintenance()));
+        TextField maintNotes = new TextField(safe(eq.maintenanceNotes()));
+        TextField notes = new TextField(safe(eq.notes()));
+        ComboBox<String> category = new ComboBox<>();
+        category.getItems().addAll("Cardio", "Strength", "Bodyweight", "Flexibility", "Other");
+        category.setValue(eq.category() != null ? eq.category() : "Other");
+        styleCombo(category);
+        ComboBox<String> condition = new ComboBox<>();
+        condition.getItems().addAll("Good", "Fair", "Maintenance", "Broken");
+        condition.setValue(eq.condition() != null ? eq.condition() : "Good");
+        styleCombo(condition);
+
+        GridPane form = new GridPane();
+        form.setHgap(14);
+        form.setVgap(12);
+        ColumnConstraints c1 = new ColumnConstraints(); c1.setPercentWidth(50);
+        ColumnConstraints c2 = new ColumnConstraints(); c2.setPercentWidth(50);
+        form.getColumnConstraints().addAll(c1, c2);
+        int r = 0;
+        form.add(labeledField("EQUIPMENT NAME", name, "Name"), 0, r++, 2, 1);
+        form.add(comboField("CATEGORY", category), 0, r);
+        form.add(labeledField("BRAND / MODEL", brand, "Brand or model"), 1, r++);
+        form.add(labeledField("QUANTITY", qty, "1"), 0, r);
+        form.add(comboField("CONDITION", condition), 1, r++);
+        form.add(labeledField("LOCATION", location, "Area"), 0, r);
+        form.add(labeledField("PURCHASE COST", purchaseCost, "0.00"), 1, r++);
+        form.add(labeledField("PURCHASE DATE", purchaseDate, "YYYY-MM-DD"), 0, r);
+        form.add(labeledField("LAST MAINTENANCE", lastMaint, "YYYY-MM-DD"), 1, r++);
+        form.add(labeledField("NEXT MAINTENANCE", nextMaint, "YYYY-MM-DD"), 0, r++, 2, 1);
+        form.add(labeledField("MAINTENANCE NOTES", maintNotes, "Notes"), 0, r++, 2, 1);
+        form.add(labeledField("GENERAL NOTES", notes, "Notes"), 0, r++, 2, 1);
+
+        HBox buttons = new HBox(12);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+        Button cancel = new Button("Cancel");
+        cancel.setPrefHeight(38);
+        cancel.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-text-fill: " + TEXT_MUTED + "; -fx-background-radius: 8;");
+        cancel.setOnAction(e -> dialog.close());
+        Button save = makeAccentBtn("Save Changes");
+        save.setOnAction(e -> {
+            try {
+                if (name.getText().trim().isEmpty()) {
+                    new Alert(Alert.AlertType.WARNING, "Equipment name is required.").showAndWait();
+                    return;
+                }
+                EquipmentDAO.EquipmentRecord updated = new EquipmentDAO.EquipmentRecord(
+                    eq.equipmentId(),
+                    eq.equipmentCode(),
+                    name.getText().trim(),
+                    category.getValue(),
+                    brand.getText().trim(),
+                    parseOptionalSqlDate(purchaseDate.getText().trim()),
+                    parseAmount(purchaseCost.getText()),
+                    parseAmount(purchaseCost.getText()),
+                    Integer.parseInt(qty.getText().trim()),
+                    condition.getValue(),
+                    location.getText().trim(),
+                    parseOptionalSqlDate(lastMaint.getText().trim()),
+                    parseOptionalSqlDate(nextMaint.getText().trim()),
+                    maintNotes.getText().trim(),
+                    notes.getText().trim(),
+                    eq.isActive()
+                );
+                if (new EquipmentDAO().update(updated)) {
+                    dialog.close();
+                    onSaved.run();
+                } else {
+                    new Alert(Alert.AlertType.ERROR, "Could not update equipment.").showAndWait();
+                }
+            } catch (NumberFormatException ex) {
+                new Alert(Alert.AlertType.ERROR, "Invalid quantity or cost.").showAndWait();
+            }
+        });
+        buttons.getChildren().addAll(cancel, save);
+        root.getChildren().addAll(title, form, buttons);
+        dialog.setScene(new Scene(root));
+        dialog.showAndWait();
+    }
+
+    private void showMaintenanceDialog(EquipmentDAO dao, EquipmentDAO.EquipmentRecord eq, Runnable onSaved) {
+        Stage dialog = new Stage();
+        dialog.setTitle("Schedule Maintenance");
+        dialog.setResizable(false);
+
+        VBox root = new VBox(14);
+        root.setPadding(new Insets(26));
+        root.setStyle("-fx-background-color: " + BG_CARD + ";");
+        root.setPrefWidth(440);
+
+        Text title = new Text("Maintenance - " + eq.equipmentName());
+        title.setFont(Font.font("Georgia", FontWeight.BOLD, 18));
+        title.setFill(Color.web(TEXT_WHITE));
+
+        TextField type = new TextField("Preventive Maintenance");
+        TextField date = new TextField(LocalDate.now().toString());
+        TextField next = new TextField(eq.nextMaintenance() != null ? eq.nextMaintenance().toString() : LocalDate.now().plusMonths(1).toString());
+        TextField cost = new TextField("0.00");
+        TextField performedBy = new TextField();
+        TextField notes = new TextField(safe(eq.maintenanceNotes()));
+
+        VBox fields = new VBox(10,
+            labeledField("TYPE", type, "Maintenance type"),
+            labeledField("MAINTENANCE DATE", date, "YYYY-MM-DD"),
+            labeledField("NEXT SCHEDULE", next, "YYYY-MM-DD"),
+            labeledField("COST", cost, "0.00"),
+            labeledField("PERFORMED BY", performedBy, "Staff or technician"),
+            labeledField("NOTES", notes, "Details")
+        );
+
+        HBox buttons = new HBox(12);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+        Button cancel = new Button("Cancel");
+        cancel.setOnAction(e -> dialog.close());
+        Button save = makeAccentBtn("Save Maintenance");
+        save.setOnAction(e -> {
+            EquipmentDAO.MaintenanceLog log = new EquipmentDAO.MaintenanceLog(
+                0,
+                eq.equipmentId(),
+                parseOptionalSqlDate(date.getText().trim()),
+                type.getText().trim(),
+                notes.getText().trim(),
+                parseAmount(cost.getText()),
+                performedBy.getText().trim(),
+                "Completed",
+                parseOptionalSqlDate(next.getText().trim()),
+                notes.getText().trim()
+            );
+            if (log.maintenanceDate() == null) {
+                new Alert(Alert.AlertType.WARNING, "Maintenance date is required in YYYY-MM-DD format.").showAndWait();
+                return;
+            }
+            if (dao.addMaintenanceLog(log, AppSession.currentUser().userId())) {
+                dialog.close();
+                onSaved.run();
+            } else {
+                new Alert(Alert.AlertType.ERROR, "Could not save maintenance record.").showAndWait();
+            }
+        });
+        buttons.getChildren().addAll(cancel, save);
+        root.getChildren().addAll(title, fields, buttons);
+        dialog.setScene(new Scene(root));
+        dialog.showAndWait();
+    }
+
+    private void updateEquipmentMonitor(Label monitorAlert, EquipmentDAO dao) {
+        List<EquipmentDAO.EquipmentRecord> due = dao.findMaintenanceDue();
+        int broken = dao.countByCondition("Broken");
+        int maintenance = dao.countByCondition("Maintenance");
+        if (due.isEmpty() && broken == 0 && maintenance == 0) {
+            monitorAlert.setText("Equipment monitor: all active equipment is in usable condition with no upcoming maintenance alerts.");
+            monitorAlert.setStyle("-fx-background-color: rgba(76,175,80,0.12); -fx-text-fill: " + SUCCESS + "; -fx-font: bold 12 Verdana; -fx-padding: 10 14; -fx-background-radius: 8; -fx-border-color: rgba(76,175,80,0.25); -fx-border-radius: 8;");
+            return;
+        }
+        List<String> dueNames = new ArrayList<>();
+        for (EquipmentDAO.EquipmentRecord eq : due) {
+            dueNames.add(eq.equipmentName() + " (" + dateText(eq.nextMaintenance()) + ")");
+            if (dueNames.size() == 4) break;
+        }
+        String dueText = dueNames.isEmpty() ? "none due soon" : String.join(", ", dueNames);
+        monitorAlert.setText("Equipment monitor: " + broken + " broken, " + maintenance + " in maintenance, due soon: " + dueText);
+        monitorAlert.setStyle("-fx-background-color: rgba(255,152,0,0.12); -fx-text-fill: " + WARNING + "; -fx-font: bold 12 Verdana; -fx-padding: 10 14; -fx-background-radius: 8; -fx-border-color: rgba(255,152,0,0.25); -fx-border-radius: 8;");
     }
 
     private VBox buildQuickAddCard(
@@ -539,6 +741,16 @@ public class AddEquipmentScreen extends Application {
         return g;
     }
 
+    private VBox comboField(String label, ComboBox<String> combo) {
+        VBox g = new VBox(6);
+        Label lbl = new Label(label);
+        lbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        lbl.setTextFill(Color.web(TEXT_MUTED));
+        combo.setPrefHeight(38);
+        g.getChildren().addAll(lbl, combo);
+        return g;
+    }
+
     private Date parseOptionalSqlDate(String raw) {
         if (raw == null || raw.isBlank()) {
             return null;
@@ -548,6 +760,21 @@ public class AddEquipmentScreen extends Application {
         } catch (Exception ex) {
             return null;
         }
+    }
+
+    private double parseAmount(String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
+            return 0;
+        }
+        return Double.parseDouble(raw.replace("PHP", "").replace("₱", "").replace(",", "").trim());
+    }
+
+    private String dateText(Date date) {
+        return date != null ? date.toString() : "";
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
     }
 
     private HBox makeStatChipText(String label, Text valueNode, String color) {

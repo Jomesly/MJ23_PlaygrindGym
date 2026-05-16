@@ -5,6 +5,7 @@ import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
@@ -27,6 +28,7 @@ import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import mj23gym.dao.UserDAO;
 
 /**
  * MJ23 Playgrind Gym - Profile Screen
@@ -286,15 +288,26 @@ public class AdminProfileScreen extends Application {
         ColumnConstraints dc2 = new ColumnConstraints(); dc2.setPercentWidth(50);
         detailsForm.getColumnConstraints().addAll(dc1, dc2);
 
-        detailsForm.add(buildFG("FIRST NAME",    "Enter first name",     user.firstName(),   false), 0, 0);
-        detailsForm.add(buildFG("LAST NAME",     "Enter last name",      user.lastName(),    false), 1, 0);
-        detailsForm.add(buildFG("USERNAME",      "Enter username",       user.username(),    false), 0, 1);
-        detailsForm.add(buildFG("EMAIL ADDRESS", "Enter email",          user.email(),       false), 1, 1);
-        detailsForm.add(buildFG("PHONE NUMBER",  "09XXXXXXXXX",          user.phone(),       false), 0, 2);
-        detailsForm.add(buildFG("POSITION",      "Your role/position",   user.position(),    false), 1, 2);
+        TextField firstNameTf = profileField(user.firstName(), false);
+        TextField lastNameTf = profileField(user.lastName(), false);
+        TextField usernameTf = profileField(user.username(), true);
+        TextField emailTf = profileField(user.email(), false);
+        TextField phoneTf = profileField(user.phone(), false);
+        TextField positionTf = profileField(user.position(), true);
+
+        detailsForm.add(fieldGroup("FIRST NAME", firstNameTf), 0, 0);
+        detailsForm.add(fieldGroup("LAST NAME", lastNameTf), 1, 0);
+        detailsForm.add(fieldGroup("USERNAME", usernameTf), 0, 1);
+        detailsForm.add(fieldGroup("EMAIL ADDRESS", emailTf), 1, 1);
+        detailsForm.add(fieldGroup("PHONE NUMBER", phoneTf), 0, 2);
+        detailsForm.add(fieldGroup("POSITION", positionTf), 1, 2);
 
         HBox saveBtn = new HBox(); saveBtn.setAlignment(Pos.CENTER_RIGHT);
         saveBtn.getChildren().add(makeAccentBtn("💾  Save Changes"));
+        saveBtn.getChildren().clear();
+        Button saveProfile = makeAccentBtn("Save Changes");
+        saveProfile.setOnAction(e -> saveProfileChanges(firstNameTf, lastNameTf, emailTf, phoneTf, adminName));
+        saveBtn.getChildren().add(saveProfile);
         detailsCard.getChildren().addAll(detailsForm, saveBtn);
         leftCol.getChildren().add(detailsCard);
 
@@ -317,10 +330,19 @@ public class AdminProfileScreen extends Application {
 
         // Change Password Card
         VBox pwCard = buildSectionCard("🔒  Change Password", "Update your login password");
+        PasswordField currentPw = new PasswordField();
+        PasswordField newPw = new PasswordField();
+        PasswordField confirmPw = new PasswordField();
+        currentPw.setPromptText("Enter current password");
+        newPw.setPromptText("Enter new password");
+        confirmPw.setPromptText("Re-enter new password");
+        applyFieldStyle(currentPw);
+        applyFieldStyle(newPw);
+        applyFieldStyle(confirmPw);
         pwCard.getChildren().addAll(
-            buildFG("CURRENT PASSWORD",      "Enter current password",  "", true),
-            buildFG("NEW PASSWORD",          "Enter new password",      "", true),
-            buildFG("CONFIRM NEW PASSWORD",  "Re-enter new password",   "", true)
+            fieldGroup("CURRENT PASSWORD", currentPw),
+            fieldGroup("NEW PASSWORD", newPw),
+            fieldGroup("CONFIRM NEW PASSWORD", confirmPw)
         );
         // Password strength indicator
         VBox strengthBox = new VBox(6);
@@ -351,7 +373,9 @@ public class AdminProfileScreen extends Application {
         weakLbl.setFont(Font.font("Verdana", 10)); weakLbl.setTextFill(Color.web(ACCENT));
         strengthBox.getChildren().addAll(strengthLbl, segBar, weakLbl);
         HBox pwBtn = new HBox(); pwBtn.setAlignment(Pos.CENTER_RIGHT);
-        pwBtn.getChildren().add(makeAccentBtn("Update Password"));
+        Button updatePassword = makeAccentBtn("Update Password");
+        updatePassword.setOnAction(e -> changePassword(currentPw, newPw, confirmPw));
+        pwBtn.getChildren().add(updatePassword);
         pwCard.getChildren().addAll(strengthBox, pwBtn);
         rightCol.getChildren().add(pwCard);
 
@@ -393,6 +417,86 @@ public class AdminProfileScreen extends Application {
         applyFieldStyle(tf);
         g.getChildren().addAll(lbl, tf);
         return g;
+    }
+
+    private TextField profileField(String value, boolean readOnly) {
+        TextField field = new TextField(value == null ? "" : value);
+        field.setPrefHeight(40);
+        field.setEditable(!readOnly);
+        applyFieldStyle(field);
+        if (readOnly) {
+            field.setStyle(field.getStyle() + "-fx-opacity: 0.72;");
+        }
+        return field;
+    }
+
+    private VBox fieldGroup(String label, TextField field) {
+        VBox g = new VBox(6);
+        Label lbl = new Label(label);
+        lbl.setFont(Font.font("Verdana", FontWeight.BOLD, 9));
+        lbl.setTextFill(Color.web(TEXT_MUTED));
+        g.getChildren().addAll(lbl, field);
+        return g;
+    }
+
+    private void saveProfileChanges(
+        TextField firstNameTf,
+        TextField lastNameTf,
+        TextField emailTf,
+        TextField phoneTf,
+        Text headerName
+    ) {
+        String firstName = firstNameTf.getText().trim();
+        String lastName = lastNameTf.getText().trim();
+        String email = emailTf.getText().trim();
+        String phone = phoneTf.getText().trim();
+        if (firstName.isEmpty() || lastName.isEmpty()) {
+            showProfileAlert(Alert.AlertType.WARNING, "First name and last name are required.");
+            return;
+        }
+        String fullName = firstName + " " + lastName;
+        UserDAO userDAO = new UserDAO();
+        int userId = AppSession.currentUser().userId();
+        if (userDAO.updateProfile(userId, fullName, email, phone)) {
+            userDAO.findById(userId).ifPresent(AppSession::updateCurrentUser);
+            headerName.setText(fullName);
+            showProfileAlert(Alert.AlertType.INFORMATION, "Profile updated successfully.");
+        } else {
+            showProfileAlert(Alert.AlertType.ERROR, "Could not update profile.");
+        }
+    }
+
+    private void changePassword(PasswordField currentPw, PasswordField newPw, PasswordField confirmPw) {
+        String current = currentPw.getText();
+        String next = newPw.getText();
+        String confirm = confirmPw.getText();
+        if (current.isBlank() || next.isBlank() || confirm.isBlank()) {
+            showProfileAlert(Alert.AlertType.WARNING, "Complete all password fields.");
+            return;
+        }
+        if (next.length() < 6) {
+            showProfileAlert(Alert.AlertType.WARNING, "New password must be at least 6 characters.");
+            return;
+        }
+        if (!next.equals(confirm)) {
+            showProfileAlert(Alert.AlertType.WARNING, "New password and confirmation do not match.");
+            return;
+        }
+        boolean ok = new UserDAO().changePassword(AppSession.currentUser().userId(), current, next);
+        if (ok) {
+            currentPw.clear();
+            newPw.clear();
+            confirmPw.clear();
+            showProfileAlert(Alert.AlertType.INFORMATION, "Password updated successfully.");
+        } else {
+            showProfileAlert(Alert.AlertType.ERROR, "Current password is incorrect or password update failed.");
+        }
+    }
+
+    private void showProfileAlert(Alert.AlertType type, String message) {
+        Alert alert = new Alert(type);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 
     private void applyFieldStyle(TextField f) {

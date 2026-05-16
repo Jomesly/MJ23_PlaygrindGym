@@ -197,6 +197,21 @@ public class MemberDAO {
         }
     }
 
+    public boolean recordAttendance(int memberId, String sessionType, String notes) {
+        String sql = "INSERT INTO attendance (member_id, time_in, attendance_date, session_type, notes) " +
+                     "VALUES (?, NOW(), CURDATE(), ?, ?)";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, memberId);
+            ps.setString(2, sessionType != null ? sessionType : "Monthly");
+            ps.setString(3, notes);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[MemberDAO] recordAttendance error: " + e.getMessage());
+            return false;
+        }
+    }
+
     // ── DELETE ────────────────────────────────────────────────────
 
     public boolean delete(int memberId) {

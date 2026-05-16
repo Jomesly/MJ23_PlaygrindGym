@@ -19,6 +19,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+import mj23gym.dao.PlanDAO;
 import mj23gym.util.DatabaseConnection;
 
 /**
@@ -56,6 +57,7 @@ public class GymManagementApp extends Application {
         // Check database connectivity
         if (DatabaseConnection.isConnected()) {
             System.out.println("[APP] Database connection verified successfully!");
+            new PlanDAO().ensurePlanSetup();
         } else {
             System.err.println("[APP WARNING] Could not verify database connection. Some features may not work.");
         }
@@ -146,10 +148,12 @@ public class GymManagementApp extends Application {
         String[][] items = {
             {"🏠", "Dashboard", "dashboard"},
             {"👥", "Member Management", "members"},
+            {"PL", "Manage Plans", "plans"},
             {"💳", "Payment & Billing", "payment"},
             {"📦", "Inventory", "inventory"},
             {"🏋", "Equipment", "equipment"},
             {"🛒", "Point of Sale", "pos"},
+            {"SE", "Search", "search"},
             {"📊", "Reports", "reports"}
         };
 
@@ -169,6 +173,7 @@ public class GymManagementApp extends Application {
             ? new String[][] {
                 {"RV", "Registration/Verification", "registration"},
                 {"PR", "Profile", "profile"},
+                {"MT", "Maintenance", "maintenance"},
                 {"ST", "Settings", "settings"},
                 {"?", "Help", "help"},
                 {"i", "About", "about"}
@@ -311,16 +316,22 @@ public class GymManagementApp extends Application {
         VBox screen = switch (screenId) {
             case "dashboard" -> new DashboardScreen().buildDashboardContent();
             case "members" -> new MemberManagementScreen().buildContent();
+            case "plans" -> new PlanManagementScreen().buildContent();
             case "payment" -> new PaymentScreen().buildContent();
             case "inventory" -> new InventoryScreen().buildContent();
             case "equipment" -> new AddEquipmentScreen().buildContent();
             case "pos" -> new POSScreen().buildContent();
+            case "search" -> new SearchScreen().buildContent();
             case "reports" -> new ReportsScreen().buildContent();
+            case "maintenance" -> AppSession.currentUser().isAdmin()
+                ? new MaintenanceScreen().buildContent()
+                : createAccessDeniedScreen();
             case "accounts", "registration" -> AppSession.currentUser().isAdmin()
                 ? new AccountManagementScreen().buildContent()
                 : createAccessDeniedScreen();
             case "profile" -> new AdminProfileScreen().buildContent();
-            case "settings", "about" -> new SettingsScreen().buildContent();
+            case "settings" -> new SettingsScreen().buildContent();
+            case "about" -> new AboutScreen().buildContent();
             case "help" -> new HelpScreen().buildContent();
             default -> new DashboardScreen().buildDashboardContent();
         };

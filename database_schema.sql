@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS plans (
     plan_id     INT AUTO_INCREMENT PRIMARY KEY,
     plan_name   VARCHAR(100) NOT NULL,
     description TEXT,
-    duration    ENUM('Daily','Monthly','Quarterly','Yearly','Per Session') DEFAULT 'Monthly',
+    duration    ENUM('Daily','Per Session','Monthly','Quarterly','Semi Annual','Yearly','Annual') DEFAULT 'Monthly',
     price       DECIMAL(10,2) NOT NULL,
     benefits    TEXT,
     is_active   BOOLEAN DEFAULT TRUE,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS members (
     gender                 ENUM('M','F','Other') DEFAULT 'M',
     membership_start_date  DATE NOT NULL,
     membership_end_date    DATE,
-    membership_type        ENUM('Daily','Monthly','Quarterly','Yearly','Per Session') DEFAULT 'Monthly',
+    membership_type        ENUM('Daily','Per Session','Monthly','Quarterly','Semi Annual','Yearly','Annual') DEFAULT 'Monthly',
     status                 ENUM('Active','Expired','Suspended','Cancelled') DEFAULT 'Active',
     created_by             INT,
     created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS attendance (
     time_in         DATETIME,
     time_out        DATETIME,
     attendance_date DATE,
-    session_type    ENUM('Daily','Monthly','Quarterly','Yearly','Per Session') DEFAULT 'Monthly',
+    session_type    ENUM('Daily','Per Session','Monthly','Quarterly','Semi Annual','Yearly','Annual') DEFAULT 'Monthly',
     notes           VARCHAR(255),
 
     FOREIGN KEY (member_id) REFERENCES members(member_id) ON DELETE CASCADE,
@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS inventory (
     unit_of_measure ENUM('pcs','kg','liters','packs','boxes','other') DEFAULT 'pcs',
     supplier        VARCHAR(150),
     last_restock    DATE,
+    expiration_date DATE,
     status          ENUM('In Stock','Low Stock','Out of Stock') DEFAULT 'In Stock',
     photo_url       VARCHAR(255),
     notes           TEXT,
@@ -328,6 +329,43 @@ CREATE TABLE IF NOT EXISTS reports (
 
 
 -- ============================================================
+-- SYSTEM BACKUPS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS system_backups (
+    backup_id    INT AUTO_INCREMENT PRIMARY KEY,
+    backup_name  VARCHAR(150) NOT NULL,
+    file_path    VARCHAR(255) NOT NULL,
+    status       ENUM('Created','Restored','Failed') DEFAULT 'Created',
+    notes        TEXT,
+    generated_by INT,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (generated_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_backup_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================================
+-- SYSTEM TOOLS
+-- ============================================================
+CREATE TABLE IF NOT EXISTS system_tools (
+    tool_id     INT AUTO_INCREMENT PRIMARY KEY,
+    tool_name   VARCHAR(120) NOT NULL,
+    module_name VARCHAR(120) NOT NULL,
+    description TEXT,
+    status      ENUM('Active','Archived') DEFAULT 'Active',
+    version     VARCHAR(30) DEFAULT '1.0',
+    updated_by  INT,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_tool_status (status),
+    INDEX idx_tool_module (module_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- ============================================================
 -- AUDIT LOGS
 -- ============================================================
 -- FIX: old_values DATETIME → TEXT (stores JSON snapshot);
@@ -378,6 +416,14 @@ CREATE TABLE IF NOT EXISTS system_settings (
 -- FIX: users INSERT now matches actual column names (full_name, not first_name/last_name)
 INSERT INTO users (username, password, full_name, email, phone, role, status)
 VALUES ('admin', '$2a$10$placeholder_hash_here', 'Admin User', 'admin@mj23gym.com', '09170000001', 'admin', 'active');
+
+INSERT INTO plans (plan_name, description, duration, price, benefits, is_active)
+VALUES
+    ('Per Session', 'Single gym session access', 'Per Session', 100.00, 'One walk-in training session.', TRUE),
+    ('Monthly', 'One-month gym membership', 'Monthly', 788.00, 'Unlimited access for one month.', TRUE),
+    ('Quarterly', 'Three-month gym membership', 'Quarterly', 1988.00, 'Unlimited access for three months.', TRUE),
+    ('Semi Annual', 'Six-month gym membership', 'Semi Annual', 3288.00, 'Unlimited access for six months.', TRUE),
+    ('Annual', 'Twelve-month gym membership', 'Annual', 4988.00, 'Unlimited access for one year.', TRUE);
 
 -- FIX: members INSERT now uses unique_member_code (not member_code)
 INSERT INTO members (unique_member_code, first_name, last_name, email, contact_number, address, gender, membership_type, membership_start_date, membership_end_date, status)
@@ -441,10 +487,6 @@ GROUP BY status;
 ALTER DATABASE mj23gym CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 SELECT 'MJ23 Playgrind Gym database initialized successfully!' AS status;
-
-
-
-
 
 
 
