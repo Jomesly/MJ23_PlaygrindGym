@@ -124,7 +124,7 @@ public class ReportsScreen extends Application {
         Text t2 = new Text("Generate payment, sales, and inventory summary reports"); t2.setFont(Font.font("Verdana", 11)); t2.setFill(Color.web(TEXT_MUTED));
         pg.getChildren().addAll(t1, t2);
         Region tSp = new Region(); HBox.setHgrow(tSp, Priority.ALWAYS);
-        Button exportBtn = makeAccentBtn("⬇  Export PDF");
+        Button exportBtn = makeAccentBtn("Save Report");
         topBar.getChildren().addAll(pg, tSp, exportBtn);
 
         ScrollPane scroll = new ScrollPane();
@@ -247,6 +247,7 @@ public class ReportsScreen extends Application {
         Button genBtn = makeAccentBtn("📊  Generate Report");
         genBtn.setPrefHeight(42);
         genBtn.setOnAction(e -> generateAndSaveReport(tfFrom, tfTo, groupBy, refreshAll, reportDAO, savedReportRows));
+        exportBtn.setOnAction(e -> generateAndSaveReport(tfFrom, tfTo, groupBy, refreshAll, reportDAO, savedReportRows));
 
         filterRow.getChildren().addAll(dateFrom, dateTo, groupBox, fSp, genBtn);
         filterCard.getChildren().addAll(filterTitle, filterRow);
@@ -538,7 +539,6 @@ public class ReportsScreen extends Application {
         VBox card = new VBox(8);
         card.setPadding(new Insets(18, 20, 18, 20));
         card.setAlignment(Pos.CENTER_LEFT);
-        card.setCursor(javafx.scene.Cursor.HAND);
         String borderColor = active ? ACCENT : BORDER;
         String bgColor = active ? "rgba(230,57,70,0.08)" : BG_CARD;
         card.setStyle(
@@ -593,6 +593,9 @@ public class ReportsScreen extends Application {
             "-fx-font-size: 11;" +
             "-fx-cursor: hand;"
         );
+        printBtn.setOnAction(e -> new Alert(Alert.AlertType.INFORMATION,
+            "Generate and save the report first, then open it from Generated Reports to review printable details.")
+            .showAndWait());
         hdr.getChildren().addAll(titleNode, hSp, printBtn);
 
         String[] headers = {"Date", "Item", "Qty Sold", "Unit Price", "Total", "Payment Method"};

@@ -6,6 +6,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Accordion;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -145,6 +146,7 @@ public class HelpScreen extends Application {
     public VBox buildContent() {
         VBox content = new VBox(0);
         content.setStyle("-fx-background-color: " + BG_MAIN + ";");
+        final Accordion[] faqRef = new Accordion[1];
 
         // Top bar
         HBox topBar = new HBox();
@@ -230,6 +232,8 @@ public class HelpScreen extends Application {
             "-fx-background-color: " + ACCENT_DARK + "; -fx-text-fill: white; -fx-background-radius: 0 10 10 0; -fx-cursor: hand;"));
         searchBtn.setOnMouseExited(e -> searchBtn.setStyle(
             "-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 0 10 10 0; -fx-cursor: hand;"));
+        searchBtn.setOnAction(e -> searchHelpTopic(searchField.getText(), faqRef[0]));
+        searchField.setOnAction(e -> searchHelpTopic(searchField.getText(), faqRef[0]));
         searchBox.getChildren().addAll(searchField, searchBtn);
 
         heroBanner.getChildren().addAll(heroIcon, heroTitle, heroSub, searchBox);
@@ -247,6 +251,7 @@ public class HelpScreen extends Application {
         };
         for (String[] topic : topics) {
             VBox topicCard = buildTopicCard(topic[0], topic[1], topic[2], topic[3]);
+            topicCard.setOnMouseClicked(e -> searchHelpTopic(topic[1], faqRef[0]));
             HBox.setHgrow(topicCard, Priority.ALWAYS);
             topicRow.getChildren().add(topicCard);
         }
@@ -258,6 +263,7 @@ public class HelpScreen extends Application {
         VBox faqCard = buildSectionCard("💬  Frequently Asked Questions", "Common questions and answers");
         Accordion faqAccordion = new Accordion();
         faqAccordion.setStyle("-fx-background-color: transparent;");
+        faqRef[0] = faqAccordion;
 
         String[][] faqs = {
             {
@@ -517,6 +523,47 @@ public class HelpScreen extends Application {
             "-fx-border-radius: 12;" +
             "-fx-border-width: 0 0 0 4;"));
         return card;
+    }
+
+    private void searchHelpTopic(String query, Accordion faqAccordion) {
+        if (faqAccordion == null) {
+            return;
+        }
+        if (query == null || query.isBlank()) {
+            new Alert(Alert.AlertType.INFORMATION, "Type a help topic or click a topic card to open related instructions.").showAndWait();
+            return;
+        }
+
+        String term = query.trim().toLowerCase();
+        for (TitledPane pane : faqAccordion.getPanes()) {
+            String title = pane.getText() != null ? pane.getText().toLowerCase() : "";
+            String body = "";
+            if (pane.getContent() instanceof Label label && label.getText() != null) {
+                body = label.getText().toLowerCase();
+            }
+            if (title.contains(term) || body.contains(term) || matchesTopicAlias(term, title, body)) {
+                faqAccordion.setExpandedPane(pane);
+                pane.requestFocus();
+                return;
+            }
+        }
+
+        new Alert(Alert.AlertType.INFORMATION,
+            "No matching help topic found. Try Members, Payments, Inventory, Equipment, POS, Search, Reports, Maintenance, Settings, or Password.")
+            .showAndWait();
+    }
+
+    private boolean matchesTopicAlias(String term, String title, String body) {
+        return (term.contains("member") && (title.contains("member") || body.contains("member")))
+            || (term.contains("payment") && (title.contains("payment") || body.contains("payment")))
+            || (term.contains("inventory") && (title.contains("inventory") || body.contains("inventory")))
+            || (term.contains("equipment") && (title.contains("equipment") || body.contains("equipment")))
+            || (term.equals("pos") && body.contains("sale"))
+            || (term.contains("search") && (title.contains("search") || body.contains("search")))
+            || (term.contains("report") && (title.contains("report") || body.contains("report")))
+            || (term.contains("password") && (title.contains("password") || body.contains("password")))
+            || (term.contains("maintenance") && (title.contains("maintenance") || body.contains("maintenance")))
+            || (term.contains("backup") && body.contains("backup"));
     }
 
     private VBox buildSectionCard(String title, String sub) {

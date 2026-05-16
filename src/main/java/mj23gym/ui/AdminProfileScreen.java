@@ -294,6 +294,7 @@ public class AdminProfileScreen extends Application {
         TextField emailTf = profileField(user.email(), false);
         TextField phoneTf = profileField(user.phone(), false);
         TextField positionTf = profileField(user.position(), true);
+        editProfileBtn.setOnAction(e -> firstNameTf.requestFocus());
 
         detailsForm.add(fieldGroup("FIRST NAME", firstNameTf), 0, 0);
         detailsForm.add(fieldGroup("LAST NAME", lastNameTf), 1, 0);

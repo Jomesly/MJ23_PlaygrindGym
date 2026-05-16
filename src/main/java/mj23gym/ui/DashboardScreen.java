@@ -8,6 +8,7 @@ import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -35,6 +36,7 @@ import mj23gym.dao.InventoryDAO;
 import mj23gym.dao.MemberDAO;
 import mj23gym.dao.PaymentDAO;
 import mj23gym.dao.PosDAO;
+import mj23gym.dao.SearchDAO;
 
 /**
  * MJ23 Playgrind Gym – Dashboard Screen
@@ -230,6 +232,7 @@ public class DashboardScreen extends Application {
             "-fx-cursor: hand;" +
             "-fx-padding: 4 8 4 8;"
         ));
+        logoutBtn.setOnAction(e -> ((Stage) logoutBtn.getScene().getWindow()).close());
         HBox.setHgrow(userInfo, Priority.ALWAYS);
         userBox.getChildren().addAll(avatarStack, userInfo, logoutBtn);
 
@@ -277,10 +280,21 @@ public class DashboardScreen extends Application {
             ));
         }
 
-        // Click navigation (stub – swap center content)
         item.setOnMouseClicked(e -> {
-            // TODO: route to corresponding screen
-            // e.g. if label.equals("Member Management") → root.setCenter(new MemberManagementScreen().buildContent());
+            VBox screen = switch (label) {
+                case "Dashboard" -> buildDashboardContent();
+                case "Member Management" -> new MemberManagementScreen().buildContent();
+                case "Payment & Billing" -> new PaymentScreen().buildContent();
+                case "Inventory" -> new InventoryScreen().buildContent();
+                case "Equipment" -> new AddEquipmentScreen().buildContent();
+                case "Point of Sale" -> new POSScreen().buildContent();
+                case "Reports" -> new ReportsScreen().buildContent();
+                case "Settings" -> new SettingsScreen().buildContent();
+                case "Help" -> new HelpScreen().buildContent();
+                case "About" -> new AboutScreen().buildContent();
+                default -> buildDashboardContent();
+            };
+            root.setCenter(screen);
         });
 
         return item;
@@ -385,6 +399,8 @@ public class DashboardScreen extends Application {
         double revenueToday = paymentDAO.todayRevenue() + posDAO.todayPosTotal();
         int lowStockCount = inventoryDAO.countLowStock();
         int maintDue = equipmentDAO.findMaintenanceDue().size();
+        searchField.setOnAction(e -> showDashboardSearch(searchField.getText()));
+        notifBtn.setOnAction(e -> showDashboardNotifications(lowStockCount, maintDue));
 
         List<MemberDAO.MemberRecord> recentMembers = memberDAO.findRecent(5);
         
@@ -556,15 +572,7 @@ public class DashboardScreen extends Application {
         titleTxt.setFont(Font.font("Verdana", FontWeight.BOLD, 13));
         titleTxt.setFill(Color.web(TEXT_WHITE));
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        Button viewAll = new Button("View All →");
-        viewAll.setStyle(
-            "-fx-background-color: transparent;" +
-            "-fx-text-fill: " + ACCENT + ";" +
-            "-fx-font-size: 11;" +
-            "-fx-cursor: hand;" +
-            "-fx-padding: 4 0 4 0;"
-        );
-        cardHeader.getChildren().addAll(titleTxt, sp, viewAll);
+        cardHeader.getChildren().addAll(titleTxt, sp);
 
         // Table
         GridPane table = new GridPane();
@@ -711,6 +719,49 @@ public class DashboardScreen extends Application {
 
         card.getChildren().addAll(header, stats);
         return card;
+    }
+
+    private void showDashboardSearch(String query) {
+        if (query == null || query.isBlank()) {
+            new Alert(Alert.AlertType.INFORMATION, "Type a member, item, transaction ID, payment method, or reference number, then press Enter.").showAndWait();
+            return;
+        }
+
+        List<SearchDAO.SearchResult> results = new SearchDAO().searchAll(query);
+        if (results.isEmpty()) {
+            new Alert(Alert.AlertType.INFORMATION, "No records found for: " + query.trim()).showAndWait();
+            return;
+        }
+
+        StringBuilder message = new StringBuilder();
+        int limit = Math.min(8, results.size());
+        for (int i = 0; i < limit; i++) {
+            SearchDAO.SearchResult result = results.get(i);
+            message.append(result.module())
+                .append(": ")
+                .append(result.title())
+                .append("\n")
+                .append(result.detail())
+                .append("\n\n");
+        }
+        if (results.size() > limit) {
+            message.append("Showing ").append(limit).append(" of ").append(results.size()).append(" matches. Open Search for full results.");
+        }
+        new Alert(Alert.AlertType.INFORMATION, message.toString()).showAndWait();
+    }
+
+    private void showDashboardNotifications(int lowStockCount, int maintDue) {
+        StringBuilder message = new StringBuilder();
+        if (lowStockCount > 0) {
+            message.append(lowStockCount).append(" inventory item(s) need restocking.\n");
+        }
+        if (maintDue > 0) {
+            message.append(maintDue).append(" equipment maintenance task(s) are due within 30 days.\n");
+        }
+        if (message.length() == 0) {
+            message.append("No low-stock or maintenance alerts right now.");
+        }
+        new Alert(Alert.AlertType.INFORMATION, message.toString()).showAndWait();
     }
 
     public static void main(String[] args) { launch(args); }
