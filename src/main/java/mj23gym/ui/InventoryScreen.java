@@ -57,7 +57,13 @@ public class InventoryScreen extends Application {
     static final String BORDER       = ModernDesignSystem.BORDER_COLOR;
     static final String SUCCESS      = ModernDesignSystem.SUCCESS;
     static final String WARNING      = ModernDesignSystem.ACCENT_YELLOW;
-    static final String INFO        = "#1A1363";
+    static final String INFO         = ModernDesignSystem.PRIMARY;
+    static final String SUCCESS_TEXT = "#237A36";
+    static final String WARNING_TEXT = "#6E6400";
+    static final String TEXT_TITLE   = ModernDesignSystem.PRIMARY;
+    static final String TEXT_SOFT    = ModernDesignSystem.TEXT_MUTED;
+    static final String TEXT_DARK    = ModernDesignSystem.PRIMARY_DARK;
+    static final String CARD_SURFACE = ModernDesignSystem.WHITE;
 
     @Override
     public void start(Stage stage) {
@@ -175,10 +181,10 @@ public class InventoryScreen extends Application {
         VBox pg = new VBox(2);
         Text t1 = new Text("Inventory");
         t1.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
-        t1.setFill(Color.web(TEXT_WHITE));
+        t1.setFill(Color.web(TEXT_TITLE));
         Text t2 = new Text("Manage gym supplies, supplements, and stock levels");
         t2.setFont(Font.font("Poppins", 11));
-        t2.setFill(Color.web(TEXT_MUTED));
+        t2.setFill(Color.web(TEXT_SOFT));
         pg.getChildren().addAll(t1, t2);
         topBar.getChildren().add(pg);
 
@@ -225,10 +231,10 @@ public class InventoryScreen extends Application {
 
         HBox statsRow = new HBox(16);
         statsRow.getChildren().addAll(
-            makeStatChipText(" Total Items", statTotal, TEXT_WHITE),
-            makeStatChipText(" In Stock", statIn, SUCCESS),
-            makeStatChipText("  Low Stock", statLow, WARNING),
-            makeStatChipText(" Out of Stock", statOut, ACCENT)
+            makeStatChipText("Total Items", statTotal, TEXT_TITLE),
+            makeStatChipText("In Stock", statIn, SUCCESS_TEXT),
+            makeStatChipText("Low Stock", statLow, WARNING_TEXT),
+            makeStatChipText("Out of Stock", statOut, TEXT_TITLE)
         );
 
         //  Controls row 
@@ -260,25 +266,27 @@ public class InventoryScreen extends Application {
         Label monitorAlert = new Label();
         monitorAlert.setWrapText(true);
         monitorAlert.setStyle(
-            "-fx-background-color: rgba(253,238,33,0.12);" +
-            "-fx-text-fill: " + WARNING + ";" +
+            "-fx-background-color: rgba(253,238,33,0.18);" +
+            "-fx-text-fill: " + WARNING_TEXT + ";" +
             "-fx-font: bold 12 Poppins;" +
             "-fx-padding: 10 14;" +
-            "-fx-background-radius: 16;" +
-            "-fx-border-color: rgba(253,238,33,0.25);" +
-            "-fx-border-radius: 16;"
+            "-fx-background-radius: 14;" +
+            "-fx-border-color: rgba(110,100,0,0.20);" +
+            "-fx-border-radius: 14;"
         );
 
-        //  Table card 
         VBox tableCard = new VBox(0);
         tableCard.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 22;" +
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 20;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 22;" +
-            "-fx-border-width: 1;");
+            "-fx-border-radius: 20;" +
+            "-fx-border-width: 1;"
+        );
         DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000", 0.3)); ds.setRadius(12); ds.setOffsetY(4);
+        ds.setColor(Color.web(ACCENT, 0.10));
+        ds.setRadius(12);
+        ds.setOffsetY(4);
         tableCard.setEffect(ds);
 
         // Header row
@@ -287,14 +295,19 @@ public class InventoryScreen extends Application {
 
         HBox tblHdr = new HBox();
         tblHdr.setPadding(new Insets(12, 20, 12, 20));
-        tblHdr.setStyle("-fx-background-color: " + BG_SIDEBAR + "; -fx-background-radius: 12 12 0 0;");
+        tblHdr.setStyle(
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 12 12 0 0;" +
+            "-fx-border-color: " + BORDER + " transparent transparent transparent;" +
+            "-fx-border-width: 0 0 1 0;"
+        );
         GridPane hGrid = makeGrid(colW);
         hGrid.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(hGrid, Priority.ALWAYS);
         for (int i = 0; i < headers.length; i++) {
             Label h = new Label(headers[i].toUpperCase());
             h.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-            h.setTextFill(Color.web(TEXT_DIM));
+            h.setStyle("-fx-text-fill: " + TEXT_SOFT + ";");
             hGrid.add(h, i, 0);
         }
         tblHdr.getChildren().add(hGrid);
@@ -302,7 +315,7 @@ public class InventoryScreen extends Application {
         VBox rowsBox = new VBox(0);
         Text pgInfo = new Text();
         pgInfo.setFont(Font.font("Poppins", 11));
-        pgInfo.setFill(Color.web(TEXT_MUTED));
+        pgInfo.setFill(Color.web(TEXT_SOFT));
 
         final Runnable[] refreshHolder = new Runnable[1];
         refreshHolder[0] = () -> {
@@ -357,7 +370,7 @@ public class InventoryScreen extends Application {
 
         Text title = new Text("Add New Item");
         title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
-        title.setFill(Color.web(TEXT_WHITE));
+        title.setFill(Color.web(TEXT_TITLE));
         Rectangle ul = new Rectangle(48, 3);
         ul.setFill(Color.web(ACCENT)); ul.setArcWidth(3); ul.setArcHeight(3);
 
@@ -383,7 +396,7 @@ public class InventoryScreen extends Application {
         VBox catV = new VBox(6);
         Label cl = new Label("CATEGORY");
         cl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-        cl.setTextFill(Color.web(TEXT_MUTED));
+        cl.setStyle("-fx-text-fill: " + TEXT_SOFT + ";");
         catV.getChildren().addAll(cl, catBox);
         form.add(catV, 0, r);
         form.add(labeledInv("SELLING PRICE", unitTf, "0.00"), 1, r++);
@@ -457,7 +470,7 @@ public class InventoryScreen extends Application {
         VBox g = new VBox(6);
         Label l = new Label(label);
         l.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-        l.setTextFill(Color.web(TEXT_MUTED));
+        l.setStyle("-fx-text-fill: " + TEXT_SOFT + ";");
         field.setPromptText(prompt);
         field.setPrefHeight(40);
         applyFieldStyle(field);
@@ -472,23 +485,31 @@ public class InventoryScreen extends Application {
     }
 
     private HBox makeStatChipText(String label, Text valueNode, String color) {
-        HBox chip = new HBox(10);
+        HBox chip = new HBox(12);
         chip.setAlignment(Pos.CENTER_LEFT);
-        chip.setPadding(new Insets(14, 20, 14, 20));
+        chip.setPadding(new Insets(14, 18, 14, 18));
         chip.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 18;" +
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 16;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 18;" +
-            "-fx-border-width: 1;");
+            "-fx-border-radius: 16;" +
+            "-fx-border-width: 1;"
+        );
         HBox.setHgrow(chip, Priority.ALWAYS);
-        DropShadow d = new DropShadow(); d.setColor(Color.web("#000", 0.2)); d.setRadius(8); d.setOffsetY(3);
+        DropShadow d = new DropShadow();
+        d.setColor(Color.web("#000000", 0.08));
+        d.setRadius(8);
+        d.setOffsetY(2);
         chip.setEffect(d);
+        Rectangle accent = new Rectangle(4, 36);
+        accent.setArcWidth(4);
+        accent.setArcHeight(4);
+        accent.setFill(Color.web(color));
         valueNode.setFill(Color.web(color));
         Text lbl = new Text(label);
-        lbl.setFont(Font.font("Poppins", 11));
-        lbl.setFill(Color.web(TEXT_MUTED));
-        chip.getChildren().add(new VBox(2, lbl, valueNode));
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        lbl.setFill(Color.web(TEXT_SOFT));
+        chip.getChildren().addAll(accent, new VBox(2, lbl, valueNode));
         return chip;
     }
 
@@ -527,7 +548,7 @@ public class InventoryScreen extends Application {
         pgInfo.setText("Showing " + filtered.size() + " item(s)");
         int r = 0;
         for (InventoryDAO.InventoryRecord it : filtered) {
-            String bg = (r % 2 == 0) ? BG_CARD : BG_ROW_ALT;
+            String bg = (r % 2 == 0) ? CARD_SURFACE : BG_ROW_ALT;
             HBox row = new HBox();
             row.setPadding(new Insets(11, 20, 11, 20));
             row.setStyle("-fx-background-color: " + bg + ";");
@@ -537,15 +558,15 @@ public class InventoryScreen extends Application {
             HBox.setHgrow(rGrid, Priority.ALWAYS);
             String code = "#" + it.itemCode();
             int q = it.currentStock();
-            String qtyColor = q <= it.reorderLevel() ? ACCENT : TEXT_WHITE;
-            rGrid.add(makeCell(code, ACCENT, true), 0, 0);
-            rGrid.add(makeCell(it.itemName(), TEXT_WHITE, false), 1, 0);
+            String qtyColor = q <= 0 ? TEXT_TITLE : (q <= it.reorderLevel() ? WARNING_TEXT : SUCCESS_TEXT);
+            rGrid.add(makeCell(code, TEXT_SOFT, true), 0, 0);
+            rGrid.add(makeCell(it.itemName(), TEXT_TITLE, true), 1, 0);
             rGrid.add(makeCatBadge(it.category()), 2, 0);
             rGrid.add(makeCell(String.valueOf(q), qtyColor, true), 3, 0);
-            rGrid.add(makeCell(String.format("%.2f", it.sellingPrice()), TEXT_MUTED, false), 4, 0);
+            rGrid.add(makeCell("PHP " + String.format("%,.2f", it.sellingPrice()), TEXT_SOFT, false), 4, 0);
             rGrid.add(makeExpiryBadge(it.expirationDate()), 5, 0);
             rGrid.add(makeStockBadge(it.status()), 6, 0);
-            Button del = makeActionBtn("", ACCENT);
+            Button del = makeActionBtn("", TEXT_TITLE);
             del.setOnAction(e -> {
                 Alert c = new Alert(Alert.AlertType.CONFIRMATION);
                 c.setContentText("Archive " + it.itemName() + "? It will be removed from active inventory but kept for reference.");
@@ -555,11 +576,11 @@ public class InventoryScreen extends Application {
                 }
             });
             del.setText(it.isActive() ? "Archive" : "Archived");
-            Button edit = makeActionBtn("Edit", WARNING);
+            Button edit = makeActionBtn("Edit", WARNING_TEXT);
             edit.setOnAction(e -> showEditItemDialog(it, fullRefresh));
-            Button stock = makeActionBtn("Stock", INFO);
+            Button stock = makeActionBtn("Stock", TEXT_TITLE);
             stock.setOnAction(e -> showStockDialog(dao, it, fullRefresh));
-            Button restore = makeActionBtn("Restore", SUCCESS);
+            Button restore = makeActionBtn("Restore", SUCCESS_TEXT);
             restore.setOnAction(e -> {
                 if (dao.reactivate(it.itemId())) {
                     fullRefresh.run();
@@ -591,7 +612,7 @@ public class InventoryScreen extends Application {
 
         Text title = new Text("Update Inventory Item");
         title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
-        title.setFill(Color.web(TEXT_WHITE));
+        title.setFill(Color.web(TEXT_TITLE));
 
         TextField nameTf = new TextField(item.itemName());
         TextField descTf = new TextField(safe(item.description()));
@@ -702,7 +723,15 @@ public class InventoryScreen extends Application {
     ) {
         if (lowStock.isEmpty() && expiring.isEmpty()) {
             monitorAlert.setText("Inventory monitor: All active stock levels are above reorder level.");
-            monitorAlert.setStyle("-fx-background-color: rgba(228,255,223,0.12); -fx-text-fill: " + SUCCESS + "; -fx-font: bold 12 Poppins; -fx-padding: 10 14; -fx-background-radius: 16; -fx-border-color: rgba(228,255,223,0.25); -fx-border-radius: 16;");
+            monitorAlert.setStyle(
+                "-fx-background-color: rgba(228,255,223,0.55);" +
+                "-fx-text-fill: " + SUCCESS_TEXT + ";" +
+                "-fx-font: bold 12 Poppins;" +
+                "-fx-padding: 10 14;" +
+                "-fx-background-radius: 14;" +
+                "-fx-border-color: rgba(35,122,54,0.18);" +
+                "-fx-border-radius: 14;"
+            );
             return;
         }
         List<String> alerts = new ArrayList<>();
@@ -723,13 +752,21 @@ public class InventoryScreen extends Application {
             alerts.add("Expiry: " + String.join(", ", expiringNames));
         }
         monitorAlert.setText(String.join(" | ", alerts));
-        monitorAlert.setStyle("-fx-background-color: rgba(253,238,33,0.12); -fx-text-fill: " + WARNING + "; -fx-font: bold 12 Poppins; -fx-padding: 10 14; -fx-background-radius: 16; -fx-border-color: rgba(253,238,33,0.25); -fx-border-radius: 16;");
+        monitorAlert.setStyle(
+            "-fx-background-color: rgba(253,238,33,0.18);" +
+            "-fx-text-fill: " + WARNING_TEXT + ";" +
+            "-fx-font: bold 12 Poppins;" +
+            "-fx-padding: 10 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-border-color: rgba(110,100,0,0.20);" +
+            "-fx-border-radius: 14;"
+        );
     }
 
     private Label formLabel(String text) {
         Label label = new Label(text);
         label.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-        label.setTextFill(Color.web(TEXT_MUTED));
+        label.setStyle("-fx-text-fill: " + TEXT_SOFT + ";");
         return label;
     }
 
@@ -783,38 +820,33 @@ public class InventoryScreen extends Application {
     }
 
     private void applyFieldStyle(TextField f) {
-        f.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
+        String base =
+            "-fx-background-color: " + CARD_SURFACE + ";" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 16;" +
-            "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
-            "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-prompt-text-fill: " + TEXT_SOFT + ";" +
             "-fx-padding: 0 12 0 12;" +
             "-fx-font-family: Poppins;" +
-            "-fx-font-size: 12;");
+            "-fx-font-size: 12;";
+        f.setStyle(base);
         f.focusedProperty().addListener((o, old, focused) -> f.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
-            "-fx-border-color: " + (focused ? ACCENT : BORDER) + ";" +
-            "-fx-border-radius: 16;" +
-            "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
-            "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
-            "-fx-padding: 0 12 0 12;" +
-            "-fx-font-family: Poppins;" +
-            "-fx-font-size: 12;"));
+            base + "-fx-border-color: " + (focused ? ACCENT : BORDER) + ";"
+        ));
     }
 
     private void styleCombo(ComboBox<String> c) {
         c.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-color: " + CARD_SURFACE + ";" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 16;" +
-            "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
             "-fx-font-family: Poppins;" +
             "-fx-font-size: 12;" +
-            "-fx-pref-height: 38;");
+            "-fx-pref-height: 38;"
+        );
     }
 
     private Button makeAccentBtn(String text) {
@@ -828,64 +860,112 @@ public class InventoryScreen extends Application {
         return b;
     }
 
-    private Button makeActionBtn(String icon, String color) {
-        Button btn = new Button(icon);
-        btn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + color + "; -fx-font-size: 13; -fx-cursor: hand; -fx-padding: 3 6 3 6; -fx-background-radius: 6;");
-        btn.setOnMouseEntered(e -> btn.setStyle("-fx-background-color: rgba(255,255,255,0.07); -fx-text-fill: " + color + "; -fx-font-size: 13; -fx-cursor: hand; -fx-padding: 3 6 3 6; -fx-background-radius: 6;"));
-        btn.setOnMouseExited(e -> btn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + color + "; -fx-font-size: 13; -fx-cursor: hand; -fx-padding: 3 6 3 6; -fx-background-radius: 6;"));
+    private Button makeActionBtn(String text, String color) {
+        Button btn = new Button(text);
+        btn.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        btn.setMinWidth(52);
+        btn.setPadding(new Insets(5, 8, 5, 8));
+        String wash = buttonWash(color);
+        String base =
+            "-fx-background-color: " + wash + ";" +
+            "-fx-text-fill: " + color + ";" +
+            "-fx-border-color: " + color + ";" +
+            "-fx-border-radius: 8;" +
+            "-fx-background-radius: 8;" +
+            "-fx-cursor: hand;";
+        btn.setStyle(base);
+        btn.setOnMouseEntered(e -> btn.setStyle(
+            base + "-fx-background-color: rgba(26,19,99,0.14);"
+        ));
+        btn.setOnMouseExited(e -> btn.setStyle(base));
         return btn;
+    }
+
+    private String buttonWash(String color) {
+        if (SUCCESS_TEXT.equalsIgnoreCase(color)) return "rgba(228,255,223,0.75)";
+        if (WARNING_TEXT.equalsIgnoreCase(color)) return "rgba(253,238,33,0.28)";
+        if (TEXT_SOFT.equalsIgnoreCase(color)) return "rgba(119,116,155,0.12)";
+        return "rgba(26,19,99,0.08)";
     }
 
     private Label makeCell(String text, String color, boolean bold) {
         Label l = new Label(text);
         l.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
-        l.setTextFill(Color.web(color));
+        l.setStyle(
+            "-fx-text-fill: " + color + ";" +
+            "-fx-font-weight: " + (bold ? "bold" : "normal") + ";"
+        );
         return l;
     }
 
     private Label makeStockBadge(String status) {
         Label b = new Label(status);
         b.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
-        String c, bg;
+        String c;
+        String bg;
         switch (status) {
-            case "In Stock":     c = SUCCESS; bg = "rgba(228,255,223,0.15)";  break;
-            case "Low Stock":    c = ACCENT; bg = "rgba(26,19,99,0.15)";  break;
-            case "Out of Stock": c = ACCENT;  bg = "rgba(26,19,99,0.15)";  break;
-            default:             c = TEXT_MUTED; bg = "transparent";        break;
+            case "In Stock":
+                c = SUCCESS_TEXT;
+                bg = "rgba(228,255,223,0.75)";
+                break;
+            case "Low Stock":
+                c = WARNING_TEXT;
+                bg = "rgba(253,238,33,0.28)";
+                break;
+            case "Out of Stock":
+                c = TEXT_TITLE;
+                bg = "rgba(26,19,99,0.08)";
+                break;
+            default:
+                c = TEXT_SOFT;
+                bg = "rgba(119,116,155,0.10)";
+                break;
         }
-        b.setTextFill(Color.web(c));
-        b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 18; -fx-padding: 3 10 3 10;");
+        b.setStyle(
+            "-fx-text-fill: " + c + ";" +
+            "-fx-background-color: " + bg + ";" +
+            "-fx-background-radius: 14;" +
+            "-fx-padding: 4 10 4 10;"
+        );
         return b;
     }
 
     private Label makeExpiryBadge(Date expirationDate) {
         Label b = new Label(expiryText(expirationDate));
         b.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
-        String c = TEXT_MUTED;
-        String bg = "rgba(255,255,255,0.06)";
+        String c = TEXT_SOFT;
+        String bg = "rgba(119,116,155,0.10)";
         if (expirationDate != null) {
             LocalDate expiry = expirationDate.toLocalDate();
             if (expiry.isBefore(LocalDate.now())) {
-                c = ACCENT;
-                bg = "rgba(26,19,99,0.15)";
+                c = TEXT_TITLE;
+                bg = "rgba(26,19,99,0.08)";
             } else if (!expiry.isAfter(LocalDate.now().plusDays(30))) {
-                c = WARNING;
-                bg = "rgba(253,238,33,0.15)";
+                c = WARNING_TEXT;
+                bg = "rgba(253,238,33,0.28)";
             } else {
-                c = SUCCESS;
-                bg = "rgba(228,255,223,0.12)";
+                c = SUCCESS_TEXT;
+                bg = "rgba(228,255,223,0.65)";
             }
         }
-        b.setTextFill(Color.web(c));
-        b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 18; -fx-padding: 3 10 3 10;");
+        b.setStyle(
+            "-fx-text-fill: " + c + ";" +
+            "-fx-background-color: " + bg + ";" +
+            "-fx-background-radius: 14;" +
+            "-fx-padding: 4 10 4 10;"
+        );
         return b;
     }
 
     private Label makeCatBadge(String cat) {
-        Label b = new Label(cat);
-        b.setFont(Font.font("Poppins", 10));
-        b.setTextFill(Color.web(INFO));
-        b.setStyle("-fx-background-color: rgba(119,116,155,0.13); -fx-background-radius: 18; -fx-padding: 3 10 3 10;");
+        Label b = new Label(cat != null ? cat : "Other");
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        b.setStyle(
+            "-fx-text-fill: " + TEXT_SOFT + ";" +
+            "-fx-background-color: rgba(119,116,155,0.12);" +
+            "-fx-background-radius: 14;" +
+            "-fx-padding: 4 10 4 10;"
+        );
         return b;
     }
 

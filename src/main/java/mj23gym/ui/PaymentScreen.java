@@ -57,7 +57,14 @@ public class PaymentScreen extends Application {
     static final String BORDER       = ModernDesignSystem.BORDER_COLOR;
     static final String SUCCESS      = ModernDesignSystem.SUCCESS;
     static final String WARNING      = ModernDesignSystem.ACCENT_YELLOW;
-    static final String INFO        = "#1A1363";
+    static final String INFO         = ModernDesignSystem.PRIMARY;
+    static final String SUCCESS_TEXT = "#237A36";
+    static final String WARNING_TEXT = "#6E6400";
+    static final String TEXT_TITLE   = ModernDesignSystem.PRIMARY;
+    static final String TEXT_SOFT    = ModernDesignSystem.TEXT_MUTED;
+    static final String TEXT_DARK    = ModernDesignSystem.PRIMARY_DARK;
+    static final String CARD_SURFACE = ModernDesignSystem.WHITE;
+    static final String CARD_HOVER   = ModernDesignSystem.HOVER_EFFECT;
 
     // Selected payment method
     private String selectedMethod = "Cash";
@@ -179,10 +186,10 @@ public class PaymentScreen extends Application {
         VBox pgInfo = new VBox(2);
         Text t1 = new Text("Payment & Billing");
         t1.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
-        t1.setFill(Color.web(TEXT_WHITE));
+        t1.setFill(Color.web(TEXT_TITLE));
         Text t2 = new Text("Process member payments and manage billing records");
         t2.setFont(Font.font("Poppins", 11));
-        t2.setFill(Color.web(TEXT_MUTED));
+        t2.setFill(Color.web(TEXT_SOFT));
         pgInfo.getChildren().addAll(t1, t2);
         topBar.getChildren().add(pgInfo);
 
@@ -209,10 +216,10 @@ public class PaymentScreen extends Application {
         int paidMonth = paymentDAO.countCompletedPaymentsThisMonth();
         HBox statsRow = new HBox(16);
         statsRow.getChildren().addAll(
-            makeStatChip(" Total Collected Today", String.format("%.0f", today), SUCCESS),
-            makeStatChip("  Overdue Accounts", String.valueOf(overdue), ACCENT),
-            makeStatChip(" Pending Invoices", String.valueOf(pending), WARNING),
-            makeStatChip(" Paid This Month", String.valueOf(paidMonth), INFO)
+            makeStatChip("Total Collected Today", formatPeso(today), SUCCESS_TEXT),
+            makeStatChip("Overdue Accounts", String.valueOf(overdue), TEXT_TITLE),
+            makeStatChip("Pending Invoices", String.valueOf(pending), WARNING_TEXT),
+            makeStatChip("Paid This Month", String.valueOf(paidMonth), TEXT_SOFT)
         );
 
         //  Two-column layout: Payment Form + Summary 
@@ -229,19 +236,21 @@ public class PaymentScreen extends Application {
         payCard.setPadding(new Insets(26, 26, 26, 26));
         payCard.setPrefWidth(500);
         payCard.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 22;" +
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 20;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 22;" +
+            "-fx-border-radius: 20;" +
             "-fx-border-width: 1;"
         );
-        DropShadow ds = new DropShadow(); ds.setColor(Color.web("#000", 0.3));
-        ds.setRadius(12); ds.setOffsetY(4);
+        DropShadow ds = new DropShadow();
+        ds.setColor(Color.web(ACCENT, 0.10));
+        ds.setRadius(12);
+        ds.setOffsetY(4);
         payCard.setEffect(ds);
 
         Text payTitle = new Text("Process Payment");
         payTitle.setFont(Font.font("Poppins", FontWeight.BOLD, 17));
-        payTitle.setFill(Color.web(TEXT_WHITE));
+        payTitle.setFill(Color.web(TEXT_TITLE));
         Rectangle payLine = new Rectangle(48, 3);
         payLine.setFill(Color.web(ACCENT)); payLine.setArcWidth(3); payLine.setArcHeight(3);
 
@@ -265,10 +274,10 @@ public class PaymentScreen extends Application {
         // Member info display
         VBox memberInfo = new VBox(0);
         memberInfo.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
-            "-fx-background-radius: 16;" +
+            "-fx-background-color: " + CARD_HOVER + ";" +
+            "-fx-background-radius: 14;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 16;" +
+            "-fx-border-radius: 14;" +
             "-fx-border-width: 1;"
         );
         memberInfo.setPadding(new Insets(16));
@@ -279,10 +288,10 @@ public class PaymentScreen extends Application {
         for (int i = 0; i < infoKeys.length; i++) {
             Label key = new Label(infoKeys[i] + ":");
             key.setFont(Font.font("Poppins", 11));
-            key.setTextFill(Color.web(TEXT_DIM));
+            key.setStyle("-fx-text-fill: " + TEXT_SOFT + ";");
             Label val = new Label("");
             val.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
-            val.setTextFill(Color.web(TEXT_WHITE));
+            val.setStyle("-fx-text-fill: " + TEXT_TITLE + ";");
             infoVals[i] = val;
             infoGrid.add(key, 0, i);
             infoGrid.add(val, 1, i);
@@ -294,7 +303,7 @@ public class PaymentScreen extends Application {
             if (m == null) {
                 for (Label v : infoVals) {
                     v.setText("");
-                    v.setTextFill(Color.web(TEXT_WHITE));
+                    v.setStyle("-fx-text-fill: " + TEXT_TITLE + ";");
                 }
                 selectedBillingId[0] = 0;
                 return;
@@ -303,13 +312,13 @@ public class PaymentScreen extends Application {
             infoVals[1].setText(m.fullName());
             infoVals[2].setText(m.membershipType() != null ? m.membershipType() : "");
             infoVals[3].setText(m.status() != null ? m.status() : "");
-            infoVals[3].setTextFill(Color.web(
-                m.status() != null && m.status().equalsIgnoreCase("Active") ? SUCCESS : ACCENT));
+            infoVals[3].setStyle("-fx-text-fill: " + (
+                m.status() != null && m.status().equalsIgnoreCase("Active") ? SUCCESS_TEXT : WARNING_TEXT) + ";");
             infoVals[4].setText("0");
-            infoVals[4].setTextFill(Color.web(ACCENT));
+            infoVals[4].setStyle("-fx-text-fill: " + TEXT_TITLE + ";");
             infoVals[5].setText(
                 m.membershipEndDate() != null ? m.membershipEndDate().toString() : "");
-            infoVals[5].setTextFill(Color.web(TEXT_WHITE));
+            infoVals[5].setStyle("-fx-text-fill: " + TEXT_SOFT + ";");
         };
         updateMemberInfo.run();
 
@@ -439,12 +448,13 @@ public class PaymentScreen extends Application {
         notesArea.setPromptText("Additional payment notes...");
         notesArea.setPrefRowCount(2);
         notesArea.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
+            "-fx-control-inner-background: " + CARD_SURFACE + ";" +
+            "-fx-background-color: " + CARD_SURFACE + ";" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 16;" +
-            "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
-            "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-prompt-text-fill: " + TEXT_SOFT + ";" +
             "-fx-font-family: Poppins;" +
             "-fx-font-size: 12;"
         );
@@ -470,9 +480,11 @@ public class PaymentScreen extends Application {
         printBtn.setPadding(new Insets(0, 20, 0, 20));
         printBtn.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
         printBtn.setStyle(
-            "-fx-background-color: " + INFO + ";" +
-            "-fx-text-fill: white;" +
-            "-fx-background-radius: 16;" +
+            "-fx-background-color: rgba(26,19,99,0.10);" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-border-color: " + ACCENT + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
             "-fx-cursor: hand;"
         );
         Button processBtn = new Button("Process Payment");
@@ -604,14 +616,16 @@ public class PaymentScreen extends Application {
     private VBox buildPaymentHistory(PaymentDAO paymentDAO, VBox rowsBox) {
         VBox card = new VBox(0);
         card.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 22;" +
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 20;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 22;" +
+            "-fx-border-radius: 20;" +
             "-fx-border-width: 1;"
         );
-        DropShadow ds = new DropShadow(); ds.setColor(Color.web("#000", 0.25));
-        ds.setRadius(10); ds.setOffsetY(4);
+        DropShadow ds = new DropShadow();
+        ds.setColor(Color.web(ACCENT, 0.10));
+        ds.setRadius(10);
+        ds.setOffsetY(4);
         card.setEffect(ds);
 
         HBox header = new HBox();
@@ -620,16 +634,17 @@ public class PaymentScreen extends Application {
         header.setStyle("-fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
         Text t = new Text("Payment History");
         t.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
-        t.setFill(Color.web(TEXT_WHITE));
+        t.setFill(Color.web(TEXT_TITLE));
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
         ComboBox<String> filter = new ComboBox<>();
         filter.getItems().addAll("All", "Cash", "GCash", "Bank Transfer");
         filter.setValue("All");
         filter.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
+            "-fx-background-color: " + CARD_SURFACE + ";" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 6;" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-border-radius: 12;" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-font-family: Poppins;" +
             "-fx-font-size: 11;"
         );
         header.getChildren().addAll(t, sp, filter);
@@ -637,14 +652,18 @@ public class PaymentScreen extends Application {
         String[] hdrs = {"Member", "Amount", "Method", "Date", "Status"};
         HBox tblHdr = new HBox();
         tblHdr.setPadding(new Insets(10, 20, 10, 20));
-        tblHdr.setStyle("-fx-background-color: " + BG_SIDEBAR + ";");
+        tblHdr.setStyle(
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-border-color: " + BORDER + " transparent transparent transparent;" +
+            "-fx-border-width: 0 0 1 0;"
+        );
         GridPane hg = makePayGrid();
         hg.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(hg, Priority.ALWAYS);
         for (int i = 0; i < hdrs.length; i++) {
             Label h = new Label(hdrs[i].toUpperCase());
             h.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-            h.setTextFill(Color.web(TEXT_DIM));
+            h.setStyle("-fx-text-fill: " + TEXT_SOFT + ";");
             hg.add(h, i, 0);
         }
         tblHdr.getChildren().add(hg);
@@ -685,10 +704,10 @@ public class PaymentScreen extends Application {
             String method = pr.paymentMethod() != null ? pr.paymentMethod() : "Cash";
             String dateStr = pr.paymentDate() != null ? pr.paymentDate().toString() : "";
             String statusLbl = "Completed".equalsIgnoreCase(pr.status()) ? "Paid" : pr.status();
-            rg.add(makeCell(name, TEXT_WHITE, false), 0, 0);
-            rg.add(makeCell(amt, SUCCESS, true), 1, 0);
+            rg.add(makeCell(name, TEXT_TITLE, false), 0, 0);
+            rg.add(makeCell(amt, SUCCESS_TEXT, true), 1, 0);
             rg.add(makeMethodBadge(method), 2, 0);
-            rg.add(makeCell(dateStr, TEXT_MUTED, false), 3, 0);
+            rg.add(makeCell(dateStr, TEXT_SOFT, false), 3, 0);
             rg.add(makeStatusBadge(statusLbl), 4, 0);
             dataRow.getChildren().add(rg);
             String fBg = bg;
@@ -732,10 +751,10 @@ public class PaymentScreen extends Application {
 
         Text title = new Text("MJ23 PLAYGRIND GYM");
         title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
-        title.setFill(Color.web(TEXT_WHITE));
+        title.setFill(Color.web(TEXT_TITLE));
         Text sub = new Text("Official Payment Receipt");
         sub.setFont(Font.font("Poppins", 12));
-        sub.setFill(Color.web(TEXT_MUTED));
+        sub.setFill(Color.web(TEXT_SOFT));
 
         TextArea receiptText = new TextArea(buildReceiptText(r));
         receiptText.setEditable(false);
@@ -743,7 +762,7 @@ public class PaymentScreen extends Application {
         receiptText.setPrefRowCount(17);
         receiptText.setStyle(
             "-fx-control-inner-background: " + BG_MAIN + ";" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-text-fill: " + TEXT_DARK + ";" +
             "-fx-font-family: Consolas;" +
             "-fx-font-size: 12;"
         );
@@ -808,13 +827,13 @@ public class PaymentScreen extends Application {
         TextField tf = new TextField(value);
         tf.setPrefHeight(40);
         tf.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
+            "-fx-background-color: " + CARD_SURFACE + ";" +
             "-fx-border-color: " + (highlight ? ACCENT : BORDER) + ";" +
-            "-fx-border-radius: 16;" +
-            "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + (highlight ? TEXT_WHITE : TEXT_MUTED) + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
             "-fx-font-family: Poppins;" +
-            "-fx-font-size: 13;" +
+            "-fx-font-size: " + (highlight ? "14" : "12") + ";" +
             "-fx-font-weight: " + (highlight ? "bold" : "normal") + ";" +
             "-fx-padding: 0 12 0 12;"
         );
@@ -825,51 +844,48 @@ public class PaymentScreen extends Application {
     private Label makeFieldLabel(String t) {
         Label l = new Label(t);
         l.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-        l.setTextFill(Color.web(TEXT_MUTED));
+        l.setStyle("-fx-text-fill: " + TEXT_SOFT + ";");
         return l;
     }
 
     private void applyFieldStyle(TextField f) {
-        f.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
+        String base =
+            "-fx-background-color: " + CARD_SURFACE + ";" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 16;" +
-            "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
-            "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-prompt-text-fill: " + TEXT_SOFT + ";" +
             "-fx-padding: 0 12 0 12;" +
             "-fx-font-family: Poppins;" +
-            "-fx-font-size: 12;"
-        );
+            "-fx-font-size: 12;";
+        f.setStyle(base);
         f.focusedProperty().addListener((o, old, focused) -> f.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
-            "-fx-border-color: " + (focused ? ACCENT : BORDER) + ";" +
-            "-fx-border-radius: 16;" +
-            "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
-            "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
-            "-fx-padding: 0 12 0 12;" +
-            "-fx-font-family: Poppins;" +
-            "-fx-font-size: 12;"
+            base + "-fx-border-color: " + (focused ? ACCENT : BORDER) + ";"
         ));
     }
 
     private void styleToggleBtn(ToggleButton tb, boolean selected) {
         tb.setStyle(
-            "-fx-background-color: " + (selected ? ACCENT : BG_MAIN) + ";" +
-            "-fx-text-fill: " + (selected ? "white" : TEXT_MUTED) + ";" +
-            "-fx-background-radius: 16;" +
+            "-fx-background-color: " + (selected ? "rgba(26,19,99,0.10)" : CARD_SURFACE) + ";" +
+            "-fx-text-fill: " + (selected ? TEXT_TITLE : TEXT_SOFT) + ";" +
+            "-fx-background-radius: 14;" +
             "-fx-border-color: " + (selected ? ACCENT : BORDER) + ";" +
-            "-fx-border-radius: 16;" +
+            "-fx-border-radius: 14;" +
+            "-fx-border-width: 1;" +
             "-fx-cursor: hand;" +
-            "-fx-font-family: Poppins;"
+            "-fx-font-family: Poppins;" +
+            "-fx-font-weight: bold;"
         );
     }
 
     private Label makeCell(String text, String color, boolean bold) {
         Label l = new Label(text);
         l.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
-        l.setTextFill(Color.web(color));
+        l.setStyle(
+            "-fx-text-fill: " + color + ";" +
+            "-fx-font-weight: " + (bold ? "bold" : "normal") + ";"
+        );
         return l;
     }
 
@@ -877,51 +893,67 @@ public class PaymentScreen extends Application {
         Label b = new Label(status);
         b.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         boolean ok = status.equalsIgnoreCase("Paid") || status.equalsIgnoreCase("Completed");
-        String c = ok ? SUCCESS : ACCENT;
-        String bg = ok ? "rgba(228,255,223,0.15)" : "rgba(26,19,99,0.15)";
-        b.setTextFill(Color.web(c));
-        b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 18; -fx-padding: 3 10 3 10;");
+        b.setStyle(
+            "-fx-text-fill: " + (ok ? SUCCESS_TEXT : TEXT_TITLE) + ";" +
+            "-fx-background-color: " + (ok ? "rgba(228,255,223,0.75)" : "rgba(26,19,99,0.08)") + ";" +
+            "-fx-background-radius: 14;" +
+            "-fx-padding: 4 10 4 10;"
+        );
         return b;
     }
 
     private Label makeMethodBadge(String method) {
         Label b = new Label(method);
-        b.setFont(Font.font("Poppins", 10));
-        String c; String bg;
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        String c;
+        String bg;
         if ("Cash".equalsIgnoreCase(method)) {
-            c = SUCCESS; bg = "rgba(228,255,223,0.12)";
+            c = SUCCESS_TEXT;
+            bg = "rgba(228,255,223,0.65)";
         } else if ("GCash".equalsIgnoreCase(method)) {
-            c = "#77749B"; bg = "rgba(119,116,155,0.12)";
+            c = TEXT_SOFT;
+            bg = "rgba(119,116,155,0.12)";
         } else {
-            c = WARNING; bg = "rgba(253,238,33,0.12)";
+            c = WARNING_TEXT;
+            bg = "rgba(253,238,33,0.28)";
         }
-        b.setTextFill(Color.web(c));
-        b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 18; -fx-padding: 3 10 3 10;");
+        b.setStyle(
+            "-fx-text-fill: " + c + ";" +
+            "-fx-background-color: " + bg + ";" +
+            "-fx-background-radius: 14;" +
+            "-fx-padding: 4 10 4 10;"
+        );
         return b;
     }
 
     private HBox makeStatChip(String label, String value, String color) {
-        HBox chip = new HBox(10);
+        HBox chip = new HBox(12);
         chip.setAlignment(Pos.CENTER_LEFT);
-        chip.setPadding(new Insets(14, 20, 14, 20));
+        chip.setPadding(new Insets(14, 18, 14, 18));
         chip.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 18;" +
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 16;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 18;" +
+            "-fx-border-radius: 16;" +
             "-fx-border-width: 1;"
         );
         HBox.setHgrow(chip, Priority.ALWAYS);
-        DropShadow ds = new DropShadow(); ds.setColor(Color.web("#000", 0.2));
-        ds.setRadius(8); ds.setOffsetY(3);
+        DropShadow ds = new DropShadow();
+        ds.setColor(Color.web("#000000", 0.08));
+        ds.setRadius(8);
+        ds.setOffsetY(2);
         chip.setEffect(ds);
+        Rectangle accent = new Rectangle(4, 36);
+        accent.setArcWidth(4);
+        accent.setArcHeight(4);
+        accent.setFill(Color.web(color));
         Text val = new Text(value);
-        val.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
+        val.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         val.setFill(Color.web(color));
         Text lbl = new Text(label);
-        lbl.setFont(Font.font("Poppins", 11));
-        lbl.setFill(Color.web(TEXT_MUTED));
-        chip.getChildren().add(new VBox(2, lbl, val));
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        lbl.setFill(Color.web(TEXT_SOFT));
+        chip.getChildren().addAll(accent, new VBox(2, lbl, val));
         return chip;
     }
 
