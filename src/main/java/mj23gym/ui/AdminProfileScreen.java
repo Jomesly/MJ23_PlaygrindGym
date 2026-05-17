@@ -50,6 +50,12 @@ public class AdminProfileScreen extends Application {
     static final String SUCCESS     = ModernDesignSystem.SUCCESS;
     static final String WARNING     = "#8A6D00";
     static final String INFO        = "#1A1363";
+    static final String TEXT_TITLE  = ModernDesignSystem.PRIMARY;
+    static final String TEXT_SOFT   = ModernDesignSystem.TEXT_MUTED;
+    static final String SUCCESS_TEXT = "#237A36";
+    static final String WARNING_TEXT = "#6E6400";
+    static final String CARD_SURFACE = ModernDesignSystem.WHITE;
+    static final String BRAND_YELLOW = "#FDEE21";
 
     @Override
     public void start(Stage stage) {
@@ -181,10 +187,10 @@ public class AdminProfileScreen extends Application {
         VBox pg = new VBox(2);
         Text t1 = new Text("Profile");
         t1.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
-        t1.setFill(Color.web(TEXT_WHITE));
+        t1.setFill(Color.web(TEXT_TITLE));
         Text t2 = new Text("Manage your account details and password");
         t2.setFont(Font.font("Poppins", 11));
-        t2.setFill(Color.web(TEXT_MUTED));
+        t2.setFill(Color.web(TEXT_SOFT));
         pg.getChildren().addAll(t1, t2);
         topBar.getChildren().add(pg);
 
@@ -201,74 +207,78 @@ public class AdminProfileScreen extends Application {
         body.setFillWidth(true);
         body.setMaxWidth(Double.MAX_VALUE);
 
-        //  Profile Header Card 
+        // Profile header card
         VBox profileHeaderCard = new VBox(0);
         profileHeaderCard.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 22;" +
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 20;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 22;" +
-            "-fx-border-width: 1;");
-        DropShadow ds1 = new DropShadow(); ds1.setColor(Color.web("#000", 0.3)); ds1.setRadius(12); ds1.setOffsetY(4);
+            "-fx-border-radius: 20;" +
+            "-fx-border-width: 1;"
+        );
+        DropShadow ds1 = new DropShadow();
+        ds1.setColor(Color.web(ACCENT, 0.12));
+        ds1.setRadius(14);
+        ds1.setOffsetY(4);
         profileHeaderCard.setEffect(ds1);
 
-        // Red banner. Use a resizable Region instead of binding a Rectangle
-        // to its parent width, which can create an endless layout resize loop.
+        VBox bannerWrap = new VBox(0);
+        Region yellowStripe = new Region();
+        yellowStripe.setPrefHeight(4);
+        yellowStripe.setMaxHeight(4);
+        yellowStripe.setMaxWidth(Double.MAX_VALUE);
+        yellowStripe.setStyle("-fx-background-color: " + BRAND_YELLOW + "; -fx-background-radius: 20 20 0 0;");
         Region banner = new Region();
-        banner.setPrefHeight(80);
-        banner.setMinHeight(80);
-        banner.setMaxHeight(80);
+        banner.setPrefHeight(72);
+        banner.setMinHeight(72);
+        banner.setMaxHeight(72);
         banner.setMaxWidth(Double.MAX_VALUE);
         banner.setStyle(
-            "-fx-background-color: " + ACCENT + ";" +
-            "-fx-background-radius: 12 12 0 0;");
+            "-fx-background-color: linear-gradient(to right, " + ACCENT + ", " + ACCENT_DARK + ");"
+        );
+        bannerWrap.getChildren().addAll(yellowStripe, banner);
 
-        // Avatar + name overlay
         HBox profileInfo = new HBox(22);
         profileInfo.setPadding(new Insets(0, 28, 24, 28));
         profileInfo.setAlignment(Pos.BOTTOM_LEFT);
 
-        // Large avatar circle
         StackPane bigAvatar = new StackPane();
-        bigAvatar.setPrefSize(80, 80);
-        bigAvatar.setMaxSize(80, 80);
-        bigAvatar.setTranslateY(-30);
-        Circle bigCircle = new Circle(40);
-        bigCircle.setFill(Color.web(BG_SIDEBAR));
-        bigCircle.setStroke(Color.web(ACCENT));
-        bigCircle.setStrokeWidth(3);
+        bigAvatar.setPrefSize(84, 84);
+        bigAvatar.setMaxSize(84, 84);
+        bigAvatar.setTranslateY(-32);
+        Circle ring = new Circle(42);
+        ring.setFill(Color.TRANSPARENT);
+        ring.setStroke(Color.web(CARD_SURFACE));
+        ring.setStrokeWidth(4);
+        Circle bigCircle = new Circle(38);
+        bigCircle.setFill(Color.web(ACCENT));
         Text bigInitial = new Text(user.initial());
-        bigInitial.setFont(Font.font("Poppins", FontWeight.BOLD, 34));
+        bigInitial.setFont(Font.font("Poppins", FontWeight.BOLD, 32));
         bigInitial.setFill(Color.WHITE);
-        bigAvatar.getChildren().addAll(bigCircle, bigInitial);
+        bigAvatar.getChildren().addAll(ring, bigCircle, bigInitial);
 
-        VBox nameInfo = new VBox(4);
-        nameInfo.setTranslateY(-10);
+        VBox nameInfo = new VBox(6);
+        nameInfo.setTranslateY(-8);
         Text adminName = new Text(user.displayName());
         adminName.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
-        adminName.setFill(Color.web(TEXT_WHITE));
+        adminName.setFill(Color.web(TEXT_TITLE));
         HBox badges = new HBox(8);
-        Label roleBadge = new Label(user.role());
-        roleBadge.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
-        roleBadge.setTextFill(Color.web(ACCENT));
-        roleBadge.setStyle("-fx-background-color: rgba(26,19,99,0.15); -fx-background-radius: 18; -fx-padding: 3 12 3 12;");
-        Label statusBadge = new Label("  Active");
-        statusBadge.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
-        statusBadge.setTextFill(Color.web(SUCCESS));
-        statusBadge.setStyle("-fx-background-color: rgba(228,255,223,0.15); -fx-background-radius: 18; -fx-padding: 3 12 3 12;");
+        Label roleBadge = pillBadge(user.role(), TEXT_TITLE, "rgba(26,19,99,0.10)");
+        Label statusBadge = pillBadge("Active", SUCCESS_TEXT, "rgba(228,255,223,0.75)");
         badges.getChildren().addAll(roleBadge, statusBadge);
         Text lastLogin = new Text(user.lastLoginText());
         lastLogin.setFont(Font.font("Poppins", 10));
-        lastLogin.setFill(Color.web(TEXT_DIM));
+        lastLogin.setFill(Color.web(TEXT_SOFT));
         nameInfo.getChildren().addAll(adminName, badges, lastLogin);
 
-        Region nameSp = new Region(); HBox.setHgrow(nameSp, Priority.ALWAYS);
+        Region nameSp = new Region();
+        HBox.setHgrow(nameSp, Priority.ALWAYS);
 
-        Button editProfileBtn = makeAccentBtn("  Edit Profile");
-        editProfileBtn.setTranslateY(-10);
+        Button editProfileBtn = outlineButton("Edit Profile");
+        editProfileBtn.setTranslateY(-8);
 
         profileInfo.getChildren().addAll(bigAvatar, nameInfo, nameSp, editProfileBtn);
-        profileHeaderCard.getChildren().addAll(banner, profileInfo);
+        profileHeaderCard.getChildren().addAll(bannerWrap, profileInfo);
 
         //  Two-column layout 
         HBox twoCol = new HBox(22);
@@ -281,7 +291,7 @@ public class AdminProfileScreen extends Application {
         HBox.setHgrow(leftCol, Priority.ALWAYS);
 
         // Profile Details Card
-        VBox detailsCard = buildSectionCard("  Profile Information", "Your personal account details");
+        VBox detailsCard = buildSectionCard("Profile Information", "Your personal account details");
         GridPane detailsForm = new GridPane();
         detailsForm.setHgap(16); detailsForm.setVgap(14);
         ColumnConstraints dc1 = new ColumnConstraints(); dc1.setPercentWidth(50);
@@ -313,13 +323,13 @@ public class AdminProfileScreen extends Application {
         leftCol.getChildren().add(detailsCard);
 
         // Account Stats Card
-        VBox statsCard = buildSectionCard("  Account Activity", "Your system usage statistics");
+        VBox statsCard = buildSectionCard("Account Activity", "Your system usage statistics");
         HBox statsRow = new HBox(14);
         statsRow.getChildren().addAll(
-            makeMiniStat("Sessions Today",   "12",    INFO),
-            makeMiniStat("Members Added",    "5",     SUCCESS),
-            makeMiniStat("Payments Processed","28",   WARNING),
-            makeMiniStat("Reports Generated","3",     ACCENT)
+            makeMiniStat("Sessions Today", "12", TEXT_TITLE),
+            makeMiniStat("Members Added", "5", SUCCESS_TEXT),
+            makeMiniStat("Payments Processed", "28", WARNING_TEXT),
+            makeMiniStat("Reports Generated", "3", TEXT_TITLE)
         );
         statsCard.getChildren().add(statsRow);
         leftCol.getChildren().add(statsCard);
@@ -330,7 +340,7 @@ public class AdminProfileScreen extends Application {
         rightCol.setMaxWidth(340);
 
         // Change Password Card
-        VBox pwCard = buildSectionCard("  Change Password", "Update your login password");
+        VBox pwCard = buildSectionCard("Change Password", "Update your login password");
         PasswordField currentPw = new PasswordField();
         PasswordField newPw = new PasswordField();
         PasswordField confirmPw = new PasswordField();
@@ -349,29 +359,55 @@ public class AdminProfileScreen extends Application {
         VBox strengthBox = new VBox(6);
         Label strengthLbl = new Label("PASSWORD STRENGTH");
         strengthLbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-        strengthLbl.setTextFill(Color.web(TEXT_MUTED));
-        HBox strengthBar = new HBox(4);
-        for (int i = 0; i < 5; i++) {
-            Rectangle seg = new Rectangle(0, 6);
-            seg.setArcWidth(3); seg.setArcHeight(3);
-            seg.setFill(i < 2 ? Color.web(ACCENT) : Color.web(BORDER));
-            HBox.setHgrow(new Region(), Priority.ALWAYS);
-            strengthBar.getChildren().add(seg);
-            if (i < 4) strengthBar.getChildren().add(new Region() {{ setMinWidth(4); }});
-        }
-        strengthBar.setMaxWidth(Double.MAX_VALUE);
-        // Rebuild as equal segments
+        strengthLbl.setTextFill(Color.web(TEXT_SOFT));
         HBox segBar = new HBox(4);
-        String[] segColors = {ACCENT, ACCENT, BORDER, BORDER, BORDER};
-        for (String sc : segColors) {
+        Region[] strengthSegs = new Region[5];
+        for (int i = 0; i < 5; i++) {
             Region seg = new Region();
             seg.setPrefHeight(6);
-            seg.setStyle("-fx-background-color: " + sc + "; -fx-background-radius: 3;");
+            strengthSegs[i] = seg;
             HBox.setHgrow(seg, Priority.ALWAYS);
             segBar.getChildren().add(seg);
         }
-        Label weakLbl = new Label("Weak  add numbers and symbols");
-        weakLbl.setFont(Font.font("Poppins", 10)); weakLbl.setTextFill(Color.web(ACCENT));
+        Label weakLbl = new Label("Enter a new password to check strength");
+        weakLbl.setFont(Font.font("Poppins", 10));
+        weakLbl.setTextFill(Color.web(TEXT_SOFT));
+        Runnable refreshStrength = () -> {
+            int score = passwordStrengthScore(newPw.getText());
+            String[] colors = {BORDER, BORDER, BORDER, BORDER, BORDER};
+            String hint;
+            String hintColor;
+            if (newPw.getText().isEmpty()) {
+                hint = "Enter a new password to check strength";
+                hintColor = TEXT_SOFT;
+            } else if (score <= 1) {
+                colors[0] = ACCENT;
+                hint = "Weak — add numbers and symbols";
+                hintColor = WARNING_TEXT;
+            } else if (score <= 3) {
+                for (int i = 0; i <= score; i++) {
+                    colors[i] = ACCENT;
+                }
+                hint = "Fair — consider a longer passphrase";
+                hintColor = TEXT_TITLE;
+            } else {
+                for (int i = 0; i < 5; i++) {
+                    colors[i] = SUCCESS_TEXT;
+                }
+                hint = "Strong password";
+                hintColor = SUCCESS_TEXT;
+            }
+            for (int i = 0; i < 5; i++) {
+                strengthSegs[i].setStyle(
+                    "-fx-background-color: " + colors[i] + ";" +
+                    "-fx-background-radius: 3;"
+                );
+            }
+            weakLbl.setText(hint);
+            weakLbl.setStyle("-fx-text-fill: " + hintColor + ";");
+        };
+        newPw.textProperty().addListener((o, a, b) -> refreshStrength.run());
+        refreshStrength.run();
         strengthBox.getChildren().addAll(strengthLbl, segBar, weakLbl);
         HBox pwBtn = new HBox(); pwBtn.setAlignment(Pos.CENTER_RIGHT);
         Button updatePassword = makeAccentBtn("Update Password");
@@ -394,20 +430,67 @@ public class AdminProfileScreen extends Application {
     //  Helpers 
     private VBox buildSectionCard(String title, String sub) {
         VBox card = new VBox(16);
-        card.setPadding(new Insets(24));
+        card.setPadding(new Insets(22, 24, 24, 24));
         card.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 22;" +
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 20;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 22;" +
-            "-fx-border-width: 1;");
-        DropShadow ds = new DropShadow(); ds.setColor(Color.web("#000", 0.25)); ds.setRadius(10); ds.setOffsetY(4); card.setEffect(ds);
-        Text t = new Text(title); t.setFont(Font.font("Poppins", FontWeight.BOLD, 14)); t.setFill(Color.web(TEXT_WHITE));
-        Text s = new Text(sub); s.setFont(Font.font("Poppins", 11)); s.setFill(Color.web(TEXT_MUTED));
-        Rectangle ul = new Rectangle(40, 2); ul.setFill(Color.web(ACCENT)); ul.setArcWidth(2); ul.setArcHeight(2);
-        VBox hdr = new VBox(3, t, s, ul);
+            "-fx-border-radius: 20;" +
+            "-fx-border-width: 1;"
+        );
+        DropShadow ds = new DropShadow();
+        ds.setColor(Color.web(ACCENT, 0.10));
+        ds.setRadius(12);
+        ds.setOffsetY(4);
+        card.setEffect(ds);
+        Rectangle accentBar = new Rectangle(42, 3);
+        accentBar.setArcWidth(3);
+        accentBar.setArcHeight(3);
+        accentBar.setFill(Color.web(ACCENT));
+        Text t = new Text(title);
+        t.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
+        t.setFill(Color.web(TEXT_TITLE));
+        Text s = new Text(sub);
+        s.setFont(Font.font("Poppins", 11));
+        s.setFill(Color.web(TEXT_SOFT));
+        VBox hdr = new VBox(6, accentBar, t, s);
         card.getChildren().add(hdr);
         return card;
+    }
+
+    private Label pillBadge(String text, String color, String bg) {
+        Label badge = new Label(text);
+        badge.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        badge.setStyle(
+            "-fx-text-fill: " + color + ";" +
+            "-fx-background-color: " + bg + ";" +
+            "-fx-background-radius: 14;" +
+            "-fx-padding: 4 12 4 12;"
+        );
+        return badge;
+    }
+
+    private int passwordStrengthScore(String password) {
+        if (password == null || password.isEmpty()) {
+            return 0;
+        }
+        int score = 0;
+        if (password.length() >= 8) {
+            score++;
+        }
+        if (password.length() >= 12) {
+            score++;
+        }
+        if (password.matches(".*[0-9].*")) {
+            score++;
+        }
+        if (password.matches(".*[A-Z].*") && password.matches(".*[a-z].*")) {
+            score++;
+        }
+        if (password.matches(".*[^A-Za-z0-9].*")) {
+            score++;
+        }
+        return score;
     }
 
     private VBox buildFG(String label, String prompt, String value, boolean isPass) {
@@ -424,9 +507,19 @@ public class AdminProfileScreen extends Application {
         TextField field = new TextField(value == null ? "" : value);
         field.setPrefHeight(40);
         field.setEditable(!readOnly);
-        applyFieldStyle(field);
         if (readOnly) {
-            field.setStyle(field.getStyle() + "-fx-opacity: 0.72;");
+            field.setStyle(
+                "-fx-background-color: " + BG_ROW_ALT + ";" +
+                "-fx-border-color: " + BORDER + ";" +
+                "-fx-border-radius: 14;" +
+                "-fx-background-radius: 14;" +
+                "-fx-text-fill: " + TEXT_SOFT + ";" +
+                "-fx-padding: 10 12;" +
+                "-fx-font-family: Poppins;" +
+                "-fx-font-size: 12;"
+            );
+        } else {
+            applyFieldStyle(field);
         }
         return field;
     }
@@ -435,7 +528,7 @@ public class AdminProfileScreen extends Application {
         VBox g = new VBox(6);
         Label lbl = new Label(label);
         lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-        lbl.setTextFill(Color.web(TEXT_MUTED));
+        lbl.setTextFill(Color.web(TEXT_SOFT));
         g.getChildren().addAll(lbl, field);
         return g;
     }
@@ -501,26 +594,20 @@ public class AdminProfileScreen extends Application {
     }
 
     private void applyFieldStyle(TextField f) {
-        f.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
+        String base =
+            "-fx-background-color: " + CARD_SURFACE + ";" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 16;" +
-            "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
-            "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
-            "-fx-padding: 0 12 0 12;" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-prompt-text-fill: " + TEXT_SOFT + ";" +
+            "-fx-padding: 10 12;" +
             "-fx-font-family: Poppins;" +
-            "-fx-font-size: 12;");
+            "-fx-font-size: 12;";
+        f.setStyle(base);
         f.focusedProperty().addListener((o, old, foc) -> f.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
-            "-fx-border-color: " + (foc ? ACCENT : BORDER) + ";" +
-            "-fx-border-radius: 16;" +
-            "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
-            "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
-            "-fx-padding: 0 12 0 12;" +
-            "-fx-font-family: Poppins;" +
-            "-fx-font-size: 12;"));
+            base + "-fx-border-color: " + (foc ? ACCENT : BORDER) + ";"
+        ));
     }
 
     private Button makeAccentBtn(String text) {
@@ -533,14 +620,52 @@ public class AdminProfileScreen extends Application {
     }
 
     private VBox makeMiniStat(String label, String value, String color) {
-        VBox v = new VBox(4); v.setAlignment(Pos.CENTER); v.setPadding(new Insets(14, 10, 14, 10));
-        v.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-background-radius: 18; -fx-border-color: " + BORDER + "; -fx-border-radius: 18; -fx-border-width: 1;");
-        HBox.setHgrow(v, Priority.ALWAYS);
-        Text val = new Text(value); val.setFont(Font.font("Poppins", FontWeight.BOLD, 22)); val.setFill(Color.web(color));
-        Text lbl = new Text(label); lbl.setFont(Font.font("Poppins", 10)); lbl.setFill(Color.web(TEXT_MUTED));
-        lbl.setWrappingWidth(80); lbl.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
-        v.getChildren().addAll(val, lbl);
-        return v;
+        VBox wrap = new VBox();
+        HBox chip = new HBox(10);
+        chip.setAlignment(Pos.CENTER_LEFT);
+        chip.setPadding(new Insets(14, 16, 14, 16));
+        chip.setStyle(
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 16;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-border-width: 1;"
+        );
+        HBox.setHgrow(chip, Priority.ALWAYS);
+        Rectangle accent = new Rectangle(4, 44);
+        accent.setArcWidth(4);
+        accent.setArcHeight(4);
+        accent.setFill(Color.web(color));
+        Text val = new Text(value);
+        val.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
+        val.setFill(Color.web(color));
+        Text lbl = new Text(label);
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
+        lbl.setFill(Color.web(TEXT_SOFT));
+        lbl.setWrappingWidth(100);
+        chip.getChildren().addAll(accent, new VBox(4, val, lbl));
+        wrap.getChildren().add(chip);
+        HBox.setHgrow(wrap, Priority.ALWAYS);
+        return wrap;
+    }
+
+    private Button outlineButton(String text) {
+        Button b = new Button(text);
+        b.setPrefHeight(38);
+        b.setPadding(new Insets(0, 18, 0, 18));
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        String base =
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-border-color: " + ACCENT + ";" +
+            "-fx-border-width: 1;" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-cursor: hand;";
+        b.setStyle(base);
+        b.setOnMouseEntered(e -> b.setStyle(base + "-fx-background-color: rgba(26,19,99,0.08);"));
+        b.setOnMouseExited(e -> b.setStyle(base));
+        return b;
     }
 
     public static void main(String[] args) { launch(args); }
