@@ -7,6 +7,9 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -41,6 +44,7 @@ public class GymManagementApp extends Application {
     private static final String ACCENT       = ModernDesignSystem.PRIMARY;
     private static final String TEXT_WHITE   = ModernDesignSystem.PRIMARY;
     private static final String TEXT_MUTED   = ModernDesignSystem.TEXT_MUTED;
+    private static final String LOGO_PATH    = "/images/mj23-logo.png";
 
     private BorderPane rootPane;
     private StackPane contentArea;
@@ -134,15 +138,34 @@ public class GymManagementApp extends Application {
 
     private VBox createLogoSection() {
         VBox logo = new VBox(8);
-        logo.setPadding(new Insets(20, 16, 16, 16));
+        logo.setPadding(new Insets(16, 16, 14, 16));
         logo.setAlignment(Pos.CENTER);
         logo.setStyle("-fx-background-color: transparent;");
 
-        Text title = new Text("MJ23\nPLAYGRIND\nGYM");
-        title.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 13));
-        title.setFill(Color.web(ModernDesignSystem.PRIMARY));
+        StackPane logoBadge = new StackPane();
+        logoBadge.setPrefSize(74, 74);
+        logoBadge.setMaxSize(74, 74);
+        Rectangle badgeBg = new Rectangle(74, 74);
+        badgeBg.setArcWidth(ModernDesignSystem.RADIUS_LARGE);
+        badgeBg.setArcHeight(ModernDesignSystem.RADIUS_LARGE);
+        badgeBg.setFill(Color.web(ModernDesignSystem.WHITE));
+        badgeBg.setStroke(Color.web(ModernDesignSystem.BORDER_COLOR));
+        badgeBg.setEffect(ModernDesignSystem.createElevation2());
 
-        logo.getChildren().add(title);
+        ImageView logoImage = new ImageView(loadImage(LOGO_PATH));
+        logoImage.setPreserveRatio(true);
+        logoImage.setFitWidth(62);
+        logoImage.setFitHeight(62);
+        logoBadge.getChildren().addAll(badgeBg, logoImage);
+
+        Text title = new Text("MJ23 PLAYGRIND\nGYM");
+        title.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 11));
+        title.setFill(Color.web(ModernDesignSystem.PRIMARY));
+        title.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+        title.setStroke(Color.web(ModernDesignSystem.WHITE, 0.75));
+        title.setStrokeWidth(0.22);
+
+        logo.getChildren().addAll(logoBadge, title);
         return logo;
     }
 
@@ -506,11 +529,17 @@ public class GymManagementApp extends Application {
         return vbox;
     }
 
+    private Image loadImage(String resourcePath) {
+        var resource = getClass().getResource(resourcePath);
+        if (resource == null) {
+            return new WritableImage(1, 1);
+        }
+        return new Image(resource.toExternalForm());
+    }
+
     public static void main(String[] args) {
         // Launch the login screen as the main entry point
         LoginScreen.launch(LoginScreen.class, args);
     }
 }
-
-
 

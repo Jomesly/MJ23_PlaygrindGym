@@ -59,6 +59,8 @@ public class POSScreen extends Application {
     static final String SUCCESS      = ModernDesignSystem.SUCCESS;
     static final String WARNING      = ModernDesignSystem.ACCENT_YELLOW;
     static final String INFO        = "#1A1363";
+    static final String SUCCESS_TEXT = "#237A36";
+    static final String WARNING_TEXT = "#6E6400";
 
     @Override
     public void start(Stage stage) {
@@ -90,8 +92,8 @@ public class POSScreen extends Application {
         Text bt = new Text("MJ"); bt.setFont(Font.font("Poppins", FontWeight.BOLD, 16)); bt.setFill(Color.WHITE);
         badge.getChildren().addAll(bb, bt);
         VBox lt = new VBox(1);
-        Text l1 = new Text("MJ23 PLAYGRIND"); l1.setFont(Font.font("Poppins", FontWeight.BOLD, 11)); l1.setFill(Color.web(TEXT_WHITE));
-        Text l2 = new Text("GYM"); l2.setFont(Font.font("Poppins", FontWeight.BOLD, 11)); l2.setFill(Color.web(ACCENT));
+        Text l1 = new Text("MJ23 PLAYGRIND"); l1.setFont(Font.font("Poppins", FontWeight.BOLD, 11)); l1.setFill(Color.web(TEXT_WHITE)); outlineText(l1, 0.22);
+        Text l2 = new Text("GYM"); l2.setFont(Font.font("Poppins", FontWeight.BOLD, 11)); l2.setFill(Color.web(ACCENT)); outlineText(l2, 0.22);
         lt.getChildren().addAll(l1, l2);
         logoArea.getChildren().addAll(badge, lt);
         String[][] items = {
@@ -137,8 +139,8 @@ public class POSScreen extends Application {
         topBar.setPadding(new Insets(18, 28, 18, 28));
         topBar.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
         VBox pg = new VBox(2);
-        Text t1 = new Text("Point of Sale"); t1.setFont(Font.font("Poppins", FontWeight.BOLD, 20)); t1.setFill(Color.web(TEXT_WHITE));
-        Text t2 = new Text("Process product sales and record transactions"); t2.setFont(Font.font("Poppins", 11)); t2.setFill(Color.web(TEXT_MUTED));
+        Text t1 = new Text("Point of Sale"); t1.setFont(Font.font("Poppins", FontWeight.BOLD, 20)); t1.setFill(Color.web(TEXT_WHITE)); outlineText(t1, 0.28);
+        Text t2 = new Text("Process product sales and record transactions"); t2.setFont(Font.font("Poppins", 11)); t2.setFill(Color.web(TEXT_DIM));
         pg.getChildren().addAll(t1, t2);
         topBar.getChildren().add(pg);
 
@@ -256,6 +258,7 @@ public class POSScreen extends Application {
         Text cartTitle = new Text("  Current Order");
         cartTitle.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
         cartTitle.setFill(Color.web(TEXT_WHITE));
+        outlineText(cartTitle, 0.22);
         Region cartSp = new Region(); HBox.setHgrow(cartSp, Priority.ALWAYS);
         Button clearCartBtn = new Button("Clear");
         clearCartBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + ACCENT + "; -fx-font-size: 11; -fx-cursor: hand; -fx-padding: 2 0 2 0;");
@@ -265,9 +268,11 @@ public class POSScreen extends Application {
         Text subVal = new Text("0");
         subVal.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
         subVal.setFill(Color.web(TEXT_WHITE));
+        outlineText(subVal, 0.22);
         Text totVal = new Text("0");
         totVal.setFont(Font.font("Poppins", FontWeight.BOLD, 15));
         totVal.setFill(Color.web(TEXT_WHITE));
+        outlineText(totVal, 0.28);
 
         Runnable refreshCart = () -> {
             cartItems.getChildren().clear();
@@ -293,13 +298,16 @@ public class POSScreen extends Application {
                 Label name = new Label(inv.itemName());
                 name.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
                 name.setTextFill(Color.web(TEXT_WHITE));
+                labelTextShadow(name);
                 Label qtyLbl = new Label("Qty: " + qty + " " + String.format("%.2f", inv.sellingPrice()));
                 qtyLbl.setFont(Font.font("Poppins", 10));
-                qtyLbl.setTextFill(Color.web(TEXT_MUTED));
+                qtyLbl.setTextFill(Color.web(TEXT_DIM));
+                labelTextShadow(qtyLbl);
                 nameCol.getChildren().addAll(name, qtyLbl);
                 Label total = new Label(String.format("%.2f", line));
                 total.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
-                total.setTextFill(Color.web(SUCCESS));
+                total.setTextFill(Color.web(SUCCESS_TEXT));
+                labelTextShadow(total);
                 Button removeBtn = new Button("");
                 removeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: " + ACCENT + "; -fx-font-size: 11; -fx-cursor: hand; -fx-padding: 2 4 2 4;");
                 int fid = itemId;
@@ -337,7 +345,8 @@ public class POSScreen extends Application {
         subRow.setAlignment(Pos.CENTER_LEFT);
         Label sl = new Label("Subtotal");
         sl.setFont(Font.font("Poppins", 11));
-        sl.setTextFill(Color.web(TEXT_MUTED));
+        sl.setTextFill(Color.web(TEXT_DIM));
+        labelTextShadow(sl);
         Region s1 = new Region(); HBox.setHgrow(s1, Priority.ALWAYS);
         subRow.getChildren().addAll(sl, s1, subVal);
         HBox totRow = new HBox();
@@ -345,13 +354,15 @@ public class POSScreen extends Application {
         Label tl = new Label("TOTAL");
         tl.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
         tl.setTextFill(Color.web(TEXT_WHITE));
+        labelTextShadow(tl);
         Region s2 = new Region(); HBox.setHgrow(s2, Priority.ALWAYS);
         totRow.getChildren().addAll(tl, s2, totVal);
         summary.getChildren().addAll(subRow, totRow);
 
         Label pmLbl = new Label("PAYMENT METHOD");
         pmLbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-        pmLbl.setTextFill(Color.web(TEXT_MUTED));
+        pmLbl.setTextFill(Color.web(ACCENT));
+        labelTextShadow(pmLbl);
         HBox pmBtns = new HBox(8);
         ToggleGroup tg = new ToggleGroup();
         String[] pmLabels = {" Cash", " GCash", " Bank"};
@@ -431,7 +442,15 @@ public class POSScreen extends Application {
         receiptBtn.setMaxWidth(Double.MAX_VALUE);
         receiptBtn.setPrefHeight(36);
         receiptBtn.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
-        receiptBtn.setStyle("-fx-background-color: " + INFO + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;");
+        receiptBtn.setStyle(
+            "-fx-background-color: rgba(26,19,99,0.12);" +
+            "-fx-text-fill: " + ACCENT + ";" +
+            "-fx-border-color: " + ACCENT + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
+            "-fx-cursor: hand;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);"
+        );
         receiptBtn.setOnAction(e -> {
             if (lastTransactionId[0] <= 0) {
                 showWarning("Complete a sale first before viewing a receipt.");
@@ -513,9 +532,10 @@ public class POSScreen extends Application {
         Text title = new Text("MJ23 PLAYGRIND GYM");
         title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         title.setFill(Color.web(TEXT_WHITE));
+        outlineText(title, 0.28);
         Text subtitle = new Text("POS Sales Receipt");
         subtitle.setFont(Font.font("Poppins", 12));
-        subtitle.setFill(Color.web(TEXT_MUTED));
+        subtitle.setFill(Color.web(TEXT_DIM));
 
         TextArea details = new TextArea(buildReceiptText(receipt.get()));
         details.setEditable(false);
@@ -523,9 +543,10 @@ public class POSScreen extends Application {
         details.setPrefRowCount(18);
         details.setStyle(
             "-fx-control-inner-background: " + BG_MAIN + ";" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-text-fill: " + ACCENT + ";" +
             "-fx-font-family: Consolas;" +
-            "-fx-font-size: 12;"
+            "-fx-font-size: 12;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.72), 1, 0.0, 0, 0);"
         );
 
         Button close = new Button("Close");
@@ -580,7 +601,9 @@ public class POSScreen extends Application {
         card.setPadding(new Insets(16));
         card.setAlignment(Pos.CENTER);
         card.setCursor(javafx.scene.Cursor.HAND);
-        card.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 18; -fx-border-color: " + BORDER + "; -fx-border-radius: 18; -fx-border-width: 1;");
+        String cardStyle = "-fx-background-color: " + BG_CARD + "; -fx-background-radius: 18; -fx-border-color: " + BORDER + "; -fx-border-radius: 18; -fx-border-width: 1;";
+        String hoverStyle = "-fx-background-color: " + ModernDesignSystem.WHITE + "; -fx-background-radius: 18; -fx-border-color: " + ACCENT + "; -fx-border-radius: 18; -fx-border-width: 1 1 4 1;";
+        card.setStyle(cardStyle);
         DropShadow ds = new DropShadow(); ds.setColor(Color.web("#000", 0.25)); ds.setRadius(8); ds.setOffsetY(3); card.setEffect(ds);
 
         String c = cat != null ? cat : "Other";
@@ -590,20 +613,27 @@ public class POSScreen extends Application {
         Label nameLbl = new Label(name);
         nameLbl.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
         nameLbl.setTextFill(Color.web(TEXT_WHITE));
+        labelTextShadow(nameLbl);
         nameLbl.setWrapText(true);
         nameLbl.setAlignment(Pos.CENTER);
         nameLbl.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
 
         Label catLbl = new Label(c);
-        catLbl.setFont(Font.font("Poppins", 9));
+        catLbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         catLbl.setTextFill(Color.web(INFO));
-        catLbl.setStyle("-fx-background-color: rgba(119,116,155,0.12); -fx-background-radius: 16; -fx-padding: 2 8 2 8;");
+        catLbl.setStyle(
+            "-fx-background-color: rgba(119,116,155,0.14);" +
+            "-fx-background-radius: 16;" +
+            "-fx-padding: 2 8 2 8;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);"
+        );
 
         Label priceLbl = new Label(price);
         priceLbl.setFont(Font.font("Poppins", FontWeight.BOLD, 16));
-        priceLbl.setTextFill(Color.web(SUCCESS));
+        priceLbl.setTextFill(Color.web(SUCCESS_TEXT));
+        labelTextShadow(priceLbl);
 
-        Button addBtn = new Button(" Add");
+        Button addBtn = new Button("Add");
         addBtn.setMaxWidth(Double.MAX_VALUE);
         addBtn.setPrefHeight(30);
         addBtn.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
@@ -613,8 +643,8 @@ public class POSScreen extends Application {
         addBtn.setOnAction(e -> onAdd.run());
 
         card.getChildren().addAll(icon, nameLbl, catLbl, priceLbl, addBtn);
-        card.setOnMouseEntered(e -> card.setStyle("-fx-background-color: #E4FFDF; -fx-background-radius: 18; -fx-border-color: " + ACCENT + "; -fx-border-radius: 18; -fx-border-width: 1;"));
-        card.setOnMouseExited(e -> card.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 18; -fx-border-color: " + BORDER + "; -fx-border-radius: 18; -fx-border-width: 1;"));
+        card.setOnMouseEntered(e -> card.setStyle(hoverStyle));
+        card.setOnMouseExited(e -> card.setStyle(cardStyle));
         return card;
     }
 
@@ -623,29 +653,74 @@ public class POSScreen extends Application {
         row.setAlignment(Pos.CENTER_LEFT);
         Label lbl = new Label(label);
         lbl.setFont(Font.font("Poppins", large ? FontWeight.BOLD : FontWeight.NORMAL, large ? 13 : 11));
-        lbl.setTextFill(Color.web(large ? TEXT_WHITE : TEXT_MUTED));
+        lbl.setTextFill(Color.web(large ? TEXT_WHITE : TEXT_DIM));
+        labelTextShadow(lbl);
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
         Label val = new Label(value);
         val.setFont(Font.font("Poppins", FontWeight.BOLD, large ? 15 : 12));
-        val.setTextFill(Color.web(color));
+        val.setTextFill(Color.web(readableAccent(color)));
+        labelTextShadow(val);
         row.getChildren().addAll(lbl, sp, val);
         return row;
     }
 
     private void styleToggleBtn(ToggleButton tb, boolean selected) {
-        tb.setStyle("-fx-background-color: " + (selected ? ACCENT : BG_MAIN) + "; -fx-text-fill: " + (selected ? "white" : TEXT_MUTED) + "; -fx-background-radius: 16; -fx-border-color: " + (selected ? ACCENT : BORDER) + "; -fx-border-radius: 16; -fx-cursor: hand; -fx-font-family: Poppins;");
+        tb.setStyle(
+            "-fx-background-color: " + (selected ? "rgba(26,19,99,0.12)" : BG_MAIN) + ";" +
+            "-fx-text-fill: " + (selected ? ACCENT : TEXT_DIM) + ";" +
+            "-fx-background-radius: 16;" +
+            "-fx-border-color: " + (selected ? ACCENT : BORDER) + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-cursor: hand;" +
+            "-fx-font-family: Poppins;" +
+            "-fx-font-weight: bold;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.72), 1, 0.0, 0, 0);"
+        );
     }
 
     private void applyFieldStyle(TextField f) {
-        f.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 16; -fx-background-radius: 16; -fx-text-fill: " + TEXT_WHITE + "; -fx-prompt-text-fill: " + TEXT_DIM + "; -fx-padding: 0 12 0 12; -fx-font-family: Poppins; -fx-font-size: 12;");
+        f.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
+            "-fx-text-fill: " + ACCENT + ";" +
+            "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
+            "-fx-padding: 0 12 0 12;" +
+            "-fx-font-family: Poppins;" +
+            "-fx-font-size: 12;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.72), 1, 0.0, 0, 0);"
+        );
     }
 
     private void styleCombo(ComboBox<String> c) {
-        c.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 16; -fx-background-radius: 16; -fx-text-fill: " + TEXT_WHITE + "; -fx-font-family: Poppins; -fx-font-size: 12; -fx-pref-height: 38;");
+        c.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
+            "-fx-text-fill: " + ACCENT + ";" +
+            "-fx-font-family: Poppins;" +
+            "-fx-font-size: 12;" +
+            "-fx-pref-height: 38;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.72), 1, 0.0, 0, 0);"
+        );
+    }
+
+    private void outlineText(Text text, double width) {
+        text.setStroke(Color.web(ModernDesignSystem.WHITE, 0.82));
+        text.setStrokeWidth(width);
+    }
+
+    private void labelTextShadow(Label label) {
+        label.setStyle(label.getStyle() + "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);");
+    }
+
+    private String readableAccent(String color) {
+        if (SUCCESS.equalsIgnoreCase(color)) return SUCCESS_TEXT;
+        if (WARNING.equalsIgnoreCase(color)) return WARNING_TEXT;
+        return color;
     }
 
     public static void main(String[] args) { launch(args); }
 }
-
-
-

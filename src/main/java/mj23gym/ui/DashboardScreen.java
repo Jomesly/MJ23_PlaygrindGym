@@ -15,6 +15,9 @@ import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Tooltip;
 import javafx.scene.effect.DropShadow;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
@@ -64,6 +67,9 @@ public class DashboardScreen extends Application {
     static final String SUCCESS      = ModernDesignSystem.SUCCESS;
     static final String WARNING      = ModernDesignSystem.ACCENT_YELLOW;
     static final String INFO         = ModernDesignSystem.PRIMARY;
+    static final String SUCCESS_TEXT = "#237A36";
+    static final String WARNING_TEXT = "#6E6400";
+    private static final String LOGO_PATH = "/images/mj23-logo.png";
 
     private String activeMenu = "Dashboard";
 
@@ -120,16 +126,19 @@ public class DashboardScreen extends Application {
         logoArea.setPadding(new Insets(22, 20, 22, 20));
 
         StackPane logoBadge = new StackPane();
-        logoBadge.setPrefSize(42, 42);
-        Rectangle logoBg = new Rectangle(42, 42);
+        logoBadge.setPrefSize(52, 52);
+        logoBadge.setMaxSize(52, 52);
+        Rectangle logoBg = new Rectangle(52, 52);
         logoBg.setArcWidth(ModernDesignSystem.RADIUS_MEDIUM);
         logoBg.setArcHeight(ModernDesignSystem.RADIUS_MEDIUM);
-        logoBg.setFill(Color.web(ModernDesignSystem.PRIMARY));
+        logoBg.setFill(Color.web(ModernDesignSystem.WHITE));
+        logoBg.setStroke(Color.web(ModernDesignSystem.BORDER_COLOR));
         logoBg.setEffect(ModernDesignSystem.createElevation2());
-        Text logoTxt = new Text("MJ");
-        logoTxt.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 16));
-        logoTxt.setFill(Color.WHITE);
-        logoBadge.getChildren().addAll(logoBg, logoTxt);
+        ImageView logoView = new ImageView(loadImage(LOGO_PATH));
+        logoView.setPreserveRatio(true);
+        logoView.setFitWidth(44);
+        logoView.setFitHeight(44);
+        logoBadge.getChildren().addAll(logoBg, logoView);
 
         VBox logoText = new VBox(1);
         Text gymName = new Text("MJ23 PLAYGRIND");
@@ -423,6 +432,19 @@ public class DashboardScreen extends Application {
                 maintDue > 0 ? "Within 30 days" : "None due soon", INFO, false)
         );
 
+        VBox dashboardDetails = new VBox(0);
+        dashboardDetails.getChildren().setAll(
+            buildMembersDetail(memberDAO, totalMembers, recentMembers)
+        );
+
+        makeSummaryCardsClickable(
+            summaryCards,
+            () -> dashboardDetails.getChildren().setAll(buildMembersDetail(memberDAO, totalMembers, recentMembers)),
+            () -> dashboardDetails.getChildren().setAll(buildRevenueDetail(paymentDAO, posDAO, revenueToday)),
+            () -> dashboardDetails.getChildren().setAll(buildLowStockDetail(inventoryDAO)),
+            () -> dashboardDetails.getChildren().setAll(buildMaintenanceDetail(equipmentDAO))
+        );
+
         //  Recent Activity + Quick Stats row 
         HBox midRow = new HBox(18);
         HBox.setHgrow(midRow, Priority.ALWAYS);
@@ -442,7 +464,7 @@ public class DashboardScreen extends Application {
             memberTableData[i][0] = "#" + m.memberCode();
             memberTableData[i][1] = m.fullName();
             memberTableData[i][2] = m.membershipType() != null ? m.membershipType() : "Monthly";
-            memberTableData[i][3] = m.status() != null ? m.status() : "Active";
+            memberTableData[i][3] = formatStatusDisplay(m.status() != null ? m.status() : "Active");
         }
 
         // Recent Members table
@@ -489,7 +511,7 @@ public class DashboardScreen extends Application {
             }
         );
 
-        body.getChildren().addAll(summaryCards, midRow, paymentsCard);
+        body.getChildren().addAll(summaryCards, dashboardDetails);
         scrollPane.setContent(body);
 
         content.getChildren().addAll(topBar, scrollPane);
@@ -505,13 +527,23 @@ public class DashboardScreen extends Application {
         card.setPadding(new Insets(22, 24, 22, 24));
         card.setPrefWidth(220);
         card.setMinHeight(160);
-        card.setStyle(
+        card.setCursor(javafx.scene.Cursor.HAND);
+        String readableColor = readableAccent(color);
+        String baseStyle =
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 16;" +
+            "-fx-background-radius: 18;" +
             "-fx-border-color: " + (highlighted ? color : BORDER) + ";" +
-            "-fx-border-radius: 16;" +
-            "-fx-border-width: " + (highlighted ? "0 0 3 0" : "1") + ";"
-        );
+            "-fx-border-radius: 18;" +
+            "-fx-border-width: " + (highlighted ? "1 1 4 1" : "1") + ";";
+        String hoverStyle =
+            "-fx-background-color: " + ModernDesignSystem.WHITE + ";" +
+            "-fx-background-radius: 18;" +
+            "-fx-border-color: " + color + ";" +
+            "-fx-border-radius: 18;" +
+            "-fx-border-width: 1 1 4 1;";
+        card.setStyle(baseStyle);
+        card.setOnMouseEntered(e -> card.setStyle(hoverStyle));
+        card.setOnMouseExited(e -> card.setStyle(baseStyle));
         
         // Enhanced shadow effect
         DropShadow ds = new DropShadow();
@@ -521,6 +553,11 @@ public class DashboardScreen extends Application {
         ds.setOffsetX(0);
         card.setEffect(ds);
         HBox.setHgrow(card, Priority.ALWAYS);
+
+        Rectangle accentCut = new Rectangle(46, 4);
+        accentCut.setArcWidth(4);
+        accentCut.setArcHeight(4);
+        accentCut.setFill(Color.web(color));
 
         // Top row with icon and value
         HBox topRow = new HBox(14);
@@ -533,6 +570,7 @@ public class DashboardScreen extends Application {
         iconBg.setArcWidth(14);
         iconBg.setArcHeight(14);
         iconBg.setFill(Color.web(color, 0.14));
+        iconBg.setStroke(Color.web(readableColor, 0.18));
         Text iconTxt = new Text(icon);
         iconTxt.setFont(Font.font(28));
         iconCircle.getChildren().addAll(iconBg, iconTxt);
@@ -546,21 +584,39 @@ public class DashboardScreen extends Application {
         Text valTxt = new Text(value);
         valTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 32));
         valTxt.setFill(Color.web(TEXT_WHITE));
+        valTxt.setStroke(Color.web(ModernDesignSystem.WHITE, 0.85));
+        valTxt.setStrokeWidth(0.35);
 
         valueSection.getChildren().addAll(lblTxt, valTxt);
         topRow.getChildren().addAll(iconCircle, valueSection);
 
         // Subtitle with color accent
         Text subTxt = new Text(sub);
-        subTxt.setFont(Font.font("Poppins", FontWeight.NORMAL, 10));
-        subTxt.setFill(Color.web(color, 0.85));
+        subTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        subTxt.setFill(Color.web(readableColor));
 
-        card.getChildren().addAll(topRow, subTxt);
+        card.getChildren().addAll(accentCut, topRow, subTxt);
         return card;
+    }
+
+    private void makeSummaryCardsClickable(HBox cards, Runnable... actions) {
+        for (int i = 0; i < cards.getChildren().size() && i < actions.length; i++) {
+            Runnable action = actions[i];
+            javafx.scene.Node card = cards.getChildren().get(i);
+            card.setOnMouseClicked(e -> {
+                if (action != null) {
+                    action.run();
+                }
+            });
+        }
     }
 
     //  Data table card 
     private VBox buildTableCard(String title, String[] headers, String[][] rows) {
+        return buildTableCard(title, headers, rows, true);
+    }
+
+    private VBox buildTableCard(String title, String[] headers, String[][] rows, boolean badgeLastColumn) {
         VBox card = new VBox(0);
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
@@ -609,17 +665,16 @@ public class DashboardScreen extends Application {
             String bg = (r % 2 == 0) ? BG_CARD : BG_ROW_ALT;
             for (int c = 0; c < rows[r].length; c++) {
                 String cellVal = rows[r][c];
-                if (c == rows[r].length - 1) {
+                if (badgeLastColumn && c == rows[r].length - 1) {
                     // Status badge
-                    Label badge = makeStatusBadge(cellVal);
-                    badge.setPadding(new Insets(8, 14, 8, 14));
-                    badge.setMaxWidth(Double.MAX_VALUE);
-                    GridPane.setHgrow(badge, Priority.ALWAYS);
-                    GridPane.setFillWidth(badge, true);
-                    String rowBg = bg;
-                    badge.setStyle(badge.getStyle() +
-                        " -fx-background-color: " + rowBg + ";");
-                    table.add(badge, c, r + 1);
+                    StackPane badgeCell = new StackPane(makeStatusBadge(cellVal));
+                    badgeCell.setAlignment(Pos.CENTER_LEFT);
+                    badgeCell.setPadding(new Insets(8, 14, 8, 14));
+                    badgeCell.setMaxWidth(Double.MAX_VALUE);
+                    badgeCell.setStyle("-fx-background-color: " + bg + ";");
+                    GridPane.setHgrow(badgeCell, Priority.ALWAYS);
+                    GridPane.setFillWidth(badgeCell, true);
+                    table.add(badgeCell, c, r + 1);
                 } else {
                     Label cell = new Label(cellVal);
                     cell.setFont(Font.font("Poppins", 11));
@@ -648,16 +703,19 @@ public class DashboardScreen extends Application {
 
     //  Status badge 
     private Label makeStatusBadge(String status) {
-        Label badge = new Label(status);
+        String displayStatus = formatStatusDisplay(status);
+        Label badge = new Label(displayStatus);
         badge.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         String color, bg;
-        switch (status.toLowerCase()) {
+        switch (displayStatus.toLowerCase()) {
             case "active": case "paid":
-                color = SUCCESS; bg = "rgba(228,255,223,0.15)"; break;
+                color = SUCCESS_TEXT; bg = "rgba(228,255,223,0.85)"; break;
             case "expired": case "overdue":
                 color = ACCENT; bg = "rgba(26,19,99,0.15)"; break;
             case "pending":
-                color = WARNING; bg = "rgba(253,238,33,0.15)"; break;
+                color = WARNING_TEXT; bg = "rgba(253,238,33,0.35)"; break;
+            case "cancelled": case "archived":
+                color = TEXT_MUTED; bg = "rgba(119,116,155,0.15)"; break;
             default:
                 color = TEXT_MUTED; bg = "transparent"; break;
         }
@@ -707,10 +765,10 @@ public class DashboardScreen extends Application {
         VBox stats = new VBox(0);
         String[][] statItems = {
             {"Active Members",    String.valueOf(activeMembers),   ACCENT},
-            {"Expired Members",   String.valueOf(expiredMembers),  WARNING},
-            {"POS Sales Today",   String.format("%.0f", posToday), SUCCESS},
-            {"Equipment OK",      String.valueOf(equipmentOk),     SUCCESS},
-            {"Under Maintenance", String.valueOf(underMaintenance), WARNING},
+            {"Expired Members",   String.valueOf(expiredMembers),  WARNING_TEXT},
+            {"POS Sales Today",   String.format("%.0f", posToday), SUCCESS_TEXT},
+            {"Equipment OK",      String.valueOf(equipmentOk),     SUCCESS_TEXT},
+            {"Under Maintenance", String.valueOf(underMaintenance), WARNING_TEXT},
             {"Low Stock Alerts",  String.valueOf(lowStockAlerts),   ACCENT},
         };
 
@@ -728,12 +786,244 @@ public class DashboardScreen extends Application {
             Text val = new Text(statItems[i][1]);
             val.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
             val.setFill(Color.web(statItems[i][2]));
+            val.setStroke(Color.web(ModernDesignSystem.WHITE, 0.75));
+            val.setStrokeWidth(0.25);
             row.getChildren().addAll(label, sp, val);
             stats.getChildren().add(row);
         }
 
         card.getChildren().addAll(header, stats);
         return card;
+    }
+
+    private VBox buildMembersDetail(MemberDAO memberDAO, int totalMembers, List<MemberDAO.MemberRecord> recentMembers) {
+        String[][] rows = new String[Math.min(8, recentMembers.size())][5];
+        for (int i = 0; i < rows.length; i++) {
+            MemberDAO.MemberRecord m = recentMembers.get(i);
+            rows[i][0] = "#" + m.memberCode();
+            rows[i][1] = m.fullName();
+            rows[i][2] = m.membershipType() != null ? m.membershipType() : "No plan";
+            rows[i][3] = m.membershipEndDate() != null ? m.membershipEndDate().toString() : "No end date";
+            rows[i][4] = formatStatusDisplay(m.status());
+        }
+
+        return buildDashboardDetailSection(
+            "Total Members",
+            "Member count breakdown and newest registrations",
+            new String[][]{
+                {"All Members", String.valueOf(totalMembers), ACCENT},
+                {"Active", String.valueOf(memberDAO.countByStatus("Active")), SUCCESS_TEXT},
+                {"Expired", String.valueOf(memberDAO.countByStatus("Expired")), WARNING_TEXT},
+                {"Archived", String.valueOf(memberDAO.countByStatus("Cancelled")), TEXT_MUTED}
+            },
+            "Member Details",
+            new String[]{"Member ID", "Name", "Plan", "End Date", "Status"},
+            rows.length > 0 ? rows : new String[][]{{"No records", "No recent members yet", "-", "-", "Pending"}},
+            true
+        );
+    }
+
+    private VBox buildRevenueDetail(PaymentDAO paymentDAO, PosDAO posDAO, double totalToday) {
+        java.sql.Date today = java.sql.Date.valueOf(LocalDate.now());
+        double membershipRevenue = paymentDAO.todayRevenue();
+        double posRevenue = posDAO.todayPosTotal();
+        List<PaymentDAO.PaymentRecord> payments = paymentDAO.findByDateRange(today, today);
+        List<PosDAO.SaleDetailRow> sales = posDAO.findSaleLinesBetween(today, today);
+
+        String[][] paymentRows = new String[Math.min(6, payments.size())][5];
+        for (int i = 0; i < paymentRows.length; i++) {
+            PaymentDAO.PaymentRecord p = payments.get(i);
+            paymentRows[i][0] = p.memberName() != null ? p.memberName() : "Unknown member";
+            paymentRows[i][1] = formatCurrency(p.amount());
+            paymentRows[i][2] = p.paymentMethod() != null ? p.paymentMethod() : "Cash";
+            paymentRows[i][3] = p.transactionRef() != null ? p.transactionRef() : "-";
+            paymentRows[i][4] = p.status() != null ? p.status() : "Pending";
+        }
+
+        String[][] saleRows = new String[Math.min(6, sales.size())][5];
+        for (int i = 0; i < saleRows.length; i++) {
+            PosDAO.SaleDetailRow s = sales.get(i);
+            saleRows[i][0] = s.itemName();
+            saleRows[i][1] = String.valueOf(s.quantity());
+            saleRows[i][2] = formatCurrency(s.unitPrice());
+            saleRows[i][3] = formatCurrency(s.subtotal());
+            saleRows[i][4] = s.paymentMethod() != null ? s.paymentMethod() : "Cash";
+        }
+
+        VBox section = buildDashboardDetailSection(
+            "Revenue Today",
+            "Membership payment and POS sales activity for today",
+            new String[][]{
+                {"Total", formatCurrency(totalToday), ACCENT},
+                {"Membership", formatCurrency(membershipRevenue), SUCCESS_TEXT},
+                {"POS Sales", formatCurrency(posRevenue), WARNING_TEXT},
+                {"Payments", String.valueOf(payments.size()), TEXT_MUTED}
+            },
+            "Membership Payments",
+            new String[]{"Member", "Amount", "Method", "Reference", "Status"},
+            paymentRows.length > 0 ? paymentRows : new String[][]{{"No records", "No payments today", "-", "-", "Pending"}},
+            true
+        );
+        section.getChildren().add(buildTableCard(
+            "POS Items Sold",
+            new String[]{"Item", "Qty", "Unit Price", "Subtotal", "Method"},
+            saleRows.length > 0 ? saleRows : new String[][]{{"No records", "0", "PHP 0.00", "PHP 0.00", "-"}},
+            false
+        ));
+        return section;
+    }
+
+    private VBox buildLowStockDetail(InventoryDAO inventoryDAO) {
+        List<InventoryDAO.InventoryRecord> items = inventoryDAO.findLowStock();
+        String[][] rows = new String[Math.min(10, items.size())][6];
+        int outOfStock = 0;
+        for (int i = 0; i < items.size(); i++) {
+            if (items.get(i).currentStock() <= 0) outOfStock++;
+        }
+        for (int i = 0; i < rows.length; i++) {
+            InventoryDAO.InventoryRecord item = items.get(i);
+            rows[i][0] = item.itemCode() != null ? item.itemCode() : "-";
+            rows[i][1] = item.itemName();
+            rows[i][2] = item.category() != null ? item.category() : "-";
+            rows[i][3] = String.valueOf(item.currentStock());
+            rows[i][4] = String.valueOf(item.reorderLevel());
+            rows[i][5] = item.status() != null ? item.status() : "Low Stock";
+        }
+
+        return buildDashboardDetailSection(
+            "Low Stock Items",
+            "Inventory that needs restocking or attention",
+            new String[][]{
+                {"Low Stock", String.valueOf(items.size()), ACCENT},
+                {"Out of Stock", String.valueOf(outOfStock), WARNING_TEXT},
+                {"Need Restock", String.valueOf(Math.max(0, items.size() - outOfStock)), SUCCESS_TEXT},
+                {"Shown", String.valueOf(rows.length), TEXT_MUTED}
+            },
+            "Restock List",
+            new String[]{"Code", "Item", "Category", "Stock", "Reorder", "Status"},
+            rows.length > 0 ? rows : new String[][]{{"No records", "All items are above reorder level", "-", "0", "0", "Active"}},
+            true
+        );
+    }
+
+    private VBox buildMaintenanceDetail(EquipmentDAO equipmentDAO) {
+        List<EquipmentDAO.EquipmentRecord> equipment = equipmentDAO.findMaintenanceDue();
+        String[][] rows = new String[Math.min(10, equipment.size())][6];
+        int maintenance = 0;
+        int broken = 0;
+        for (EquipmentDAO.EquipmentRecord e : equipment) {
+            if ("Maintenance".equalsIgnoreCase(e.condition())) maintenance++;
+            if ("Broken".equalsIgnoreCase(e.condition())) broken++;
+        }
+        for (int i = 0; i < rows.length; i++) {
+            EquipmentDAO.EquipmentRecord e = equipment.get(i);
+            rows[i][0] = e.equipmentCode() != null ? e.equipmentCode() : "-";
+            rows[i][1] = e.equipmentName();
+            rows[i][2] = e.category() != null ? e.category() : "-";
+            rows[i][3] = e.location() != null ? e.location() : "-";
+            rows[i][4] = e.nextMaintenance() != null ? e.nextMaintenance().toString() : "Not set";
+            rows[i][5] = e.condition() != null ? e.condition() : "Due";
+        }
+
+        return buildDashboardDetailSection(
+            "Maintenance Due",
+            "Equipment with maintenance scheduled within the next 30 days",
+            new String[][]{
+                {"Due Soon", String.valueOf(equipment.size()), ACCENT},
+                {"Maintenance", String.valueOf(maintenance), WARNING_TEXT},
+                {"Broken", String.valueOf(broken), TEXT_MUTED},
+                {"Shown", String.valueOf(rows.length), SUCCESS_TEXT}
+            },
+            "Equipment Due",
+            new String[]{"Code", "Equipment", "Category", "Location", "Next Date", "Condition"},
+            rows.length > 0 ? rows : new String[][]{{"No records", "No maintenance due soon", "-", "-", "Not set", "Active"}},
+            true
+        );
+    }
+
+    private VBox buildDashboardDetailSection(
+        String title,
+        String subtitle,
+        String[][] metrics,
+        String tableTitle,
+        String[] headers,
+        String[][] rows,
+        boolean badgeLastColumn
+    ) {
+        VBox section = new VBox(16);
+        section.setStyle(
+            "-fx-background-color: transparent;"
+        );
+
+        HBox header = new HBox(12);
+        header.setAlignment(Pos.CENTER_LEFT);
+        VBox titleBox = new VBox(2);
+        Text titleTxt = new Text(title);
+        titleTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 17));
+        titleTxt.setFill(Color.web(TEXT_WHITE));
+        Text subtitleTxt = new Text(subtitle);
+        subtitleTxt.setFont(Font.font("Poppins", 11));
+        subtitleTxt.setFill(Color.web(TEXT_MUTED));
+        titleBox.getChildren().addAll(titleTxt, subtitleTxt);
+
+        Rectangle accentCut = new Rectangle(5, 42);
+        accentCut.setArcWidth(5);
+        accentCut.setArcHeight(5);
+        accentCut.setFill(Color.web(ACCENT));
+        header.getChildren().addAll(accentCut, titleBox);
+
+        HBox metricRow = new HBox(12);
+        for (String[] metric : metrics) {
+            metricRow.getChildren().add(buildInlineMetric(metric[0], metric[1], metric[2]));
+        }
+
+        VBox table = buildTableCard(tableTitle, headers, rows, badgeLastColumn);
+        section.getChildren().addAll(header, metricRow, table);
+        return section;
+    }
+
+    private HBox buildInlineMetric(String label, String value, String color) {
+        HBox metric = new HBox(10);
+        metric.setAlignment(Pos.CENTER_LEFT);
+        metric.setPadding(new Insets(12, 14, 12, 14));
+        metric.setMinHeight(58);
+        metric.setMaxWidth(Double.MAX_VALUE);
+        metric.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-radius: 16;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-border-width: 1;"
+        );
+        Rectangle cut = new Rectangle(4, 28);
+        cut.setArcWidth(4);
+        cut.setArcHeight(4);
+        cut.setFill(Color.web(color));
+        VBox textBox = new VBox(1);
+        Text labelTxt = new Text(label);
+        labelTxt.setFont(Font.font("Poppins", 10));
+        labelTxt.setFill(Color.web(TEXT_MUTED));
+        Text valueTxt = new Text(value);
+        valueTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 15));
+        valueTxt.setFill(Color.web(readableAccent(color)));
+        valueTxt.setStroke(Color.web(ModernDesignSystem.WHITE, 0.65));
+        valueTxt.setStrokeWidth(0.25);
+        textBox.getChildren().addAll(labelTxt, valueTxt);
+        metric.getChildren().addAll(cut, textBox);
+        HBox.setHgrow(metric, Priority.ALWAYS);
+        return metric;
+    }
+
+    private void showDashboardPopup(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(title);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private String formatCurrency(double amount) {
+        return "PHP " + String.format("%,.2f", amount);
     }
 
     private void showDashboardSearch(String query) {
@@ -779,8 +1069,25 @@ public class DashboardScreen extends Application {
         new Alert(Alert.AlertType.INFORMATION, message.toString()).showAndWait();
     }
 
+    // Helper method to format status display - convert Cancelled to Archived for consistency
+    private String formatStatusDisplay(String status) {
+        if (status == null) return "Unknown";
+        return "Cancelled".equalsIgnoreCase(status) ? "Archived" : status;
+    }
+
+    private String readableAccent(String color) {
+        if (SUCCESS.equalsIgnoreCase(color)) return SUCCESS_TEXT;
+        if (WARNING.equalsIgnoreCase(color)) return WARNING_TEXT;
+        return color;
+    }
+
+    private Image loadImage(String resourcePath) {
+        var resource = getClass().getResource(resourcePath);
+        if (resource == null) {
+            return new WritableImage(1, 1);
+        }
+        return new Image(resource.toExternalForm());
+    }
+
     public static void main(String[] args) { launch(args); }
 }
-
-
-

@@ -15,6 +15,10 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TextField;
+import javafx.scene.effect.GaussianBlur;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
 import javafx.scene.layout.Border;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -61,6 +65,8 @@ public class LoginScreen extends Application {
     private static final String TEXT_WHITE   = ModernDesignSystem.PRIMARY;
     private static final String TEXT_MUTED   = ModernDesignSystem.TEXT_MUTED;
     private static final String TEXT_DIM     = ModernDesignSystem.DARK_GRAY;
+    private static final String LOGO_PATH     = "/images/mj23-logo.png";
+    private static final String GYM_PHOTO_PATH = "/images/gym-mj23-place.jpg";
 
     @Override
     public void start(Stage stage) {
@@ -91,31 +97,31 @@ public class LoginScreen extends Application {
 
         // Logo badge
         StackPane badge = new StackPane();
-        badge.setPrefSize(96, 96);
-        badge.setMaxSize(96, 96);
-        Rectangle badgeBg = new Rectangle(96, 96);
+        badge.setPrefSize(150, 150);
+        badge.setMaxSize(150, 150);
+        Rectangle badgeBg = new Rectangle(150, 150);
         badgeBg.setArcWidth(ModernDesignSystem.RADIUS_LARGE);
         badgeBg.setArcHeight(ModernDesignSystem.RADIUS_LARGE);
-        badgeBg.setFill(Color.web(ModernDesignSystem.PRIMARY));
+        badgeBg.setFill(Color.web(ModernDesignSystem.WHITE));
+        badgeBg.setStroke(Color.web(ModernDesignSystem.BORDER_COLOR));
         badgeBg.setEffect(ModernDesignSystem.createElevation4());
-        VBox badgeWords = new VBox(-6);
-        badgeWords.setAlignment(Pos.CENTER);
-        Text mj = new Text("MJ");
-        mj.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 36));
-        mj.setFill(Color.WHITE);
-        Text t23 = new Text("23");
-        t23.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 15));
-        t23.setFill(Color.web("#ffffff", 0.80));
-        badgeWords.getChildren().addAll(mj, t23);
-        badge.getChildren().addAll(badgeBg, badgeWords);
+        ImageView logoView = new ImageView(loadImage(LOGO_PATH));
+        logoView.setPreserveRatio(true);
+        logoView.setFitWidth(126);
+        logoView.setFitHeight(126);
+        badge.getChildren().addAll(badgeBg, logoView);
 
         // Gym title
         Text line1 = new Text("MJ23 PLAYGRIND");
         line1.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
         line1.setFill(Color.web(TEXT_WHITE));
+        line1.setStroke(Color.web(ModernDesignSystem.WHITE, 0.80));
+        line1.setStrokeWidth(0.25);
         Text line2 = new Text("GYM");
         line2.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
         line2.setFill(Color.web(ACCENT));
+        line2.setStroke(Color.web(ModernDesignSystem.WHITE, 0.80));
+        line2.setStrokeWidth(0.25);
         VBox gymTitle = new VBox(0, line1, line2);
         gymTitle.setAlignment(Pos.CENTER);
 
@@ -141,11 +147,6 @@ public class LoginScreen extends Application {
         Region botSpacer = new Region();
         VBox.setVgrow(botSpacer, Priority.ALWAYS);
 
-        // Footer text at bottom of left panel
-        Text leftFooter = new Text("CS 301  Software Engineering 1  |  TIP-QC");
-        leftFooter.setFont(Font.font("Poppins", 9));
-        leftFooter.setFill(Color.web(TEXT_DIM));
-
         // Assemble left panel with spacing
         VBox leftContent = new VBox(22,
             badge, gymTitle, redLine, tagline, pillBox
@@ -153,25 +154,44 @@ public class LoginScreen extends Application {
         leftContent.setAlignment(Pos.CENTER);
 
         left.getChildren().addAll(
-            topBar, topSpacer, leftContent, botSpacer,
-            new HBox(leftFooter) {{ setAlignment(Pos.CENTER); setPadding(new Insets(0, 0, 20, 0)); }}
+            topBar, topSpacer, leftContent, botSpacer
         );
 
         // 
         // RIGHT PANEL  login form
         // 
-        VBox right = new VBox();
+        StackPane right = new StackPane();
         right.setAlignment(Pos.CENTER);
         HBox.setHgrow(right, Priority.ALWAYS);
         right.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
+        ImageView gymPhoto = new ImageView(loadImage(GYM_PHOTO_PATH));
+        gymPhoto.setPreserveRatio(true);
+        gymPhoto.fitWidthProperty().bind(right.widthProperty());
+        gymPhoto.fitHeightProperty().bind(right.heightProperty());
+        gymPhoto.setOpacity(0.42);
+        gymPhoto.setEffect(new GaussianBlur(5));
+        gymPhoto.setMouseTransparent(true);
+        gymPhoto.setManaged(false);
+        StackPane.setAlignment(gymPhoto, Pos.CENTER);
+
+        Rectangle photoWash = new Rectangle();
+        photoWash.widthProperty().bind(right.widthProperty());
+        photoWash.heightProperty().bind(right.heightProperty());
+        photoWash.setFill(Color.web(BG_MAIN, 0.58));
+        photoWash.setMouseTransparent(true);
+        photoWash.setManaged(false);
+
         // Card
         VBox card = new VBox(16);
-        card.setMaxWidth(370);
+        card.setPrefWidth(330);
+        card.setMaxWidth(330);
+        card.setMinHeight(390);
+        card.setMaxHeight(420);
         card.setAlignment(Pos.TOP_LEFT);
-        card.setPadding(new Insets(38, 38, 38, 38));
+        card.setPadding(new Insets(28, 30, 24, 30));
         card.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-color: rgba(255,255,255,0.98);" +
             "-fx-background-radius: " + ModernDesignSystem.RADIUS_LARGE + ";" +
             "-fx-border-color: " + ModernDesignSystem.BORDER_COLOR + ";" +
             "-fx-border-radius: " + ModernDesignSystem.RADIUS_LARGE + ";" +
@@ -181,11 +201,13 @@ public class LoginScreen extends Application {
 
         // Card header
         Text title = new Text("Sign In");
-        title.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 26));
+        title.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 23));
         title.setFill(Color.web(TEXT_WHITE));
+        title.setStroke(Color.web(ModernDesignSystem.WHITE, 0.85));
+        title.setStrokeWidth(0.28);
         Text subtitle = new Text("Enter your credentials to continue");
         subtitle.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, 11));
-        subtitle.setFill(Color.web(TEXT_MUTED));
+        subtitle.setFill(Color.web("#4B4B4B"));
         VBox cardHeader = new VBox(4, title, subtitle);
 
         Rectangle accentUnderline = new Rectangle(48, 3);
@@ -203,11 +225,11 @@ public class LoginScreen extends Application {
         // Forgot link
         Hyperlink forgot = new Hyperlink("Forgot Password?");
         forgot.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, 10));
-        forgot.setTextFill(Color.web(ModernDesignSystem.ACCENT_YELLOW));
+        forgot.setTextFill(Color.web("#6E6400"));
         forgot.setBorder(Border.EMPTY);
         forgot.setPadding(Insets.EMPTY);
-        forgot.setOnMouseEntered(e -> forgot.setTextFill(Color.web(ModernDesignSystem.ACCENT_YELLOW_LT)));
-        forgot.setOnMouseExited(e -> forgot.setTextFill(Color.web(ModernDesignSystem.ACCENT_YELLOW)));
+        forgot.setOnMouseEntered(e -> forgot.setTextFill(Color.web(ModernDesignSystem.PRIMARY)));
+        forgot.setOnMouseExited(e -> forgot.setTextFill(Color.web("#6E6400")));
         forgot.setOnAction(e -> showForgotDialog(stage));
         HBox forgotRow = new HBox(forgot);
         forgotRow.setAlignment(Pos.CENTER_RIGHT);
@@ -228,7 +250,7 @@ public class LoginScreen extends Application {
         // Login button
         Button loginBtn = ModernDesignSystem.createPrimaryButton("LOGIN");
         loginBtn.setMaxWidth(Double.MAX_VALUE);
-        loginBtn.setPrefHeight(46);
+        loginBtn.setPrefHeight(42);
 
         // Login action
         Runnable doLogin = () -> {
@@ -286,6 +308,8 @@ public class LoginScreen extends Application {
         Text cardFooter = new Text(" 2025 MJ23 Playgrind Gym    All rights reserved");
         cardFooter.setFont(Font.font("Poppins", 9));
         cardFooter.setFill(Color.web(TEXT_DIM));
+        cardFooter.setStroke(Color.web(ModernDesignSystem.WHITE, 0.70));
+        cardFooter.setStrokeWidth(0.18);
         HBox cardFooterBox = new HBox(cardFooter);
         cardFooterBox.setAlignment(Pos.CENTER);
 
@@ -300,7 +324,8 @@ public class LoginScreen extends Application {
             cardFooterBox
         );
 
-        right.getChildren().add(card);
+        right.getChildren().addAll(gymPhoto, photoWash, card);
+        card.toFront();
 
         //  Assemble & animate 
         root.getChildren().addAll(left, right);
@@ -328,11 +353,11 @@ public class LoginScreen extends Application {
         VBox g = new VBox(7);
         Label lbl = new Label(label);
         lbl.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 10));
-        lbl.setTextFill(Color.web(ModernDesignSystem.TEXT_MUTED));
+        lbl.setTextFill(Color.web(ModernDesignSystem.PRIMARY));
 
         TextField f = isPass ? new PasswordField() : new TextField();
         f.setPromptText(prompt);
-        f.setPrefHeight(44);
+        f.setPrefHeight(40);
         fieldStyle(f, false);
         f.focusedProperty().addListener((o, old, focused) -> fieldStyle(f, focused));
         g.getChildren().addAll(lbl, f);
@@ -379,6 +404,14 @@ public class LoginScreen extends Application {
         t.setAutoReverse(true);
         t.setOnFinished(e -> n.setTranslateX(0));
         t.play();
+    }
+
+    private Image loadImage(String resourcePath) {
+        var resource = getClass().getResource(resourcePath);
+        if (resource == null) {
+            return new WritableImage(1, 1);
+        }
+        return new Image(resource.toExternalForm());
     }
 
     private HBox makePill(String text) {
@@ -617,6 +650,3 @@ public class LoginScreen extends Application {
 
     public static void main(String[] args) { launch(args); }
 }
-
-
-

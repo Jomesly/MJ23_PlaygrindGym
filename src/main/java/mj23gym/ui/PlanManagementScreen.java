@@ -45,6 +45,8 @@ public class PlanManagementScreen {
     static final String BORDER       = ModernDesignSystem.BORDER_COLOR;
     static final String SUCCESS      = ModernDesignSystem.SUCCESS;
     static final String WARNING      = ModernDesignSystem.ACCENT_YELLOW;
+    static final String SUCCESS_TEXT = "#237A36";
+    static final String WARNING_TEXT = "#6E6400";
 
     private final PlanDAO dao = new PlanDAO();
 
@@ -67,9 +69,10 @@ public class PlanManagementScreen {
         Text title = new Text("Manage Plans");
         title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         title.setFill(Color.web(TEXT_WHITE));
+        outlineText(title, 0.28);
         Text subtitle = new Text("Create, update, and remove membership pricing options");
         subtitle.setFont(Font.font("Poppins", 11));
-        subtitle.setFill(Color.web(TEXT_MUTED));
+        subtitle.setFill(Color.web(TEXT_DIM));
         titleBox.getChildren().addAll(title, subtitle);
         topBar.getChildren().add(titleBox);
 
@@ -89,7 +92,7 @@ public class PlanManagementScreen {
 
         HBox stats = new HBox(16);
         stats.getChildren().addAll(
-            statChip("Active Plans", activeCount, SUCCESS),
+            statChip("Active Plans", activeCount, SUCCESS_TEXT),
             statChip("Total Plans", totalCount, TEXT_WHITE)
         );
 
@@ -101,7 +104,7 @@ public class PlanManagementScreen {
         VBox table = tableCard();
         VBox rows = new VBox(0);
         String[] headers = {"Plan", "Duration", "Price", "Benefits", "Status", "Actions"};
-        double[] widths = {18, 14, 12, 28, 10, 18};
+        double[] widths = {17, 13, 12, 27, 11, 20};
         table.getChildren().addAll(headerRow(headers, widths), rows);
 
         Runnable[] refresh = new Runnable[1];
@@ -134,15 +137,15 @@ public class PlanManagementScreen {
 
             GridPane grid = grid(widths);
             grid.add(cell(plan.planName(), TEXT_WHITE, true), 0, 0);
-            grid.add(cell(plan.duration(), TEXT_MUTED, false), 1, 0);
+            grid.add(cell(plan.duration(), TEXT_DIM, false), 1, 0);
             grid.add(cell("PHP " + String.format("%,.2f", plan.price()), TEXT_WHITE, true), 2, 0);
-            grid.add(cell(emptyDash(plan.benefits()), TEXT_MUTED, false), 3, 0);
+            grid.add(cell(emptyDash(plan.benefits()), TEXT_DIM, false), 3, 0);
             grid.add(statusBadge(plan.active()), 4, 0);
 
             HBox actions = new HBox(6);
             actions.setAlignment(Pos.CENTER_LEFT);
-            Button edit = smallButton("Edit", WARNING);
-            Button toggle = smallButton(plan.active() ? "Disable" : "Enable", plan.active() ? TEXT_DIM : SUCCESS);
+            Button edit = smallButton("Edit", WARNING_TEXT);
+            Button toggle = smallButton(plan.active() ? "Disable" : "Enable", plan.active() ? TEXT_DIM : SUCCESS_TEXT);
             Button remove = smallButton("Remove", ACCENT);
             edit.setOnAction(e -> showPlanDialog(plan, refresh));
             toggle.setOnAction(e -> {
@@ -178,6 +181,7 @@ public class PlanManagementScreen {
         Text title = new Text(existing == null ? "Add Plan" : "Edit Plan");
         title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         title.setFill(Color.web(TEXT_WHITE));
+        outlineText(title, 0.28);
         Rectangle underline = new Rectangle(48, 3);
         underline.setArcWidth(3);
         underline.setArcHeight(3);
@@ -192,7 +196,11 @@ public class PlanManagementScreen {
         duration.setValue(existing != null ? PlanDAO.normalizePlanName(existing.duration()) : "Monthly");
         CheckBox active = new CheckBox("Active plan");
         active.setSelected(existing == null || existing.active());
-        active.setStyle("-fx-text-fill: " + TEXT_MUTED + "; -fx-font: 12 Poppins;");
+        active.setStyle(
+            "-fx-text-fill: " + ACCENT + ";" +
+            "-fx-font: 12 Poppins;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);"
+        );
 
         applyFieldStyle(name);
         applyFieldStyle(price);
@@ -286,7 +294,8 @@ public class PlanManagementScreen {
         for (int i = 0; i < headers.length; i++) {
             Label label = new Label(headers[i].toUpperCase());
             label.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-            label.setTextFill(Color.web(TEXT_DIM));
+            label.setTextFill(Color.web(ACCENT));
+            label.setStyle("-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);");
             grid.add(label, i, 0);
         }
         row.getChildren().add(grid);
@@ -335,10 +344,17 @@ public class PlanManagementScreen {
             "-fx-border-width: 1;"
         );
         HBox.setHgrow(chip, Priority.ALWAYS);
+        DropShadow shadow = new DropShadow();
+        shadow.setColor(Color.web("#000000", 0.12));
+        shadow.setRadius(8);
+        shadow.setOffsetY(3);
+        chip.setEffect(shadow);
         Text labelNode = new Text(label);
         labelNode.setFont(Font.font("Poppins", 11));
-        labelNode.setFill(Color.web(TEXT_MUTED));
-        value.setFill(Color.web(color));
+        labelNode.setFill(Color.web(TEXT_DIM));
+        outlineText(labelNode, 0.18);
+        value.setFill(Color.web(readableAccent(color)));
+        outlineText(value, 0.30);
         chip.getChildren().add(new VBox(2, labelNode, value));
         return chip;
     }
@@ -350,18 +366,23 @@ public class PlanManagementScreen {
     private Label cell(String text, String color, boolean bold) {
         Label label = new Label(text);
         label.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
-        label.setTextFill(Color.web(color));
+        label.setTextFill(Color.web(readableAccent(color)));
         label.setPadding(new Insets(0, 8, 0, 0));
         label.setWrapText(true);
+        label.setStyle("-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.72), 1, 0.0, 0, 0);");
         return label;
     }
 
     private Label statusBadge(boolean active) {
         Label badge = new Label(active ? "Active" : "Inactive");
         badge.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
-        badge.setTextFill(Color.WHITE);
+        badge.setTextFill(Color.web(active ? SUCCESS_TEXT : TEXT_DIM));
         badge.setPadding(new Insets(4, 8, 4, 8));
-        badge.setStyle("-fx-background-color: " + (active ? SUCCESS : TEXT_DIM) + "; -fx-background-radius: 18;");
+        badge.setStyle(
+            "-fx-background-color: " + (active ? "rgba(228,255,223,0.85)" : "rgba(119,116,155,0.16)") + ";" +
+            "-fx-background-radius: 18;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);"
+        );
         return badge;
     }
 
@@ -407,13 +428,18 @@ public class PlanManagementScreen {
 
     private Button smallButton(String text, String color) {
         Button button = new Button(text);
+        String readableColor = readableAccent(color);
         button.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
-        button.setPadding(new Insets(5, 9, 5, 9));
+        button.setMinWidth(58);
+        button.setPadding(new Insets(5, 8, 5, 8));
         button.setStyle(
-            "-fx-background-color: " + color + ";" +
-            "-fx-text-fill: white;" +
+            "-fx-background-color: " + buttonWash(color) + ";" +
+            "-fx-text-fill: " + readableColor + ";" +
+            "-fx-border-color: " + readableColor + ";" +
+            "-fx-border-radius: 6;" +
             "-fx-background-radius: 6;" +
-            "-fx-cursor: hand;"
+            "-fx-cursor: hand;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);"
         );
         return button;
     }
@@ -441,7 +467,8 @@ public class PlanManagementScreen {
     private Label formLabel(String text) {
         Label label = new Label(text);
         label.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-        label.setTextFill(Color.web(TEXT_MUTED));
+        label.setTextFill(Color.web(ACCENT));
+        label.setStyle("-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);");
         return label;
     }
 
@@ -452,11 +479,12 @@ public class PlanManagementScreen {
             "-fx-border-color: " + BORDER + ";" +
             "-fx-border-radius: 16;" +
             "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-text-fill: " + ACCENT + ";" +
             "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
             "-fx-padding: 0 12 0 12;" +
             "-fx-font-family: Poppins;" +
-            "-fx-font-size: 12;"
+            "-fx-font-size: 12;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.72), 1, 0.0, 0, 0);"
         );
     }
 
@@ -467,10 +495,11 @@ public class PlanManagementScreen {
             "-fx-border-color: " + BORDER + ";" +
             "-fx-border-radius: 16;" +
             "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-text-fill: " + ACCENT + ";" +
             "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
             "-fx-font-family: Poppins;" +
-            "-fx-font-size: 12;"
+            "-fx-font-size: 12;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.72), 1, 0.0, 0, 0);"
         );
         area.setWrapText(true);
     }
@@ -482,9 +511,10 @@ public class PlanManagementScreen {
             "-fx-border-color: " + BORDER + ";" +
             "-fx-border-radius: 16;" +
             "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-text-fill: " + ACCENT + ";" +
             "-fx-font-family: Poppins;" +
-            "-fx-font-size: 12;"
+            "-fx-font-size: 12;" +
+            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.72), 1, 0.0, 0, 0);"
         );
     }
 
@@ -503,7 +533,23 @@ public class PlanManagementScreen {
         alert.setContentText(msg);
         alert.showAndWait();
     }
+
+    private void outlineText(Text text, double width) {
+        text.setStroke(Color.web(ModernDesignSystem.WHITE, 0.82));
+        text.setStrokeWidth(width);
+    }
+
+    private String readableAccent(String color) {
+        if (SUCCESS.equalsIgnoreCase(color)) return SUCCESS_TEXT;
+        if (WARNING.equalsIgnoreCase(color)) return WARNING_TEXT;
+        return color;
+    }
+
+    private String buttonWash(String color) {
+        String readable = readableAccent(color);
+        if (SUCCESS_TEXT.equalsIgnoreCase(readable)) return "rgba(228,255,223,0.85)";
+        if (WARNING_TEXT.equalsIgnoreCase(readable)) return "rgba(253,238,33,0.32)";
+        if (TEXT_DIM.equalsIgnoreCase(readable) || TEXT_MUTED.equalsIgnoreCase(readable)) return "rgba(119,116,155,0.14)";
+        return "rgba(26,19,99,0.12)";
+    }
 }
-
-
-
