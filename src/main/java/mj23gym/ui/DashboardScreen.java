@@ -416,10 +416,10 @@ public class DashboardScreen extends Application {
 
         String revStr = String.format("%.0f", revenueToday);
         summaryCards.getChildren().addAll(
-            makeSummaryCard("", "Total Members",    String.valueOf(totalMembers),  "+5 this month",  ACCENT,   true),
-            makeSummaryCard("", "Revenue Today",    revStr, "+820 vs. yesterday", SUCCESS, false),
-            makeSummaryCard("", "Low Stock Items",  String.valueOf(lowStockCount),    "Needs restocking", WARNING, false),
-            makeSummaryCard("", "Maintenance Due", String.valueOf(maintDue),
+            makeSummaryCard("👥", "Total Members",    String.valueOf(totalMembers),  "+5 this month",  ACCENT,   true),
+            makeSummaryCard("💰", "Revenue Today",    revStr, "+820 vs. yesterday", SUCCESS, false),
+            makeSummaryCard("📦", "Low Stock Items",  String.valueOf(lowStockCount),    "Needs restocking", WARNING, false),
+            makeSummaryCard("🔧", "Maintenance Due", String.valueOf(maintDue),
                 maintDue > 0 ? "Within 30 days" : "None due soon", INFO, false)
         );
 
@@ -498,51 +498,62 @@ public class DashboardScreen extends Application {
         return content;
     }
 
-    //  Summary stat card 
+    //  Summary stat card - Enhanced with better visual design
     private VBox makeSummaryCard(String icon, String label, String value,
                                   String sub, String color, boolean highlighted) {
-        VBox card = new VBox(10);
-        card.setPadding(new Insets(20, 22, 20, 22));
-        card.setPrefWidth(210);
+        VBox card = new VBox(12);
+        card.setPadding(new Insets(22, 24, 22, 24));
+        card.setPrefWidth(220);
+        card.setMinHeight(160);
         card.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 22;" +
+            "-fx-background-radius: 16;" +
             "-fx-border-color: " + (highlighted ? color : BORDER) + ";" +
-            "-fx-border-radius: 22;" +
-            "-fx-border-width: " + (highlighted ? "0 0 0 4" : "1") + ";"
+            "-fx-border-radius: 16;" +
+            "-fx-border-width: " + (highlighted ? "0 0 3 0" : "1") + ";"
         );
+        
+        // Enhanced shadow effect
         DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000000", 0.3));
-        ds.setRadius(12);
-        ds.setOffsetY(4);
+        ds.setColor(Color.web(color, highlighted ? 0.25 : 0.12));
+        ds.setRadius(16);
+        ds.setOffsetY(6);
+        ds.setOffsetX(0);
         card.setEffect(ds);
         HBox.setHgrow(card, Priority.ALWAYS);
 
-        // Icon circle
+        // Top row with icon and value
+        HBox topRow = new HBox(14);
+        topRow.setAlignment(Pos.CENTER_LEFT);
+
+        // Icon circle - enhanced with better styling
         StackPane iconCircle = new StackPane();
-        iconCircle.setPrefSize(40, 40);
-        Circle bg = new Circle(20);
-        bg.setFill(Color.web(color, 0.18));
+        iconCircle.setPrefSize(56, 56);
+        Rectangle iconBg = new Rectangle(56, 56);
+        iconBg.setArcWidth(14);
+        iconBg.setArcHeight(14);
+        iconBg.setFill(Color.web(color, 0.14));
         Text iconTxt = new Text(icon);
-        iconTxt.setFont(Font.font(16));
-        iconCircle.getChildren().addAll(bg, iconTxt);
+        iconTxt.setFont(Font.font(28));
+        iconCircle.getChildren().addAll(iconBg, iconTxt);
 
-        Text valTxt = new Text(value);
-        valTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 26));
-        valTxt.setFill(Color.web(TEXT_WHITE));
-
+        // Value and label
+        VBox valueSection = new VBox(4);
         Text lblTxt = new Text(label);
-        lblTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
+        lblTxt.setFont(Font.font("Poppins", FontWeight.NORMAL, 10));
         lblTxt.setFill(Color.web(TEXT_MUTED));
 
-        Text subTxt = new Text(sub);
-        subTxt.setFont(Font.font("Poppins", 10));
-        subTxt.setFill(Color.web(color));
+        Text valTxt = new Text(value);
+        valTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 32));
+        valTxt.setFill(Color.web(TEXT_WHITE));
 
-        HBox topRow = new HBox();
-        topRow.setAlignment(Pos.CENTER_LEFT);
-        Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
-        topRow.getChildren().addAll(new VBox(4, lblTxt, valTxt), sp, iconCircle);
+        valueSection.getChildren().addAll(lblTxt, valTxt);
+        topRow.getChildren().addAll(iconCircle, valueSection);
+
+        // Subtitle with color accent
+        Text subTxt = new Text(sub);
+        subTxt.setFont(Font.font("Poppins", FontWeight.NORMAL, 10));
+        subTxt.setFill(Color.web(color, 0.85));
 
         card.getChildren().addAll(topRow, subTxt);
         return card;
