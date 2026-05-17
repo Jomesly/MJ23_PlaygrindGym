@@ -1,21 +1,5 @@
 package mj23gym.ui;
 
-import javafx.application.Application;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.effect.DropShadow;
-import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
-import javafx.scene.text.Text;
-import javafx.stage.Stage;
-import javafx.animation.FadeTransition;
-import javafx.util.Duration;
-
 import java.sql.Date;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -24,6 +8,37 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javafx.animation.FadeTransition;
+import javafx.application.Application;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.ColumnConstraints;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
+import javafx.stage.Stage;
+import javafx.util.Duration;
 import mj23gym.dao.InventoryDAO;
 import mj23gym.dao.PaymentDAO;
 import mj23gym.dao.PosDAO;
@@ -48,6 +63,11 @@ public class ReportsScreen extends Application {
     static final String SUCCESS     = ModernDesignSystem.SUCCESS;
     static final String WARNING     = ModernDesignSystem.ACCENT_YELLOW;
     static final String INFO        = ModernDesignSystem.PRIMARY;
+    static final String TEXT_TITLE  = ModernDesignSystem.PRIMARY;
+    static final String TEXT_SOFT   = ModernDesignSystem.TEXT_MUTED;
+    static final String SUCCESS_TEXT = "#237A36";
+    static final String WARNING_TEXT = "#6E6400";
+    static final String CARD_SURFACE = ModernDesignSystem.WHITE;
 
     @Override
     public void start(Stage stage) {
@@ -122,11 +142,11 @@ public class ReportsScreen extends Application {
         topBar.setPadding(new Insets(18, 28, 18, 28));
         topBar.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
         VBox pg = new VBox(2);
-        Text t1 = new Text("Reports & Analytics"); t1.setFont(Font.font("Poppins", FontWeight.BOLD, 20)); t1.setFill(Color.web(TEXT_WHITE));
-        Text t2 = new Text("Generate payment, sales, and inventory summary reports"); t2.setFont(Font.font("Poppins", 11)); t2.setFill(Color.web(TEXT_MUTED));
+        Text t1 = new Text("Reports & Analytics"); t1.setFont(Font.font("Poppins", FontWeight.BOLD, 20)); t1.setFill(Color.web(TEXT_TITLE));
+        Text t2 = new Text("Generate payment, sales, and inventory summary reports"); t2.setFont(Font.font("Poppins", 11)); t2.setFill(Color.web(TEXT_SOFT));
         pg.getChildren().addAll(t1, t2);
         Region tSp = new Region(); HBox.setHgrow(tSp, Priority.ALWAYS);
-        Button exportBtn = makeAccentBtn("Save Report");
+        Button exportBtn = outlineButton("Save Report");
         topBar.getChildren().addAll(pg, tSp, exportBtn);
 
         ScrollPane scroll = new ScrollPane();
@@ -187,24 +207,18 @@ public class ReportsScreen extends Application {
         });
 
         //  Filters row 
-        VBox filterCard = new VBox(16);
-        filterCard.setPadding(new Insets(22));
-        filterCard.setStyle("-fx-background-color: " + BG_CARD + "; -fx-background-radius: 22; -fx-border-color: " + BORDER + "; -fx-border-radius: 22; -fx-border-width: 1;");
-
-        Text filterTitle = new Text("Report Filters");
-        filterTitle.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
-        filterTitle.setFill(Color.web(TEXT_WHITE));
+        VBox filterCard = buildSectionCard("Report Filters", "Pick a date range and report type, then generate or save.");
 
         HBox filterRow = new HBox(16);
         filterRow.setAlignment(Pos.CENTER_LEFT);
 
         Text salesHdr = new Text("POS Sales");
         salesHdr.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
-        salesHdr.setFill(Color.web(TEXT_WHITE));
+        salesHdr.setFill(Color.web(TEXT_TITLE));
 
         Text payHdr = new Text("Membership Payments");
         payHdr.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
-        payHdr.setFill(Color.web(TEXT_WHITE));
+        payHdr.setFill(Color.web(TEXT_TITLE));
 
         TextField tfFrom = new TextField();
         TextField tfTo = new TextField();
@@ -231,13 +245,13 @@ public class ReportsScreen extends Application {
         styleSummaryValue(trxVal);
         styleSummaryValue(topProd);
         topSub.setFont(Font.font("Poppins", 10));
-        topSub.setFill(Color.web(TEXT_DIM));
+        topSub.setFill(Color.web(TEXT_SOFT));
         trxSub.setFont(Font.font("Poppins", 10));
-        trxSub.setFill(Color.web(TEXT_DIM));
+        trxSub.setFill(Color.web(TEXT_SOFT));
         avgSub.setFont(Font.font("Poppins", 10));
-        avgSub.setFill(Color.web(TEXT_DIM));
+        avgSub.setFill(Color.web(TEXT_SOFT));
         topProdSub.setFont(Font.font("Poppins", 10));
-        topProdSub.setFill(Color.web(TEXT_DIM));
+        topProdSub.setFill(Color.web(TEXT_SOFT));
         styleSummaryValue(avgVal);
 
         VBox salesRows = new VBox(0);
@@ -273,7 +287,7 @@ public class ReportsScreen extends Application {
         VBox groupBox = new VBox(6);
         Label gLbl = new Label("REPORT TYPE");
         gLbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-        gLbl.setTextFill(Color.web(TEXT_MUTED));
+        gLbl.setTextFill(Color.web(TEXT_SOFT));
         groupBox.getChildren().addAll(gLbl, groupBy);
 
         VBox savedReportRows = new VBox(0);
@@ -286,18 +300,18 @@ public class ReportsScreen extends Application {
         exportBtn.setOnAction(e -> generateAndSaveReport(tfFrom, tfTo, groupBy, refreshAll, reportDAO, savedReportRows));
 
         filterRow.getChildren().addAll(dateFrom, dateTo, groupBox, fSp, genBtn);
-        filterCard.getChildren().addAll(filterTitle, filterRow);
+        filterCard.getChildren().add(filterRow);
 
         Text revSub = new Text("Selected report total");
         revSub.setFont(Font.font("Poppins", 10));
-        revSub.setFill(Color.web(TEXT_DIM));
+        revSub.setFill(Color.web(TEXT_SOFT));
 
-        HBox summaryStats = new HBox(16);
+        HBox summaryStats = new HBox(14);
         summaryStats.getChildren().addAll(
-            makeStatCard("Total Amount / Stock Value", revVal, revSub, SUCCESS),
-            makeStatCard("Record Count", trxVal, trxSub, INFO),
-            makeStatCard("Top Item / Alerts", topProd, topProdSub, WARNING),
-            makeStatCard("Average Per Day", avgVal, avgSub, ACCENT)
+            makeStatChip("Total Amount / Stock Value", revVal, revSub, SUCCESS_TEXT),
+            makeStatChip("Record Count", trxVal, trxSub, TEXT_TITLE),
+            makeStatChip("Top Item / Alerts", topProd, topProdSub, WARNING_TEXT),
+            makeStatChip("Average Per Day", avgVal, avgSub, TEXT_TITLE)
         );
 
         VBox salesTable = buildSalesTableShell(salesHdr, salesRows, salesTotalRow);
@@ -372,15 +386,15 @@ public class ReportsScreen extends Application {
     }
 
     private void styleSummaryValue(Text t) {
-        t.setFont(Font.font("Poppins", FontWeight.BOLD, 24));
-        t.setFill(Color.web(TEXT_WHITE));
+        t.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
+        t.setFill(Color.web(TEXT_TITLE));
     }
 
     private VBox wrapLabeledField(String label, TextField field) {
         VBox g = new VBox(6);
         Label lbl = new Label(label);
         lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-        lbl.setTextFill(Color.web(TEXT_MUTED));
+        lbl.setTextFill(Color.web(TEXT_SOFT));
         field.setPrefHeight(40);
         applyFieldStyle(field);
         g.getChildren().addAll(lbl, field);
@@ -464,7 +478,7 @@ public class ReportsScreen extends Application {
             }
         }
 
-        revVal.setText(String.format("%.0f", totalRev));
+        revVal.setText("PHP " + String.format("%,.0f", totalRev));
         trxVal.setText(String.valueOf(trx));
         if ("Payment Report".equals(reportMode)) {
             topProd.setText(String.valueOf(payCount));
@@ -480,7 +494,7 @@ public class ReportsScreen extends Application {
             topSub.setText(topQty > 0 ? topQty + " units (POS) in range" : "No POS line items in range");
             topProdSub.setText(topQty > 0 ? "Best seller in POS lines" : " ");
         }
-        avgVal.setText(String.format("%.0f", avg));
+        avgVal.setText("PHP " + String.format("%,.0f", avg));
 
         salesHdr.setText("POS Sales - " + fromLd + " to " + toLd);
         payHdr.setText("Membership Payments - " + fromLd + " to " + toLd);
@@ -502,15 +516,15 @@ public class ReportsScreen extends Application {
         tg.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(tg, Priority.ALWAYS);
         qtyLbl.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
-        qtyLbl.setTextFill(Color.web(TEXT_WHITE));
+        qtyLbl.setStyle("-fx-text-fill: " + TEXT_TITLE + ";");
         amtLbl.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
-        amtLbl.setTextFill(Color.web(ACCENT));
-        tg.add(makeCell("TOTAL", TEXT_MUTED, true), 0, 0);
-        tg.add(makeCell("", TEXT_WHITE, false), 1, 0);
+        amtLbl.setStyle("-fx-text-fill: " + SUCCESS_TEXT + ";");
+        tg.add(makeCell("TOTAL", TEXT_SOFT, true), 0, 0);
+        tg.add(makeCell("", TEXT_TITLE, false), 1, 0);
         tg.add(qtyLbl, 2, 0);
-        tg.add(makeCell("", TEXT_WHITE, false), 3, 0);
+        tg.add(makeCell("", TEXT_TITLE, false), 3, 0);
         tg.add(amtLbl, 4, 0);
-        tg.add(makeCell("", TEXT_WHITE, false), 5, 0);
+        tg.add(makeCell("", TEXT_TITLE, false), 5, 0);
         totalRow.getChildren().add(tg);
         return totalRow;
     }
@@ -528,7 +542,7 @@ public class ReportsScreen extends Application {
         double amtSum = 0;
         int r = 0;
         for (PosDAO.SaleDetailRow row : lines) {
-            String bg = (r % 2 == 0) ? BG_CARD : BG_ROW_ALT;
+            String bg = (r % 2 == 0) ? CARD_SURFACE : BG_ROW_ALT;
             HBox rowBox = new HBox();
             rowBox.setPadding(new Insets(10, 20, 10, 20));
             rowBox.setStyle("-fx-background-color: " + bg + ";");
@@ -536,11 +550,11 @@ public class ReportsScreen extends Application {
             rg.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(rg, Priority.ALWAYS);
             String day = row.saleDate() != null ? row.saleDate().toString() : "";
-            rg.add(makeCell(day, TEXT_MUTED, false), 0, 0);
-            rg.add(makeCell(row.itemName(), TEXT_WHITE, false), 1, 0);
-            rg.add(makeCell(String.valueOf(row.quantity()), TEXT_WHITE, true), 2, 0);
-            rg.add(makeCell(String.format("%.2f", row.unitPrice()), TEXT_MUTED, false), 3, 0);
-            rg.add(makeCell(String.format("%.2f", row.subtotal()), SUCCESS, true), 4, 0);
+            rg.add(makeCell(day, TEXT_SOFT, false), 0, 0);
+            rg.add(makeCell(row.itemName(), TEXT_TITLE, true), 1, 0);
+            rg.add(makeCell(String.valueOf(row.quantity()), TEXT_TITLE, true), 2, 0);
+            rg.add(makeCell("PHP " + String.format("%.2f", row.unitPrice()), TEXT_SOFT, false), 3, 0);
+            rg.add(makeCell("PHP " + String.format("%.2f", row.subtotal()), SUCCESS_TEXT, true), 4, 0);
             String pm = row.paymentMethod() != null ? row.paymentMethod() : "Cash";
             rg.add(makeMethodBadge(pm), 5, 0);
             rowBox.getChildren().add(rg);
@@ -553,7 +567,7 @@ public class ReportsScreen extends Application {
             r++;
         }
         totQty.setText(String.valueOf(qtySum));
-        totAmt.setText(String.format("%.2f", amtSum));
+        totAmt.setText("PHP " + String.format("%,.2f", amtSum));
         if (!rowsBox.getChildren().contains(salesTotalRow)) {
             rowsBox.getChildren().add(salesTotalRow);
         }
@@ -564,7 +578,7 @@ public class ReportsScreen extends Application {
         double[] colW = {22, 13, 14, 16, 15, 12};
         int r = 0;
         for (PaymentDAO.PaymentSummaryRow pr : rows) {
-            String bg = (r % 2 == 0) ? BG_CARD : BG_ROW_ALT;
+            String bg = (r % 2 == 0) ? CARD_SURFACE : BG_ROW_ALT;
             HBox row = new HBox();
             row.setPadding(new Insets(10, 20, 10, 20));
             row.setStyle("-fx-background-color: " + bg + ";");
@@ -575,11 +589,11 @@ public class ReportsScreen extends Application {
             String method = pr.paymentMethod() != null ? pr.paymentMethod() : "Cash";
             String dateStr = pr.paymentDate() != null ? pr.paymentDate().toString() : "";
             String statusLbl = displayPaymentStatus(pr.status());
-            rg.add(makeCell(pr.memberName(), TEXT_WHITE, false), 0, 0);
-            rg.add(makeCell(plan, TEXT_MUTED, false), 1, 0);
-            rg.add(makeCell(String.format("%.2f", pr.amount()), SUCCESS, true), 2, 0);
+            rg.add(makeCell(pr.memberName(), TEXT_TITLE, true), 0, 0);
+            rg.add(makeCell(plan, TEXT_SOFT, false), 1, 0);
+            rg.add(makeCell("PHP " + String.format("%,.2f", pr.amount()), SUCCESS_TEXT, true), 2, 0);
             rg.add(makeMethodBadge(method), 3, 0);
-            rg.add(makeCell(dateStr, TEXT_MUTED, false), 4, 0);
+            rg.add(makeCell(dateStr, TEXT_SOFT, false), 4, 0);
             rg.add(makeStatusBadge(statusLbl), 5, 0);
             row.getChildren().add(rg);
             String fBg = bg;
@@ -590,7 +604,7 @@ public class ReportsScreen extends Application {
         }
         if (rows.isEmpty()) {
             Label empty = new Label("No payments in this date range.");
-            empty.setTextFill(Color.web(TEXT_MUTED));
+            empty.setTextFill(Color.web(TEXT_SOFT));
             empty.setPadding(new Insets(16, 20, 16, 20));
             rowsBox.getChildren().add(empty);
         }
@@ -619,7 +633,7 @@ public class ReportsScreen extends Application {
         double[] colW = {13, 24, 14, 10, 12, 12, 15};
         int r = 0;
         for (InventoryDAO.InventoryRecord item : rows) {
-            String bg = (r % 2 == 0) ? BG_CARD : BG_ROW_ALT;
+            String bg = (r % 2 == 0) ? CARD_SURFACE : BG_ROW_ALT;
             HBox row = new HBox();
             row.setPadding(new Insets(10, 20, 10, 20));
             row.setStyle("-fx-background-color: " + bg + ";");
@@ -629,12 +643,12 @@ public class ReportsScreen extends Application {
 
             String expiry = item.expirationDate() != null ? item.expirationDate().toString() : "No expiry";
             double value = item.currentStock() * item.sellingPrice();
-            grid.add(makeCell(item.itemCode(), TEXT_MUTED, false), 0, 0);
-            grid.add(makeCell(item.itemName(), TEXT_WHITE, false), 1, 0);
-            grid.add(makeCell(item.category(), TEXT_MUTED, false), 2, 0);
-            grid.add(makeCell(String.valueOf(item.currentStock()), TEXT_WHITE, true), 3, 0);
-            grid.add(makeCell(String.format("%.2f", item.sellingPrice()), TEXT_MUTED, false), 4, 0);
-            grid.add(makeCell(String.format("%.2f", value), SUCCESS, true), 5, 0);
+            grid.add(makeCell(item.itemCode(), TEXT_SOFT, false), 0, 0);
+            grid.add(makeCell(item.itemName(), TEXT_TITLE, true), 1, 0);
+            grid.add(makeCell(item.category(), TEXT_SOFT, false), 2, 0);
+            grid.add(makeCell(String.valueOf(item.currentStock()), TEXT_TITLE, true), 3, 0);
+            grid.add(makeCell("PHP " + String.format("%.2f", item.sellingPrice()), TEXT_SOFT, false), 4, 0);
+            grid.add(makeCell("PHP " + String.format("%.2f", value), SUCCESS_TEXT, true), 5, 0);
             grid.add(makeStatusBadge(item.status()), 6, 0);
 
             row.getChildren().add(grid);
@@ -647,7 +661,7 @@ public class ReportsScreen extends Application {
         }
         if (rows.isEmpty()) {
             Label empty = new Label("No active inventory items found.");
-            empty.setTextFill(Color.web(TEXT_MUTED));
+            empty.setTextFill(Color.web(TEXT_SOFT));
             empty.setPadding(new Insets(16, 20, 16, 20));
             rowsBox.getChildren().add(empty);
         }
@@ -659,235 +673,91 @@ public class ReportsScreen extends Application {
 
     private VBox buildReportTypeCard(String icon, String title, String sub, boolean active) {
         VBox card = new VBox(8);
-        card.setPadding(new Insets(18, 20, 18, 20));
+        card.setPadding(new Insets(16, 18, 18, 18));
         card.setAlignment(Pos.CENTER_LEFT);
         card.setCursor(javafx.scene.Cursor.HAND);
         card.setUserData(title);
-        DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000", 0.25));
-        ds.setRadius(10);
-        ds.setOffsetY(4);
-        card.setEffect(ds);
+        Rectangle accentBar = new Rectangle(36, 3);
+        accentBar.setArcWidth(3);
+        accentBar.setArcHeight(3);
+        accentBar.setUserData("accentBar");
         Text ico = new Text(icon);
-        ico.setFont(Font.font("Poppins", FontWeight.BOLD, 18));
+        ico.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
+        ico.setUserData("icon");
         Text t = new Text(title);
         t.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
+        t.setUserData("title");
         Text s = new Text(sub);
         s.setFont(Font.font("Poppins", 10));
-        card.getChildren().addAll(ico, t, s);
+        s.setUserData("subtitle");
+        card.getChildren().addAll(accentBar, ico, t, s);
         applyReportTypeCardStyle(card, active);
         return card;
     }
 
     private void applyReportTypeCardStyle(VBox card, boolean active) {
-        String borderColor = active ? ACCENT : BORDER;
-        String bgColor = active ? "rgba(26,19,99,0.08)" : BG_CARD;
+        DropShadow ds = new DropShadow();
+        ds.setColor(Color.web(active ? ACCENT : "#000000", active ? 0.14 : 0.08));
+        ds.setRadius(active ? 14 : 10);
+        ds.setOffsetY(active ? 5 : 3);
+        card.setEffect(ds);
         card.setStyle(
-            "-fx-background-color: " + bgColor + ";" +
-            "-fx-background-radius: 22;" +
-            "-fx-border-color: " + borderColor + ";" +
-            "-fx-border-radius: 22;" +
-            "-fx-border-width: " + (active ? "0 0 0 4" : "1") + ";");
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 18;" +
+            "-fx-border-color: " + (active ? ACCENT : BORDER) + ";" +
+            "-fx-border-radius: 18;" +
+            "-fx-border-width: " + (active ? "2" : "1") + ";"
+        );
         for (javafx.scene.Node node : card.getChildren()) {
-            if (node instanceof Text text) {
-                text.setFill(Color.web(node == card.getChildren().get(0)
-                    ? (active ? ACCENT : TEXT_MUTED)
-                    : (active ? TEXT_WHITE : TEXT_MUTED)));
+            if (node instanceof Rectangle bar && "accentBar".equals(bar.getUserData())) {
+                bar.setFill(Color.web(active ? ACCENT : BORDER));
+            } else if (node instanceof Text text) {
+                String role = text.getUserData() != null ? text.getUserData().toString() : "";
+                String color = switch (role) {
+                    case "icon" -> active ? ACCENT : TEXT_SOFT;
+                    case "title" -> TEXT_TITLE;
+                    default -> TEXT_SOFT;
+                };
+                text.setFill(Color.web(color));
             }
         }
     }
 
     private VBox buildSalesTableShell(Text titleNode, VBox rowsBox, HBox totalRow) {
-        VBox card = new VBox(0);
-        card.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 22;" +
-            "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 22;" +
-            "-fx-border-width: 1;");
-        DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000", 0.25));
-        ds.setRadius(10);
-        ds.setOffsetY(4);
-        card.setEffect(ds);
-
-        HBox hdr = new HBox();
-        hdr.setPadding(new Insets(16, 20, 14, 20));
-        hdr.setAlignment(Pos.CENTER_LEFT);
-        hdr.setStyle("-fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
-        titleNode.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
-        titleNode.setFill(Color.web(TEXT_WHITE));
-        Region hSp = new Region();
-        HBox.setHgrow(hSp, Priority.ALWAYS);
-        Button printBtn = new Button("Print");
-        printBtn.setStyle(
-            "-fx-background-color: transparent;" +
-            "-fx-text-fill: " + ACCENT + ";" +
-            "-fx-font-size: 11;" +
-            "-fx-cursor: hand;"
-        );
+        Button printBtn = outlineButton("Print");
         printBtn.setOnAction(e -> new Alert(Alert.AlertType.INFORMATION,
             "Generate and save the report first, then open it from Generated Reports to review printable details.")
             .showAndWait());
-        hdr.getChildren().addAll(titleNode, hSp, printBtn);
-
-        String[] headers = {"Date", "Item", "Qty Sold", "Unit Price", "Total", "Payment Method"};
-        double[] colW = {14, 24, 10, 12, 12, 18};
-
-        HBox tblHdr = new HBox();
-        tblHdr.setPadding(new Insets(10, 20, 10, 20));
-        tblHdr.setStyle("-fx-background-color: " + BG_SIDEBAR + ";");
-        GridPane hGrid = makeGrid(colW);
-        hGrid.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(hGrid, Priority.ALWAYS);
-        for (int i = 0; i < headers.length; i++) {
-            Label h = new Label(headers[i].toUpperCase());
-            h.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-            h.setTextFill(Color.web(TEXT_DIM));
-            hGrid.add(h, i, 0);
-        }
-        tblHdr.getChildren().add(hGrid);
-
-        card.getChildren().addAll(hdr, tblHdr, rowsBox);
-        return card;
+        return buildDataTableShell(titleNode, rowsBox, printBtn,
+            new String[] {"Date", "Item", "Qty Sold", "Unit Price", "Total", "Payment Method"},
+            new double[] {14, 24, 10, 12, 12, 18});
     }
 
     private VBox buildPaymentSummaryShell(Text titleNode, VBox rowsBox) {
-        VBox card = new VBox(0);
-        card.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 22;" +
-            "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 22;" +
-            "-fx-border-width: 1;");
-        DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000", 0.25));
-        ds.setRadius(10);
-        ds.setOffsetY(4);
-        card.setEffect(ds);
-
-        HBox hdr = new HBox();
-        hdr.setPadding(new Insets(16, 20, 14, 20));
-        hdr.setAlignment(Pos.CENTER_LEFT);
-        hdr.setStyle("-fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
-        titleNode.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
-        titleNode.setFill(Color.web(TEXT_WHITE));
-        hdr.getChildren().add(titleNode);
-
-        String[] headers = {"Member", "Plan", "Amount Paid", "Method", "Date", "Status"};
-        double[] colW = {22, 13, 14, 16, 15, 12};
-
-        HBox tblHdr = new HBox();
-        tblHdr.setPadding(new Insets(10, 20, 10, 20));
-        tblHdr.setStyle("-fx-background-color: " + BG_SIDEBAR + ";");
-        GridPane hGrid = makeGrid(colW);
-        hGrid.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(hGrid, Priority.ALWAYS);
-        for (int i = 0; i < headers.length; i++) {
-            Label h = new Label(headers[i].toUpperCase());
-            h.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-            h.setTextFill(Color.web(TEXT_DIM));
-            hGrid.add(h, i, 0);
-        }
-        tblHdr.getChildren().add(hGrid);
-
-        card.getChildren().addAll(hdr, tblHdr, rowsBox);
-        return card;
+        return buildDataTableShell(titleNode, rowsBox, null,
+            new String[] {"Member", "Plan", "Amount Paid", "Method", "Date", "Status"},
+            new double[] {22, 13, 14, 16, 15, 12});
     }
 
     private VBox buildInventorySummaryShell(VBox rowsBox) {
-        VBox card = new VBox(0);
-        card.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 22;" +
-            "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 22;" +
-            "-fx-border-width: 1;");
-        DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000", 0.25));
-        ds.setRadius(10);
-        ds.setOffsetY(4);
-        card.setEffect(ds);
-
-        HBox hdr = new HBox();
-        hdr.setPadding(new Insets(16, 20, 14, 20));
-        hdr.setAlignment(Pos.CENTER_LEFT);
-        hdr.setStyle("-fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
         Text title = new Text("Inventory Stock Summary");
         title.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
-        title.setFill(Color.web(TEXT_WHITE));
-        hdr.getChildren().add(title);
-
-        String[] headers = {"Code", "Item", "Category", "Stock", "Unit Price", "Stock Value", "Status"};
-        double[] colW = {13, 24, 14, 10, 12, 12, 15};
-        HBox tblHdr = new HBox();
-        tblHdr.setPadding(new Insets(10, 20, 10, 20));
-        tblHdr.setStyle("-fx-background-color: " + BG_SIDEBAR + ";");
-        GridPane hGrid = makeGrid(colW);
-        hGrid.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(hGrid, Priority.ALWAYS);
-        for (int i = 0; i < headers.length; i++) {
-            Label h = new Label(headers[i].toUpperCase());
-            h.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-            h.setTextFill(Color.web(TEXT_DIM));
-            hGrid.add(h, i, 0);
-        }
-        tblHdr.getChildren().add(hGrid);
-
-        card.getChildren().addAll(hdr, tblHdr, rowsBox);
-        return card;
+        title.setFill(Color.web(TEXT_TITLE));
+        return buildDataTableShell(title, rowsBox, null,
+            new String[] {"Code", "Item", "Category", "Stock", "Unit Price", "Stock Value", "Status"},
+            new double[] {13, 24, 14, 10, 12, 12, 15});
     }
 
     private VBox buildSavedReportsShell(VBox rowsBox, ReportDAO reportDAO) {
-        VBox card = new VBox(0);
-        card.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 22;" +
-            "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 22;" +
-            "-fx-border-width: 1;");
-        DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000", 0.25));
-        ds.setRadius(10);
-        ds.setOffsetY(4);
-        card.setEffect(ds);
-
-        HBox hdr = new HBox();
-        hdr.setPadding(new Insets(16, 20, 14, 20));
-        hdr.setAlignment(Pos.CENTER_LEFT);
-        hdr.setStyle("-fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
         Text title = new Text("Generated Reports");
         title.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
-        title.setFill(Color.web(TEXT_WHITE));
-        Region sp = new Region();
-        HBox.setHgrow(sp, Priority.ALWAYS);
-        Button refreshBtn = new Button("Refresh");
-        refreshBtn.setStyle(
-            "-fx-background-color: transparent;" +
-            "-fx-text-fill: " + ACCENT + ";" +
-            "-fx-font-size: 11;" +
-            "-fx-cursor: hand;");
+        title.setFill(Color.web(TEXT_TITLE));
+        Button refreshBtn = outlineButton("Refresh");
         refreshBtn.setOnAction(e -> populateSavedReportRows(rowsBox, reportDAO));
-        hdr.getChildren().addAll(title, sp, refreshBtn);
-
-        String[] headers = {"Report", "Type", "Period", "Generated By", "Generated At", "Action"};
-        double[] colW = {25, 12, 20, 15, 18, 10};
-        HBox tblHdr = new HBox();
-        tblHdr.setPadding(new Insets(10, 20, 10, 20));
-        tblHdr.setStyle("-fx-background-color: " + BG_SIDEBAR + ";");
-        GridPane hGrid = makeGrid(colW);
-        hGrid.setMaxWidth(Double.MAX_VALUE);
-        HBox.setHgrow(hGrid, Priority.ALWAYS);
-        for (int i = 0; i < headers.length; i++) {
-            Label h = new Label(headers[i].toUpperCase());
-            h.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-            h.setTextFill(Color.web(TEXT_DIM));
-            hGrid.add(h, i, 0);
-        }
-        tblHdr.getChildren().add(hGrid);
-
+        VBox card = buildDataTableShell(title, rowsBox, refreshBtn,
+            new String[] {"Report", "Type", "Period", "Generated By", "Generated At", "Action"},
+            new double[] {25, 12, 20, 15, 18, 10});
         populateSavedReportRows(rowsBox, reportDAO);
-        card.getChildren().addAll(hdr, tblHdr, rowsBox);
         return card;
     }
 
@@ -896,7 +766,7 @@ public class ReportsScreen extends Application {
         List<ReportDAO.ReportRecord> reports = reportDAO.findRecentReports(20);
         if (reports.isEmpty()) {
             Label empty = new Label("No generated reports saved yet.");
-            empty.setTextFill(Color.web(TEXT_MUTED));
+            empty.setTextFill(Color.web(TEXT_SOFT));
             empty.setPadding(new Insets(16, 20, 16, 20));
             rowsBox.getChildren().add(empty);
             return;
@@ -905,7 +775,7 @@ public class ReportsScreen extends Application {
         double[] colW = {25, 12, 20, 15, 18, 10};
         int rowIndex = 0;
         for (ReportDAO.ReportRecord report : reports) {
-            String bg = (rowIndex % 2 == 0) ? BG_CARD : BG_ROW_ALT;
+            String bg = (rowIndex % 2 == 0) ? CARD_SURFACE : BG_ROW_ALT;
             HBox row = new HBox();
             row.setPadding(new Insets(10, 20, 10, 20));
             row.setStyle("-fx-background-color: " + bg + ";");
@@ -915,16 +785,14 @@ public class ReportsScreen extends Application {
 
             String period = report.periodStart() + " to " + report.periodEnd();
             String generatedAt = report.generatedAt() != null ? report.generatedAt().toLocalDateTime().toString().replace('T', ' ') : "";
-            Button viewBtn = new Button("View");
-            viewBtn.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
-            viewBtn.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;");
+            Button viewBtn = smallOutlineButton("View");
             viewBtn.setOnAction(e -> showReportDialog(report));
 
-            grid.add(makeCell(report.reportName(), TEXT_WHITE, false), 0, 0);
-            grid.add(makeStatusBadge(report.reportType()), 1, 0);
-            grid.add(makeCell(period, TEXT_MUTED, false), 2, 0);
-            grid.add(makeCell(report.generatedBy(), TEXT_MUTED, false), 3, 0);
-            grid.add(makeCell(generatedAt, TEXT_MUTED, false), 4, 0);
+            grid.add(makeCell(report.reportName(), TEXT_TITLE, true), 0, 0);
+            grid.add(reportTypeBadge(report.reportType()), 1, 0);
+            grid.add(makeCell(period, TEXT_SOFT, false), 2, 0);
+            grid.add(makeCell(report.generatedBy(), TEXT_SOFT, false), 3, 0);
+            grid.add(makeCell(generatedAt, TEXT_SOFT, false), 4, 0);
             grid.add(viewBtn, 5, 0);
 
             row.getChildren().add(grid);
@@ -944,17 +812,21 @@ public class ReportsScreen extends Application {
         VBox box = new VBox(12);
         box.setPadding(new Insets(18));
         box.setPrefWidth(640);
-        box.setStyle("-fx-background-color: " + BG_MAIN + ";");
+        box.setStyle("-fx-background-color: " + CARD_SURFACE + ";");
 
+        Rectangle bar = new Rectangle(42, 3);
+        bar.setArcWidth(3);
+        bar.setArcHeight(3);
+        bar.setFill(Color.web(ACCENT));
         Text title = new Text(report.reportName());
-        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
-        title.setFill(Color.web(TEXT_WHITE));
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 18));
+        title.setFill(Color.web(TEXT_TITLE));
         Label meta = new Label(
             "Type: " + report.reportType() +
             " | Period: " + report.periodStart() + " to " + report.periodEnd() +
             " | Generated by: " + report.generatedBy()
         );
-        meta.setTextFill(Color.web(TEXT_MUTED));
+        meta.setTextFill(Color.web(TEXT_SOFT));
         meta.setWrapText(true);
 
         TextArea body = new TextArea(report.notes() != null ? report.notes() : "");
@@ -962,40 +834,133 @@ public class ReportsScreen extends Application {
         body.setWrapText(true);
         body.setPrefRowCount(18);
         body.setStyle(
-            "-fx-control-inner-background: " + BG_CARD + ";" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-control-inner-background: " + CARD_SURFACE + ";" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
             "-fx-font-family: Consolas;" +
-            "-fx-font-size: 12;");
+            "-fx-font-size: 12;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 12;" +
+            "-fx-background-radius: 12;");
 
-        box.getChildren().addAll(title, meta, body);
+        box.getChildren().addAll(bar, title, meta, body);
         dialog.getDialogPane().setContent(box);
-        dialog.getDialogPane().setStyle("-fx-background-color: " + BG_MAIN + ";");
+        dialog.getDialogPane().setStyle("-fx-background-color: " + CARD_SURFACE + ";");
         dialog.showAndWait();
     }
 
-    private VBox makeStatCard(String label, Text value, Text sub, String color) {
-        VBox card = new VBox(8);
-        card.setPadding(new Insets(18, 20, 18, 20));
+    private VBox buildSectionCard(String title, String subtitle) {
+        VBox card = new VBox(14);
+        card.setPadding(new Insets(20, 22, 22, 22));
         card.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 22;" +
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 20;" +
             "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 22;" +
-            "-fx-border-width: 1;");
-        HBox.setHgrow(card, Priority.ALWAYS);
+            "-fx-border-radius: 20;" +
+            "-fx-border-width: 1;"
+        );
         DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000", 0.25));
-        ds.setRadius(10);
+        ds.setColor(Color.web(ACCENT, 0.10));
+        ds.setRadius(12);
         ds.setOffsetY(4);
         card.setEffect(ds);
-        Text lbl = new Text(label);
-        lbl.setFont(Font.font("Poppins", 11));
-        lbl.setFill(Color.web(TEXT_MUTED));
-        value.setFont(Font.font("Poppins", FontWeight.BOLD, 24));
+        Rectangle accentBar = new Rectangle(42, 3);
+        accentBar.setArcWidth(3);
+        accentBar.setArcHeight(3);
+        accentBar.setFill(Color.web(ACCENT));
+        Text t = new Text(title);
+        t.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
+        t.setFill(Color.web(TEXT_TITLE));
+        Text s = new Text(subtitle);
+        s.setFont(Font.font("Poppins", 11));
+        s.setFill(Color.web(TEXT_SOFT));
+        card.getChildren().addAll(accentBar, t, s);
+        return card;
+    }
+
+    private VBox buildDataTableShell(Text titleNode, VBox rowsBox, Button actionBtn, String[] headers, double[] colW) {
+        VBox card = new VBox(0);
+        card.setStyle(
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 20;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 20;" +
+            "-fx-border-width: 1;"
+        );
+        DropShadow ds = new DropShadow();
+        ds.setColor(Color.web(ACCENT, 0.10));
+        ds.setRadius(12);
+        ds.setOffsetY(4);
+        card.setEffect(ds);
+
+        HBox hdr = new HBox(12);
+        hdr.setPadding(new Insets(16, 20, 14, 20));
+        hdr.setAlignment(Pos.CENTER_LEFT);
+        hdr.setStyle(
+            "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+            "-fx-border-width: 0 0 1 0;"
+        );
+        if (titleNode.getFont() == null || titleNode.getFont().getSize() < 12) {
+            titleNode.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
+        }
+        titleNode.setFill(Color.web(TEXT_TITLE));
+        Region hSp = new Region();
+        HBox.setHgrow(hSp, Priority.ALWAYS);
+        if (actionBtn != null) {
+            hdr.getChildren().addAll(titleNode, hSp, actionBtn);
+        } else {
+            hdr.getChildren().add(titleNode);
+        }
+
+        HBox tblHdr = new HBox();
+        tblHdr.setPadding(new Insets(10, 20, 10, 20));
+        tblHdr.setStyle(
+            "-fx-background-color: " + BG_ROW_ALT + ";" +
+            "-fx-border-color: " + BORDER + " transparent transparent transparent;" +
+            "-fx-border-width: 0 0 1 0;"
+        );
+        GridPane hGrid = makeGrid(colW);
+        hGrid.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(hGrid, Priority.ALWAYS);
+        for (int i = 0; i < headers.length; i++) {
+            Label h = new Label(headers[i].toUpperCase());
+            h.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
+            h.setStyle("-fx-text-fill: " + TEXT_SOFT + ";");
+            hGrid.add(h, i, 0);
+        }
+        tblHdr.getChildren().add(hGrid);
+        card.getChildren().addAll(hdr, tblHdr, rowsBox);
+        return card;
+    }
+
+    private VBox makeStatChip(String label, Text value, Text sub, String color) {
+        VBox card = new VBox(0);
+        HBox chip = new HBox(12);
+        chip.setAlignment(Pos.CENTER_LEFT);
+        chip.setPadding(new Insets(14, 18, 14, 18));
+        chip.setStyle(
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 16;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-border-width: 1;"
+        );
+        HBox.setHgrow(chip, Priority.ALWAYS);
+        DropShadow ds = new DropShadow();
+        ds.setColor(Color.web("#000000", 0.08));
+        ds.setRadius(8);
+        ds.setOffsetY(2);
+        chip.setEffect(ds);
+        Rectangle accent = new Rectangle(4, 40);
+        accent.setArcWidth(4);
+        accent.setArcHeight(4);
+        accent.setFill(Color.web(color));
         value.setFill(Color.web(color));
-        sub.setFont(Font.font("Poppins", 10));
-        sub.setFill(Color.web(TEXT_DIM));
-        card.getChildren().addAll(lbl, value, sub);
+        Text lbl = new Text(label);
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        lbl.setFill(Color.web(TEXT_SOFT));
+        chip.getChildren().addAll(accent, new VBox(4, lbl, value, sub));
+        card.getChildren().add(chip);
+        HBox.setHgrow(card, Priority.ALWAYS);
         return card;
     }
 
@@ -1006,11 +971,33 @@ public class ReportsScreen extends Application {
     }
 
     private void applyFieldStyle(TextField f) {
-        f.setStyle("-fx-background-color: " + BG_MAIN + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 16; -fx-background-radius: 16; -fx-text-fill: " + TEXT_WHITE + "; -fx-prompt-text-fill: " + TEXT_DIM + "; -fx-padding: 0 12 0 12; -fx-font-family: Poppins; -fx-font-size: 12;");
+        String base =
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-prompt-text-fill: " + TEXT_SOFT + ";" +
+            "-fx-padding: 0 12 0 12;" +
+            "-fx-font-family: Poppins;" +
+            "-fx-font-size: 12;";
+        f.setStyle(base);
+        f.focusedProperty().addListener((o, old, focused) -> f.setStyle(
+            base + "-fx-border-color: " + (focused ? ACCENT : BORDER) + ";"
+        ));
     }
 
     private void styleCombo(ComboBox<String> c) {
-        c.setStyle("-fx-background-color: " + BG_CARD + "; -fx-border-color: " + BORDER + "; -fx-border-radius: 16; -fx-background-radius: 16; -fx-text-fill: " + TEXT_WHITE + "; -fx-font-family: Poppins; -fx-font-size: 12; -fx-pref-height: 40;");
+        c.setStyle(
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-font-family: Poppins;" +
+            "-fx-font-size: 12;" +
+            "-fx-pref-height: 40;"
+        );
     }
 
     private Button makeAccentBtn(String text) {
@@ -1023,26 +1010,131 @@ public class ReportsScreen extends Application {
     }
 
     private Label makeCell(String text, String color, boolean bold) {
-        Label l = new Label(text); l.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11)); l.setTextFill(Color.web(color)); return l;
+        Label l = new Label(text);
+        l.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
+        l.setStyle(
+            "-fx-text-fill: " + color + ";" +
+            "-fx-font-weight: " + (bold ? "bold" : "normal") + ";"
+        );
+        return l;
     }
 
     private Label makeMethodBadge(String method) {
-        Label b = new Label(method); b.setFont(Font.font("Poppins", 10));
-        String c; String bg;
-        switch (method) {
-            case "Cash": c = SUCCESS; bg = "rgba(228,255,223,0.12)"; break;
-            case "GCash": c = INFO; bg = "rgba(119,116,155,0.12)"; break;
-            default: c = WARNING; bg = "rgba(253,238,33,0.12)"; break;
+        String m = method == null ? "Cash" : method;
+        Label b = new Label(m);
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        String c;
+        String bg;
+        switch (m) {
+            case "Cash" -> {
+                c = SUCCESS_TEXT;
+                bg = "rgba(228,255,223,0.75)";
+            }
+            case "GCash" -> {
+                c = TEXT_TITLE;
+                bg = "rgba(26,19,99,0.08)";
+            }
+            default -> {
+                c = WARNING_TEXT;
+                bg = "rgba(253,238,33,0.28)";
+            }
         }
-        b.setTextFill(Color.web(c)); b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 18; -fx-padding: 3 10 3 10;"); return b;
+        b.setStyle(
+            "-fx-text-fill: " + c + ";" +
+            "-fx-background-color: " + bg + ";" +
+            "-fx-background-radius: 14;" +
+            "-fx-padding: 4 10 4 10;"
+        );
+        return b;
     }
 
     private Label makeStatusBadge(String status) {
         String label = status == null || status.isBlank() ? "-" : status;
-        Label b = new Label(label); b.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
-        String c = label.equals("Paid") || label.equals("In Stock") ? SUCCESS : ACCENT;
-        String bg = label.equals("Paid") || label.equals("In Stock") ? "rgba(228,255,223,0.15)" : "rgba(26,19,99,0.15)";
-        b.setTextFill(Color.web(c)); b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 18; -fx-padding: 3 10 3 10;"); return b;
+        Label b = new Label(label);
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        String lower = label.toLowerCase();
+        String c = TEXT_SOFT;
+        String bg = "rgba(119,116,155,0.12)";
+        if (lower.contains("paid") || lower.contains("in stock") || lower.contains("completed")) {
+            c = SUCCESS_TEXT;
+            bg = "rgba(228,255,223,0.75)";
+        } else if (lower.contains("low") || lower.contains("pending") || lower.contains("overdue")) {
+            c = WARNING_TEXT;
+            bg = "rgba(253,238,33,0.28)";
+        } else if (lower.contains("out") || lower.contains("inactive")) {
+            c = TEXT_TITLE;
+            bg = "rgba(26,19,99,0.08)";
+        }
+        b.setStyle(
+            "-fx-text-fill: " + c + ";" +
+            "-fx-background-color: " + bg + ";" +
+            "-fx-background-radius: 14;" +
+            "-fx-padding: 4 10 4 10;"
+        );
+        return b;
+    }
+
+    private Label reportTypeBadge(String type) {
+        String t = type == null ? "-" : type;
+        String c = TEXT_TITLE;
+        String bg = "rgba(26,19,99,0.08)";
+        if (t.toLowerCase().contains("sales") || t.toLowerCase().contains("pos")) {
+            c = TEXT_TITLE;
+            bg = "rgba(119,116,155,0.12)";
+        } else if (t.toLowerCase().contains("payment")) {
+            c = SUCCESS_TEXT;
+            bg = "rgba(228,255,223,0.75)";
+        } else if (t.toLowerCase().contains("inventory")) {
+            c = WARNING_TEXT;
+            bg = "rgba(253,238,33,0.28)";
+        }
+        Label b = new Label(t);
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        b.setStyle(
+            "-fx-text-fill: " + c + ";" +
+            "-fx-background-color: " + bg + ";" +
+            "-fx-background-radius: 14;" +
+            "-fx-padding: 4 10 4 10;"
+        );
+        return b;
+    }
+
+    private Button outlineButton(String text) {
+        Button b = new Button(text);
+        b.setPrefHeight(38);
+        b.setPadding(new Insets(0, 18, 0, 18));
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        String base =
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-border-color: " + ACCENT + ";" +
+            "-fx-border-width: 1;" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-cursor: hand;";
+        b.setStyle(base);
+        b.setOnMouseEntered(e -> b.setStyle(base + "-fx-background-color: rgba(26,19,99,0.08);"));
+        b.setOnMouseExited(e -> b.setStyle(base));
+        return b;
+    }
+
+    private Button smallOutlineButton(String text) {
+        Button btn = new Button(text);
+        btn.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        btn.setMinWidth(52);
+        btn.setPadding(new Insets(5, 10, 5, 10));
+        String base =
+            "-fx-background-color: rgba(26,19,99,0.08);" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-border-color: " + ACCENT + ";" +
+            "-fx-border-radius: 8;" +
+            "-fx-background-radius: 8;" +
+            "-fx-border-width: 1;" +
+            "-fx-cursor: hand;";
+        btn.setStyle(base);
+        btn.setOnMouseEntered(e -> btn.setStyle(base + "-fx-background-color: rgba(26,19,99,0.14);"));
+        btn.setOnMouseExited(e -> btn.setStyle(base));
+        return btn;
     }
 
     public static void main(String[] args) { launch(args); }
