@@ -112,6 +112,18 @@ public class MemberDAO {
         }
     }
 
+    public int countRegisteredThisMonth() {
+        String sql = "SELECT COUNT(*) FROM members WHERE YEAR(created_at)=YEAR(CURDATE()) AND MONTH(created_at)=MONTH(CURDATE())";
+        try (Connection conn = DatabaseConnection.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            return rs.next() ? rs.getInt(1) : 0;
+        } catch (SQLException e) {
+            System.err.println("[MemberDAO] countRegisteredThisMonth error: " + e.getMessage());
+            return 0;
+        }
+    }
+
     // ── CREATE ────────────────────────────────────────────────────
 
     /**

@@ -69,6 +69,13 @@ public class DashboardScreen extends Application {
     static final String INFO         = ModernDesignSystem.PRIMARY;
     static final String SUCCESS_TEXT = "#237A36";
     static final String WARNING_TEXT = "#6E6400";
+    static final String DANGER       = "#D32F2F";
+    static final String DANGER_TEXT  = "#9E1B1B";
+    static final String ICON_MEMBERS = new String(Character.toChars(0x1F465));
+    static final String ICON_REVENUE = new String(Character.toChars(0x1F4B0));
+    static final String ICON_STOCK   = new String(Character.toChars(0x1F4E6));
+    static final String ICON_MAINT   = new String(Character.toChars(0x1F527));
+    static final String ICON_ALERT   = new String(Character.toChars(0x1F514));
     private static final String LOGO_PATH = "/images/mj23-logo.png";
 
     private String activeMenu = "Dashboard";
@@ -379,7 +386,7 @@ public class DashboardScreen extends Application {
         );
 
         // Notification bell
-        Button notifBtn = new Button("🔔");
+        Button notifBtn = new Button(ICON_ALERT);
         notifBtn.setStyle(
             "-fx-background-color: " + ModernDesignSystem.SIDEBAR_BG + ";" +
             "-fx-text-fill: " + TEXT_WHITE + ";" +
@@ -409,6 +416,7 @@ public class DashboardScreen extends Application {
         PosDAO posDAO = new PosDAO();
 
         int totalMembers = memberDAO.countAll();
+        int membersThisMonth = memberDAO.countRegisteredThisMonth();
         double revenueToday = paymentDAO.todayRevenue() + posDAO.todayPosTotal();
         int lowStockCount = inventoryDAO.countLowStock();
         int maintDue = equipmentDAO.findMaintenanceDue().size();
@@ -425,11 +433,11 @@ public class DashboardScreen extends Application {
 
         String revStr = String.format("%.0f", revenueToday);
         summaryCards.getChildren().addAll(
-            makeSummaryCard("👥", "Total Members",    String.valueOf(totalMembers),  "+5 this month",  ACCENT,   true),
-            makeSummaryCard("💰", "Revenue Today",    revStr, "+820 vs. yesterday", SUCCESS, false),
-            makeSummaryCard("📦", "Low Stock Items",  String.valueOf(lowStockCount),    "Needs restocking", WARNING, false),
-            makeSummaryCard("🔧", "Maintenance Due", String.valueOf(maintDue),
-                maintDue > 0 ? "Within 30 days" : "None due soon", INFO, false)
+            makeSummaryCard(ICON_MEMBERS, "Total Members",    String.valueOf(totalMembers),  membersThisMonth + " registered this month",  ACCENT,   true),
+            makeSummaryCard(ICON_REVENUE, "Revenue Today",    revStr, formatCurrency(revenueToday) + " recorded today", SUCCESS, false),
+            makeSummaryCard(ICON_STOCK, "Low Stock Items",  String.valueOf(lowStockCount),    lowStockCount > 0 ? lowStockCount + " item(s) need restock" : "All stock levels OK", lowStockCount > 0 ? DANGER : SUCCESS_TEXT, false),
+            makeSummaryCard(ICON_MAINT, "Maintenance Due", String.valueOf(maintDue),
+                maintDue > 0 ? maintDue + " due within 30 days" : "None due soon", INFO, false)
         );
 
         VBox dashboardDetails = new VBox(0);
@@ -529,21 +537,11 @@ public class DashboardScreen extends Application {
         card.setMinHeight(160);
         card.setCursor(javafx.scene.Cursor.HAND);
         String readableColor = readableAccent(color);
-        String baseStyle =
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 18;" +
-            "-fx-border-color: " + (highlighted ? color : BORDER) + ";" +
-            "-fx-border-radius: 18;" +
-            "-fx-border-width: " + (highlighted ? "1 1 4 1" : "1") + ";";
-        String hoverStyle =
-            "-fx-background-color: " + ModernDesignSystem.WHITE + ";" +
-            "-fx-background-radius: 18;" +
-            "-fx-border-color: " + color + ";" +
-            "-fx-border-radius: 18;" +
-            "-fx-border-width: 1 1 4 1;";
-        card.setStyle(baseStyle);
-        card.setOnMouseEntered(e -> card.setStyle(hoverStyle));
-        card.setOnMouseExited(e -> card.setStyle(baseStyle));
+        card.getProperties().put("summaryColor", color);
+        card.getProperties().put("summarySelected", highlighted);
+        styleSummaryCard(card, color, highlighted, false);
+        card.setOnMouseEntered(e -> styleSummaryCard(card, color, isSummaryCardSelected(card), true));
+        card.setOnMouseExited(e -> styleSummaryCard(card, color, isSummaryCardSelected(card), false));
         
         // Enhanced shadow effect
         DropShadow ds = new DropShadow();
@@ -603,12 +601,49 @@ public class DashboardScreen extends Application {
         for (int i = 0; i < cards.getChildren().size() && i < actions.length; i++) {
             Runnable action = actions[i];
             javafx.scene.Node card = cards.getChildren().get(i);
+            final int selectedIndex = i;
             card.setOnMouseClicked(e -> {
+                setSelectedSummaryCard(cards, selectedIndex);
                 if (action != null) {
                     action.run();
                 }
             });
         }
+    }
+
+    private void setSelectedSummaryCard(HBox cards, int selectedIndex) {
+        for (int i = 0; i < cards.getChildren().size(); i++) {
+            javafx.scene.Node node = cards.getChildren().get(i);
+            if (node instanceof VBox card) {
+                Object colorObj = card.getProperties().get("summaryColor");
+                String color = colorObj != null ? colorObj.toString() : ACCENT;
+                boolean selected = i == selectedIndex;
+                card.getProperties().put("summarySelected", selected);
+                styleSummaryCard(card, color, selected, false);
+            }
+        }
+    }
+
+    private boolean isSummaryCardSelected(VBox card) {
+        Object value = card.getProperties().get("summarySelected");
+        return value instanceof Boolean selected && selected;
+    }
+
+    private void styleSummaryCard(VBox card, String color, boolean selected, boolean hovered) {
+        String borderColor = selected || hovered ? readableAccent(color) : BORDER;
+        String background = hovered ? ModernDesignSystem.WHITE : BG_CARD;
+        card.setStyle(
+            "-fx-background-color: " + background + ";" +
+            "-fx-background-radius: 18;" +
+            "-fx-border-color: " + borderColor + ";" +
+            "-fx-border-radius: 18;" +
+            "-fx-border-width: " + (selected ? "2 2 5 2" : hovered ? "1 1 4 1" : "1") + ";"
+        );
+        DropShadow shadow = new DropShadow();
+        shadow.setColor(Color.web(readableAccent(color), selected ? 0.28 : hovered ? 0.18 : 0.10));
+        shadow.setRadius(selected ? 18 : 14);
+        shadow.setOffsetY(selected ? 7 : 4);
+        card.setEffect(shadow);
     }
 
     //  Data table card 
@@ -894,9 +929,9 @@ public class DashboardScreen extends Application {
             "Low Stock Items",
             "Inventory that needs restocking or attention",
             new String[][]{
-                {"Low Stock", String.valueOf(items.size()), ACCENT},
-                {"Out of Stock", String.valueOf(outOfStock), WARNING_TEXT},
-                {"Need Restock", String.valueOf(Math.max(0, items.size() - outOfStock)), SUCCESS_TEXT},
+                {"Low Stock", String.valueOf(items.size()), items.isEmpty() ? SUCCESS_TEXT : DANGER_TEXT},
+                {"Out of Stock", String.valueOf(outOfStock), outOfStock > 0 ? DANGER_TEXT : TEXT_MUTED},
+                {"Need Restock", String.valueOf(Math.max(0, items.size() - outOfStock)), items.size() > outOfStock ? DANGER_TEXT : SUCCESS_TEXT},
                 {"Shown", String.valueOf(rows.length), TEXT_MUTED}
             },
             "Restock List",
@@ -1078,6 +1113,7 @@ public class DashboardScreen extends Application {
     private String readableAccent(String color) {
         if (SUCCESS.equalsIgnoreCase(color)) return SUCCESS_TEXT;
         if (WARNING.equalsIgnoreCase(color)) return WARNING_TEXT;
+        if (DANGER.equalsIgnoreCase(color)) return DANGER_TEXT;
         return color;
     }
 
@@ -1091,3 +1127,4 @@ public class DashboardScreen extends Application {
 
     public static void main(String[] args) { launch(args); }
 }
+
