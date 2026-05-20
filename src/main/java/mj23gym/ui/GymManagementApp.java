@@ -1,11 +1,15 @@
 package mj23gym.ui;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Separator;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -50,6 +54,7 @@ public class GymManagementApp extends Application {
     private StackPane contentArea;
     private String currentScreen = "dashboard";
     private Stage primaryStage;
+    private final List<Button> navButtons = new ArrayList<>();
 
     @Override
     public void start(Stage primaryStage) {
@@ -109,7 +114,9 @@ public class GymManagementApp extends Application {
         sidebar.setMinWidth(230);
         sidebar.setMaxWidth(230);
         sidebar.setStyle(
-            "-fx-background-color: " + BG_SIDEBAR + ";" +
+            "-fx-background-color: linear-gradient(to bottom, #FFFFFF 0%, #F8F7FB 100%);" +
+            "-fx-border-color: transparent " + ModernDesignSystem.BORDER_COLOR + " transparent transparent;" +
+            "-fx-border-width: 0 1 0 0;" +
             "-fx-padding: 0;"
         );
         sidebar.setSpacing(0);
@@ -127,20 +134,38 @@ public class GymManagementApp extends Application {
         // System menu
         VBox sysMenu = createSystemMenu();
 
-        // Spacer
-        Region spacer = new Region();
-        VBox.setVgrow(spacer, Priority.ALWAYS);
+        VBox menuContent = new VBox(4);
+        menuContent.setPadding(new Insets(4, 0, 8, 0));
+        menuContent.getChildren().addAll(
+            sectionLabel("MAIN MENU"),
+            navMenu,
+            sysMenu
+        );
 
-        sidebar.getChildren().addAll(topAccent, logo, new Separator(), navMenu,
-                                     new Separator(), sysMenu, spacer, createUserFooter());
+        ScrollPane menuScroll = new ScrollPane(menuContent);
+        menuScroll.setFitToWidth(true);
+        menuScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        menuScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        menuScroll.setStyle(
+            "-fx-background: transparent;" +
+            "-fx-background-color: transparent;" +
+            "-fx-padding: 0;"
+        );
+        VBox.setVgrow(menuScroll, Priority.ALWAYS);
+
+        sidebar.getChildren().addAll(topAccent, logo, new Separator(), menuScroll, createUserFooter());
         return sidebar;
     }
 
     private VBox createLogoSection() {
         VBox logo = new VBox(8);
-        logo.setPadding(new Insets(16, 16, 14, 16));
+        logo.setPadding(new Insets(16, 16, 16, 16));
         logo.setAlignment(Pos.CENTER);
-        logo.setStyle("-fx-background-color: transparent;");
+        logo.setStyle(
+            "-fx-background-color: rgba(26,19,99,0.03);" +
+            "-fx-border-color: transparent transparent " + ModernDesignSystem.BORDER_COLOR + " transparent;" +
+            "-fx-border-width: 0 0 1 0;"
+        );
 
         StackPane logoBadge = new StackPane();
         logoBadge.setPrefSize(74, 74);
@@ -170,8 +195,8 @@ public class GymManagementApp extends Application {
     }
 
     private VBox createNavigationMenu() {
-        VBox menu = new VBox(2);
-        menu.setPadding(new javafx.geometry.Insets(0, 10, 0, 10));
+        VBox menu = new VBox(4);
+        menu.setPadding(new Insets(0, 10, 0, 10));
 
         String[][] items = {
             {"DB", "Dashboard", "dashboard"},
@@ -194,8 +219,8 @@ public class GymManagementApp extends Application {
     }
 
     private VBox createSystemMenu() {
-        VBox menu = new VBox(2);
-        menu.setPadding(new javafx.geometry.Insets(0, 10, 0, 10));
+        VBox menu = new VBox(4);
+        menu.setPadding(new Insets(0, 10, 0, 10));
 
         String[][] items = AppSession.currentUser().isAdmin()
             ? new String[][] {
@@ -221,14 +246,23 @@ public class GymManagementApp extends Application {
         return menu;
     }
 
+    private Label sectionLabel(String text) {
+        Label label = new Label(text);
+        label.setPadding(new Insets(6, 0, 2, 20));
+        label.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 9));
+        label.setTextFill(Color.web(ModernDesignSystem.DARK_GRAY));
+        label.setStyle("-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);");
+        return label;
+    }
+
     private VBox createUserFooter() {
         AppSession.User user = AppSession.currentUser();
 
         VBox footer = new VBox(10);
         footer.setPadding(new Insets(14, 14, 16, 14));
         footer.setStyle(
-            "-fx-background-color: " + ModernDesignSystem.CARD_BG + ";" +
-            "-fx-background-radius: " + ModernDesignSystem.RADIUS_MEDIUM + ";" +
+            "-fx-background-color: rgba(255,255,255,0.96);" +
+            "-fx-background-radius: " + ModernDesignSystem.RADIUS_MEDIUM + " " + ModernDesignSystem.RADIUS_MEDIUM + " 0 0;" +
             "-fx-padding: 14 14 16 14;" +
             "-fx-border-color: " + ModernDesignSystem.BORDER_COLOR + " transparent transparent transparent;" +
             "-fx-border-width: 1 0 0 0;"
@@ -247,15 +281,19 @@ public class GymManagementApp extends Application {
         Text avatarInitial = new Text(user.initial());
         avatarInitial.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 14));
         avatarInitial.setFill(Color.WHITE);
+        avatarInitial.setStroke(Color.web(ModernDesignSystem.PRIMARY_DARK, 0.20));
+        avatarInitial.setStrokeWidth(0.20);
         avatar.getChildren().addAll(avatarBg, avatarInitial);
 
         VBox accountText = new VBox(2);
         Text name = new Text(user.displayName());
         name.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, FontWeight.BOLD, 11));
         name.setFill(Color.web(ModernDesignSystem.PRIMARY));
+        name.setStroke(Color.web(ModernDesignSystem.WHITE, 0.75));
+        name.setStrokeWidth(0.18);
         Text role = new Text(user.role());
         role.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, 9));
-        role.setFill(Color.web(ModernDesignSystem.TEXT_MUTED));
+        role.setFill(Color.web(ModernDesignSystem.DARK_GRAY));
         accountText.getChildren().addAll(name, role);
 
         accountRow.getChildren().addAll(avatar, accountText);
@@ -319,16 +357,13 @@ public class GymManagementApp extends Application {
 
     private Button createNavButton(String icon, String label, String screenId) {
         Button btn = new Button(icon + "  " + label);
-        btn.setStyle(
-            "-fx-background-color: transparent;" +
-            "-fx-text-fill: " + ModernDesignSystem.TEXT_MUTED + ";" +
-            "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
-            "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
-            "-fx-padding: " + ModernDesignSystem.SPACING_M + " " + ModernDesignSystem.SPACING_L + ";" +
-            "-fx-alignment: CENTER_LEFT;" +
-            "-fx-cursor: hand;"
-        );
+        btn.setUserData(screenId);
         btn.setMaxWidth(Double.MAX_VALUE);
+        btn.setMinHeight(38);
+        btn.setPrefHeight(38);
+        btn.setGraphicTextGap(10);
+        styleNavButton(btn, screenId.equals(currentScreen), false);
+        navButtons.add(btn);
 
         btn.setOnAction(e -> {
             currentScreen = screenId;
@@ -336,38 +371,43 @@ public class GymManagementApp extends Application {
             updateNavButtonStyles();
         });
 
-        // Hover effect with modern styling
-        btn.setOnMouseEntered(e ->
-            btn.setStyle(
-                "-fx-background-color: " + ModernDesignSystem.HOVER_EFFECT + ";" +
-                "-fx-text-fill: " + ModernDesignSystem.PRIMARY + ";" +
-                "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
-                "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
-                "-fx-font-weight: bold;" +
-                "-fx-padding: " + ModernDesignSystem.SPACING_M + " " + ModernDesignSystem.SPACING_L + ";" +
-                "-fx-alignment: CENTER_LEFT;" +
-                "-fx-cursor: hand;" +
-                "-fx-background-radius: " + ModernDesignSystem.RADIUS_SMALL + ";"
-            )
-        );
-
-        btn.setOnMouseExited(e ->
-            btn.setStyle(
-                "-fx-background-color: transparent;" +
-                "-fx-text-fill: " + ModernDesignSystem.TEXT_MUTED + ";" +
-                "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
-                "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
-                "-fx-padding: " + ModernDesignSystem.SPACING_M + " " + ModernDesignSystem.SPACING_L + ";" +
-                "-fx-alignment: CENTER_LEFT;" +
-                "-fx-cursor: hand;"
-            )
-        );
+        btn.setOnMouseEntered(e -> styleNavButton(btn, screenId.equals(currentScreen), true));
+        btn.setOnMouseExited(e -> styleNavButton(btn, screenId.equals(currentScreen), false));
 
         return btn;
     }
 
     private void updateNavButtonStyles() {
-        // This would update button styles based on current screen
+        for (Button button : navButtons) {
+            Object id = button.getUserData();
+            styleNavButton(button, id != null && id.toString().equals(currentScreen), false);
+        }
+    }
+
+    private void styleNavButton(Button button, boolean active, boolean hovered) {
+        String bg = active
+            ? "rgba(26,19,99,0.12)"
+            : hovered ? "rgba(253,238,33,0.18)" : "transparent";
+        String text = active || hovered ? ModernDesignSystem.PRIMARY : ModernDesignSystem.DARK_GRAY;
+        String border = active ? ModernDesignSystem.PRIMARY : "transparent";
+        String weight = active || hovered ? "bold" : "normal";
+        button.setStyle(
+            "-fx-background-color: " + bg + ";" +
+            "-fx-text-fill: " + text + ";" +
+            "-fx-border-color: transparent transparent transparent " + border + ";" +
+            "-fx-border-width: 0 0 0 3;" +
+            "-fx-background-radius: " + ModernDesignSystem.RADIUS_SMALL + ";" +
+            "-fx-border-radius: " + ModernDesignSystem.RADIUS_SMALL + ";" +
+            "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
+            "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
+            "-fx-font-weight: " + weight + ";" +
+            "-fx-padding: 9 12 9 13;" +
+            "-fx-alignment: CENTER_LEFT;" +
+            "-fx-cursor: hand;" +
+            "-fx-effect: " + (active
+                ? "dropshadow(gaussian, rgba(26,19,99,0.08), 8, 0.0, 0, 2)"
+                : "none") + ";"
+        );
     }
 
     private void loadScreen(String screenId) {
@@ -542,4 +582,3 @@ public class GymManagementApp extends Application {
         LoginScreen.launch(LoginScreen.class, args);
     }
 }
-

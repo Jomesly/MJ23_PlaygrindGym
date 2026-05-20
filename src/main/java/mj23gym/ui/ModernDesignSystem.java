@@ -1,5 +1,7 @@
 package mj23gym.ui;
 
+import java.util.prefs.Preferences;
+
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -27,24 +29,82 @@ import javafx.scene.shape.Rectangle;
  */
 public class ModernDesignSystem {
 
+    private static final Preferences PREFS = Preferences.userNodeForPackage(ModernDesignSystem.class);
+    private static final String DARK_MODE_KEY = "darkMode";
+    private static boolean darkMode;
+
     // ========== COLOR PALETTE ==========
-    public static final String PRIMARY           = "#1A1363";      // Deep Purple
-    public static final String PRIMARY_DARK      = "#0F0D47";      // Darker purple
-    public static final String ACCENT_YELLOW     = "#FDEE21";      // Vibrant yellow
-    public static final String ACCENT_YELLOW_LT  = "#FFFF7D";      // Light yellow
-    public static final String DARK_GRAY         = "#4B4B4B";      // Dark gray
-    public static final String DARK_GRAY_LT      = "#332F4F";      // Lighter dark gray
-    public static final String TEXT_MUTED        = "#77749B";      // Muted purple
-    public static final String BG_LIGHT          = "#ECE9E9";      // Light background
-    public static final String SUCCESS           = "#E4FFDF";      // Light green
-    public static final String WHITE             = "#FFFFFF";      // White
+    public static String PRIMARY           = "#1A1363";      // Deep Purple
+    public static String PRIMARY_DARK      = "#0F0D47";      // Darker purple
+    public static String ACCENT_YELLOW     = "#FDEE21";      // Vibrant yellow
+    public static String ACCENT_YELLOW_LT  = "#FFFF7D";      // Light yellow
+    public static String DARK_GRAY         = "#4B4B4B";      // Dark gray
+    public static String DARK_GRAY_LT      = "#332F4F";      // Lighter dark gray
+    public static String TEXT_MUTED        = "#77749B";      // Muted purple
+    public static String BG_LIGHT          = "#ECE9E9";      // Light background
+    public static String SUCCESS           = "#E4FFDF";      // Light green
+    public static String WHITE             = "#FFFFFF";      // White
     
     // Additional palettes for complementary colors
-    public static final String SIDEBAR_BG        = "#F5F3F9";      // Soft purple background
-    public static final String CARD_BG           = "#FAFAF9";      // Near white with warmth
-    public static final String BORDER_COLOR      = "#E8E6EB";      // Subtle border
-    public static final String HOVER_EFFECT      = "#F0ECFF";      // Hover state
-    public static final String SHADOW_COLOR      = "#1A1363";      // Shadow uses primary
+    public static String SIDEBAR_BG        = "#F5F3F9";      // Soft purple background
+    public static String CARD_BG           = "#FAFAF9";      // Near white with warmth
+    public static String BORDER_COLOR      = "#E8E6EB";      // Subtle border
+    public static String HOVER_EFFECT      = "#F0ECFF";      // Hover state
+    public static String SHADOW_COLOR      = "#1A1363";      // Shadow uses primary
+
+    static {
+        // Keep the production UI on the stable light palette until every inline-styled screen
+        // has a dedicated dark-mode pass. A global palette swap makes some screens unreadable.
+        applyTheme(false, true);
+    }
+
+    public static boolean isDarkMode() {
+        return darkMode;
+    }
+
+    public static void setDarkMode(boolean enabled) {
+        applyTheme(false, true);
+    }
+
+    private static void applyTheme(boolean enabled, boolean persist) {
+        darkMode = enabled;
+        if (persist) {
+            PREFS.putBoolean(DARK_MODE_KEY, enabled);
+        }
+        if (enabled) {
+            PRIMARY = "#6C63FF";
+            PRIMARY_DARK = "#8B84FF";
+            ACCENT_YELLOW = "#FDEE21";
+            ACCENT_YELLOW_LT = "#FFFF7D";
+            DARK_GRAY = "#ECEAF8";
+            DARK_GRAY_LT = "#CFCBE8";
+            TEXT_MUTED = "#B9B4D6";
+            BG_LIGHT = "#101019";
+            SUCCESS = "#1F4B32";
+            WHITE = "#FFFFFF";
+            SIDEBAR_BG = "#151423";
+            CARD_BG = "#1B1A2A";
+            BORDER_COLOR = "#38344F";
+            HOVER_EFFECT = "#272342";
+            SHADOW_COLOR = "#000000";
+        } else {
+            PRIMARY = "#1A1363";
+            PRIMARY_DARK = "#0F0D47";
+            ACCENT_YELLOW = "#FDEE21";
+            ACCENT_YELLOW_LT = "#FFFF7D";
+            DARK_GRAY = "#4B4B4B";
+            DARK_GRAY_LT = "#332F4F";
+            TEXT_MUTED = "#77749B";
+            BG_LIGHT = "#ECE9E9";
+            SUCCESS = "#E4FFDF";
+            WHITE = "#FFFFFF";
+            SIDEBAR_BG = "#F5F3F9";
+            CARD_BG = "#FAFAF9";
+            BORDER_COLOR = "#E8E6EB";
+            HOVER_EFFECT = "#F0ECFF";
+            SHADOW_COLOR = "#1A1363";
+        }
+    }
 
     // ========== FONT SYSTEM ==========
     public static final String FONT_FAMILY       = "Poppins";
