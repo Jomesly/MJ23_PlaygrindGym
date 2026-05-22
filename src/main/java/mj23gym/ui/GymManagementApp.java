@@ -1,5 +1,8 @@
 package mj23gym.ui;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -51,6 +54,7 @@ public class GymManagementApp extends Application {
     private StackPane contentArea;
     private String currentScreen = "dashboard";
     private Stage primaryStage;
+    private final Map<String, Button> navButtons = new HashMap<>();
 
     @Override
     public void start(Stage primaryStage) {
@@ -332,16 +336,10 @@ public class GymManagementApp extends Application {
 
     private Button createNavButton(String icon, String label, String screenId) {
         Button btn = new Button(icon + "  " + label);
-        btn.setStyle(
-            "-fx-background-color: transparent;" +
-            "-fx-text-fill: " + ModernDesignSystem.TEXT_MUTED + ";" +
-            "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
-            "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
-            "-fx-padding: " + ModernDesignSystem.SPACING_M + " " + ModernDesignSystem.SPACING_L + ";" +
-            "-fx-alignment: CENTER_LEFT;" +
-            "-fx-cursor: hand;"
-        );
+        btn.setUserData(screenId);
+        styleNavButton(btn, screenId.equals(currentScreen), false);
         btn.setMaxWidth(Double.MAX_VALUE);
+        navButtons.put(screenId, btn);
 
         btn.setOnAction(e -> {
             currentScreen = screenId;
@@ -349,38 +347,41 @@ public class GymManagementApp extends Application {
             updateNavButtonStyles();
         });
 
-        // Hover effect with modern styling
-        btn.setOnMouseEntered(e ->
-            btn.setStyle(
-                "-fx-background-color: " + ModernDesignSystem.HOVER_EFFECT + ";" +
-                "-fx-text-fill: " + ModernDesignSystem.PRIMARY + ";" +
-                "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
-                "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
-                "-fx-font-weight: bold;" +
-                "-fx-padding: " + ModernDesignSystem.SPACING_M + " " + ModernDesignSystem.SPACING_L + ";" +
-                "-fx-alignment: CENTER_LEFT;" +
-                "-fx-cursor: hand;" +
-                "-fx-background-radius: " + ModernDesignSystem.RADIUS_SMALL + ";"
-            )
-        );
-
-        btn.setOnMouseExited(e ->
-            btn.setStyle(
-                "-fx-background-color: transparent;" +
-                "-fx-text-fill: " + ModernDesignSystem.TEXT_MUTED + ";" +
-                "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
-                "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
-                "-fx-padding: " + ModernDesignSystem.SPACING_M + " " + ModernDesignSystem.SPACING_L + ";" +
-                "-fx-alignment: CENTER_LEFT;" +
-                "-fx-cursor: hand;"
-            )
-        );
+        btn.setOnMouseEntered(e -> styleNavButton(btn, screenId.equals(currentScreen), true));
+        btn.setOnMouseExited(e -> styleNavButton(btn, screenId.equals(currentScreen), false));
 
         return btn;
     }
 
     private void updateNavButtonStyles() {
-        // This would update button styles based on current screen
+        navButtons.forEach((screenId, button) ->
+            styleNavButton(button, screenId.equals(currentScreen), false)
+        );
+    }
+
+    private void styleNavButton(Button button, boolean active, boolean hovered) {
+        String background = active
+            ? ModernDesignSystem.PRIMARY
+            : (hovered ? ModernDesignSystem.HOVER_EFFECT : "transparent");
+        String textColor = active
+            ? ModernDesignSystem.WHITE
+            : (hovered ? ModernDesignSystem.PRIMARY : ModernDesignSystem.TEXT_MUTED);
+        String borderColor = active ? ModernDesignSystem.ACCENT_YELLOW : "transparent";
+
+        button.setStyle(
+            "-fx-background-color: " + background + ";" +
+            "-fx-text-fill: " + textColor + ";" +
+            "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
+            "-fx-font-size: " + ModernDesignSystem.FONT_BODY + ";" +
+            "-fx-font-weight: " + (active || hovered ? "bold" : "normal") + ";" +
+            "-fx-padding: " + ModernDesignSystem.SPACING_M + " " + ModernDesignSystem.SPACING_L + ";" +
+            "-fx-alignment: CENTER_LEFT;" +
+            "-fx-cursor: hand;" +
+            "-fx-background-radius: " + ModernDesignSystem.RADIUS_SMALL + ";" +
+            "-fx-border-color: " + borderColor + ";" +
+            "-fx-border-width: 0 0 0 4;" +
+            "-fx-border-radius: " + ModernDesignSystem.RADIUS_SMALL + ";"
+        );
     }
 
     private void loadScreen(String screenId) {

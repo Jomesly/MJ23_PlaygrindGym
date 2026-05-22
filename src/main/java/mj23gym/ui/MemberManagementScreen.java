@@ -47,16 +47,20 @@ import mj23gym.dao.PlanDAO;
  */
 public class MemberManagementScreen extends Application {
 
-    static final String BG_MAIN      = ModernDesignSystem.BG_LIGHT;
+    static final String BG_MAIN      = "#F3F1F6";
     static final String BG_SIDEBAR   = ModernDesignSystem.SIDEBAR_BG;
-    static final String BG_CARD      = ModernDesignSystem.CARD_BG;
-    static final String BG_ROW_ALT   = ModernDesignSystem.HOVER_EFFECT;
+    static final String BG_CARD      = ModernDesignSystem.WHITE;
+    static final String BG_ROW_ALT   = "#F8F6FC";
     static final String ACCENT       = ModernDesignSystem.PRIMARY;
     static final String ACCENT_DARK  = ModernDesignSystem.PRIMARY_DARK;
-    static final String TEXT_WHITE   = ModernDesignSystem.PRIMARY;
-    static final String TEXT_MUTED   = ModernDesignSystem.TEXT_MUTED;
-    static final String TEXT_DIM     = ModernDesignSystem.DARK_GRAY;
-    static final String BORDER       = ModernDesignSystem.BORDER_COLOR;
+    static final String TEXT_WHITE   = "#111827";
+    static final String TEXT_MUTED   = "#374151";
+    static final String TEXT_DIM     = "#4B5563";
+    static final String TABLE_TEXT   = "#111827";
+    static final String TABLE_SUBTEXT = "#2F3545";
+    static final String BORDER       = "#DDD8EA";
+    static final String HEADER_BG    = "#F0EDF8";
+    static final String HOVER_BG     = "#F1EEFA";
     static final String SUCCESS      = ModernDesignSystem.SUCCESS;
     static final String WARNING      = ModernDesignSystem.ACCENT_YELLOW;
     static final String SUCCESS_TEXT = "#237A36";
@@ -283,8 +287,7 @@ public class MemberManagementScreen extends Application {
             "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
             "-fx-padding: 0 14 0 14;" +
             "-fx-font-family: Poppins;" +
-            "-fx-font-size: 12;" +
-            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.70), 1, 0.0, 0, 0);"
+            "-fx-font-size: 12;"
         );
 
         ComboBox<String> filterPlan = new ComboBox<>();
@@ -336,8 +339,8 @@ public class MemberManagementScreen extends Application {
             "-fx-border-width: 1;"
         );
         DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000000", 0.3));
-        ds.setRadius(12); ds.setOffsetY(4);
+        ds.setColor(Color.web(ACCENT, 0.10));
+        ds.setRadius(14); ds.setOffsetY(4);
         tableCard.setEffect(ds);
 
         // Table header row
@@ -348,8 +351,10 @@ public class MemberManagementScreen extends Application {
         HBox tableHeaderRow = new HBox();
         tableHeaderRow.setPadding(new Insets(12, 16, 12, 16));
         tableHeaderRow.setStyle(
-            "-fx-background-color: " + BG_SIDEBAR + ";" +
-            "-fx-background-radius: 12 12 0 0;"
+            "-fx-background-color: " + HEADER_BG + ";" +
+            "-fx-background-radius: 22 22 0 0;" +
+            "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+            "-fx-border-width: 0 0 1 0;"
         );
         GridPane headerGrid = new GridPane();
         for (double w : colWidths) {
@@ -364,8 +369,8 @@ public class MemberManagementScreen extends Application {
         for (int c = 0; c < headers.length; c++) {
             Label h = new Label(headers[c].toUpperCase());
             h.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-            h.setTextFill(Color.web(ACCENT));
-            h.setStyle("-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);");
+            h.setTextFill(Color.web(TABLE_TEXT));
+            h.setStyle("-fx-text-fill: " + TABLE_TEXT + ";");
             h.setPadding(new Insets(0, 8, 0, 8));
             headerGrid.add(h, c, 0);
         }
@@ -375,13 +380,11 @@ public class MemberManagementScreen extends Application {
         Text pageInfo = new Text();
         pageInfo.setFont(Font.font("Poppins", 11));
         pageInfo.setFill(Color.web(TEXT_DIM));
-        outlineText(pageInfo, 0.18);
 
         VBox attendanceRows = new VBox(0);
         Text attendanceInfo = new Text();
         attendanceInfo.setFont(Font.font("Poppins", 11));
         attendanceInfo.setFill(Color.web(TEXT_DIM));
-        outlineText(attendanceInfo, 0.18);
         VBox attendanceCard = buildRecentAttendanceCard(attendanceRows, attendanceInfo);
 
         final Runnable[] refreshHolder = new Runnable[1];
@@ -442,7 +445,7 @@ public class MemberManagementScreen extends Application {
             "-fx-border-width: 1;"
         );
         DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000000", 0.3));
+        ds.setColor(Color.web(ACCENT, 0.10));
         ds.setRadius(12);
         ds.setOffsetY(4);
         card.setEffect(ds);
@@ -452,8 +455,10 @@ public class MemberManagementScreen extends Application {
         HBox tableHeaderRow = new HBox();
         tableHeaderRow.setPadding(new Insets(12, 16, 12, 16));
         tableHeaderRow.setStyle(
-            "-fx-background-color: " + BG_SIDEBAR + ";" +
-            "-fx-background-radius: 12 12 0 0;"
+            "-fx-background-color: " + HEADER_BG + ";" +
+            "-fx-background-radius: 22 22 0 0;" +
+            "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+            "-fx-border-width: 0 0 1 0;"
         );
         GridPane headerGrid = new GridPane();
         for (double width : widths) {
@@ -467,8 +472,7 @@ public class MemberManagementScreen extends Application {
         for (int i = 0; i < headers.length; i++) {
             Label label = new Label(headers[i].toUpperCase());
             label.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
-            label.setTextFill(Color.web(ACCENT));
-            label.setStyle("-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);");
+            label.setTextFill(Color.web(TEXT_MUTED));
             label.setPadding(new Insets(0, 8, 0, 8));
             headerGrid.add(label, i, 0);
         }
@@ -526,7 +530,11 @@ public class MemberManagementScreen extends Application {
             GridPane row = new GridPane();
             row.setPadding(new Insets(11, 16, 11, 16));
             String bg = (index % 2 == 0 ? BG_CARD : BG_ROW_ALT);
-            row.setStyle("-fx-background-color: " + bg + ";");
+            row.setStyle(
+                "-fx-background-color: " + bg + ";" +
+                "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+                "-fx-border-width: 0 0 1 0;"
+            );
             for (double width : widths) {
                 ColumnConstraints cc = new ColumnConstraints();
                 cc.setPercentWidth(width);
@@ -534,14 +542,22 @@ public class MemberManagementScreen extends Application {
                 row.getColumnConstraints().add(cc);
             }
 
-            addAttendanceCell(row, 0, safeText(record.memberCode()), FontWeight.BOLD, TEXT_WHITE);
-            addAttendanceCell(row, 1, safeText(record.memberName()), FontWeight.BOLD, TEXT_WHITE);
-            addAttendanceCell(row, 2, safeText(record.sessionType()), FontWeight.NORMAL, TEXT_MUTED);
-            addAttendanceCell(row, 3, formatCheckInTime(record.timeIn()), FontWeight.NORMAL, TEXT_MUTED);
-            addAttendanceCell(row, 4, record.notes() == null || record.notes().isBlank() ? "-" : record.notes(), FontWeight.NORMAL, TEXT_MUTED);
+            addAttendanceCell(row, 0, safeText(record.memberCode()), FontWeight.BOLD, TABLE_TEXT);
+            addAttendanceCell(row, 1, safeText(record.memberName()), FontWeight.BOLD, TABLE_TEXT);
+            addAttendanceCell(row, 2, safeText(record.sessionType()), FontWeight.NORMAL, TABLE_SUBTEXT);
+            addAttendanceCell(row, 3, formatCheckInTime(record.timeIn()), FontWeight.NORMAL, TABLE_SUBTEXT);
+            addAttendanceCell(row, 4, record.notes() == null || record.notes().isBlank() ? "-" : record.notes(), FontWeight.NORMAL, TABLE_SUBTEXT);
             String finalBg = bg;
-            row.setOnMouseEntered(ev -> row.setStyle("-fx-background-color: rgba(26,19,99,0.06);"));
-            row.setOnMouseExited(ev -> row.setStyle("-fx-background-color: " + finalBg + ";"));
+            row.setOnMouseEntered(ev -> row.setStyle(
+                "-fx-background-color: " + HOVER_BG + ";" +
+                "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+                "-fx-border-width: 0 0 1 0;"
+            ));
+            row.setOnMouseExited(ev -> row.setStyle(
+                "-fx-background-color: " + finalBg + ";" +
+                "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+                "-fx-border-width: 0 0 1 0;"
+            ));
             rows.getChildren().add(row);
             index++;
         }
@@ -551,6 +567,7 @@ public class MemberManagementScreen extends Application {
         Label label = new Label(text);
         label.setFont(Font.font("Poppins", weight, 11));
         label.setTextFill(Color.web(color));
+        label.setStyle("-fx-text-fill: " + color + ";");
         label.setPadding(new Insets(0, 8, 0, 8));
         label.setMaxWidth(Double.MAX_VALUE);
         label.setWrapText(true);
@@ -567,7 +584,6 @@ public class MemberManagementScreen extends Application {
 
     private void styleStatValue(Text val) {
         val.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
-        outlineText(val, 0.30);
     }
 
     private HBox makeStatChipText(String label, Text valueNode, String color) {
@@ -577,20 +593,19 @@ public class MemberManagementScreen extends Application {
         chip.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
             "-fx-background-radius: 18;" +
-            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-color: " + readableAccent(color) + " " + BORDER + " " + BORDER + " " + readableAccent(color) + ";" +
             "-fx-border-radius: 18;" +
-            "-fx-border-width: 1;"
+            "-fx-border-width: 1 1 1 4;"
         );
         HBox.setHgrow(chip, Priority.ALWAYS);
         DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000", 0.2));
+        ds.setColor(Color.web(ACCENT, 0.09));
         ds.setRadius(8); ds.setOffsetY(3);
         chip.setEffect(ds);
         valueNode.setFill(Color.web(readableAccent(color)));
         Text lbl = new Text(label);
         lbl.setFont(Font.font("Poppins", 11));
         lbl.setFill(Color.web(TEXT_DIM));
-        outlineText(lbl, 0.18);
         chip.getChildren().addAll(new VBox(2, lbl, valueNode));
         return chip;
     }
@@ -636,10 +651,15 @@ public class MemberManagementScreen extends Application {
             String bg = (r % 2 == 0) ? BG_CARD : BG_ROW_ALT;
             HBox dataRow = new HBox();
             dataRow.setPadding(new Insets(11, 16, 11, 16));
-            dataRow.setStyle("-fx-background-color: " + bg + ";");
+            dataRow.setStyle(
+                "-fx-background-color: " + bg + ";" +
+                "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+                "-fx-border-width: 0 0 1 0;"
+            );
             dataRow.setAlignment(Pos.CENTER_LEFT);
 
             GridPane rowGrid = new GridPane();
+            rowGrid.setHgap(4);
             for (double w : colWidths) {
                 ColumnConstraints cc = new ColumnConstraints();
                 cc.setPercentWidth(w);
@@ -654,12 +674,12 @@ public class MemberManagementScreen extends Application {
                 : "F".equalsIgnoreCase(m.gender()) ? " Female" : " Male";
             String start = m.membershipStartDate() != null ? m.membershipStartDate().toString() : "";
 
-            rowGrid.add(makeCell(code, ACCENT, true), 0, 0);
-            rowGrid.add(makeCell(m.fullName(), TEXT_WHITE, false), 1, 0);
-            rowGrid.add(makeCell(genderLabel, TEXT_DIM, false), 2, 0);
-            rowGrid.add(makeCell(m.contactNumber(), TEXT_DIM, false), 3, 0);
+            rowGrid.add(makeCell(code, TABLE_TEXT, true), 0, 0);
+            rowGrid.add(makeCell(m.fullName(), TABLE_TEXT, false), 1, 0);
+            rowGrid.add(makeCell(genderLabel, TABLE_SUBTEXT, false), 2, 0);
+            rowGrid.add(makeCell(m.contactNumber(), TABLE_SUBTEXT, false), 3, 0);
             rowGrid.add(makePlanBadge(m.membershipType() != null ? m.membershipType() : "Monthly"), 4, 0);
-            rowGrid.add(makeCell(start, TEXT_DIM, false), 5, 0);
+            rowGrid.add(makeCell(start, TABLE_SUBTEXT, false), 5, 0);
             rowGrid.add(makeStatusBadge(m.status() != null ? m.status() : "Active"), 6, 0);
 
             HBox actions = new HBox(6);
@@ -715,8 +735,16 @@ public class MemberManagementScreen extends Application {
 
             dataRow.getChildren().add(rowGrid);
             String finalBg = bg;
-            dataRow.setOnMouseEntered(ev -> dataRow.setStyle("-fx-background-color: rgba(26,19,99,0.06);"));
-            dataRow.setOnMouseExited(ev -> dataRow.setStyle("-fx-background-color: " + finalBg + ";"));
+            dataRow.setOnMouseEntered(ev -> dataRow.setStyle(
+                "-fx-background-color: " + HOVER_BG + ";" +
+                "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+                "-fx-border-width: 0 0 1 0;"
+            ));
+            dataRow.setOnMouseExited(ev -> dataRow.setStyle(
+                "-fx-background-color: " + finalBg + ";" +
+                "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+                "-fx-border-width: 0 0 1 0;"
+            ));
 
             rows.getChildren().add(dataRow);
             r++;
@@ -1032,7 +1060,6 @@ public class MemberManagementScreen extends Application {
         Label lbl = new Label(label);
         lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         lbl.setTextFill(Color.web(ACCENT));
-        lbl.setStyle("-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);");
         combo.setPrefHeight(40);
         box.getChildren().addAll(lbl, combo);
         return box;
@@ -1053,9 +1080,12 @@ public class MemberManagementScreen extends Application {
     private Label makeCell(String text, String color, boolean bold) {
         Label l = new Label(text);
         l.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
-        l.setTextFill(Color.web(readableAccent(color)));
+        String textColor = readableAccent(color);
+        l.setTextFill(Color.web(textColor));
         l.setPadding(new Insets(0, 8, 0, 8));
-        l.setStyle("-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.72), 1, 0.0, 0, 0);");
+        l.setMinWidth(0);
+        l.setMaxWidth(Double.MAX_VALUE);
+        l.setStyle("-fx-text-fill: " + textColor + ";");
         return l;
     }
 
@@ -1065,18 +1095,21 @@ public class MemberManagementScreen extends Application {
         b.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         String c, bg;
         switch (display.toLowerCase()) {
-            case "active": c = SUCCESS_TEXT; bg = "rgba(228,255,223,0.85)"; break;
-            case "expired": c = ACCENT; bg = "rgba(26,19,99,0.14)"; break;
-            case "archived": case "cancelled": c = TEXT_DIM; bg = "rgba(119,116,155,0.16)"; break;
-            case "suspended": c = WARNING_TEXT; bg = "rgba(253,238,33,0.32)"; break;
-            default: c = TEXT_DIM; bg = "rgba(236,233,233,0.80)"; break;
+            case "active": c = "#14532D"; bg = "#DCFCE7"; break;
+            case "expired": c = "#312E81"; bg = "#E0E7FF"; break;
+            case "archived": case "cancelled": c = "#374151"; bg = "#E5E7EB"; break;
+            case "suspended": c = "#713F12"; bg = "#FEF3C7"; break;
+            default: c = TABLE_TEXT; bg = "#E5E7EB"; break;
         }
         b.setTextFill(Color.web(c));
         b.setStyle(
             "-fx-background-color: " + bg + ";" +
+            "-fx-text-fill: " + c + ";" +
             "-fx-background-radius: 18;" +
-            "-fx-padding: 3 10 3 10;" +
-            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);"
+            "-fx-border-color: rgba(26,19,99,0.08);" +
+            "-fx-border-radius: 18;" +
+            "-fx-border-width: 1;" +
+            "-fx-padding: 3 10 3 10;"
         );
         b.setPadding(new Insets(0, 8, 0, 8));
         return b;
@@ -1088,18 +1121,21 @@ public class MemberManagementScreen extends Application {
         b.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         String c, bg;
         switch (display.toLowerCase()) {
-            case "monthly": c = ACCENT; bg = "rgba(26,19,99,0.12)"; break;
-            case "daily": case "per session": c = WARNING_TEXT; bg = "rgba(253,238,33,0.32)"; break;
+            case "monthly": c = "#312E81"; bg = "#E0E7FF"; break;
+            case "daily": case "per session": c = "#713F12"; bg = "#FEF3C7"; break;
             case "quarterly": case "semi annual": case "yearly": case "annual":
-                c = SUCCESS_TEXT; bg = "rgba(228,255,223,0.85)"; break;
-            default: c = TEXT_DIM; bg = "rgba(236,233,233,0.85)"; break;
+                c = "#14532D"; bg = "#DCFCE7"; break;
+            default: c = TABLE_TEXT; bg = "#E5E7EB"; break;
         }
         b.setTextFill(Color.web(c));
         b.setStyle(
             "-fx-background-color: " + bg + ";" +
+            "-fx-text-fill: " + c + ";" +
             "-fx-background-radius: 18;" +
-            "-fx-padding: 3 10 3 10;" +
-            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);"
+            "-fx-border-color: rgba(26,19,99,0.08);" +
+            "-fx-border-radius: 18;" +
+            "-fx-border-width: 1;" +
+            "-fx-padding: 3 10 3 10;"
         );
         b.setPadding(new Insets(0, 8, 0, 8));
         return b;
@@ -1110,33 +1146,40 @@ public class MemberManagementScreen extends Application {
         String readableColor = readableAccent(color);
         btn.setMinWidth(javafx.scene.layout.Region.USE_PREF_SIZE);
         btn.setStyle(
-            "-fx-background-color: transparent;" +
+            "-fx-background-color: rgba(26,19,99,0.045);" +
             "-fx-text-fill: " + readableColor + ";" +
             "-fx-font-size: 12;" +
             "-fx-font-weight: bold;" +
             "-fx-cursor: hand;" +
-            "-fx-padding: 3 4 3 4;" +
-            "-fx-background-radius: 6;" +
-            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.85), 1, 0.0, 0, 0);"
+            "-fx-padding: 4 6 4 6;" +
+            "-fx-background-radius: 8;" +
+            "-fx-border-color: rgba(26,19,99,0.08);" +
+            "-fx-border-radius: 8;" +
+            "-fx-border-width: 1;"
         );
         btn.setOnMouseEntered(e -> btn.setStyle(
-            "-fx-background-color: rgba(26,19,99,0.08);" +
+            "-fx-background-color: rgba(26,19,99,0.10);" +
             "-fx-text-fill: " + readableColor + ";" +
             "-fx-font-size: 12;" +
             "-fx-font-weight: bold;" +
             "-fx-cursor: hand;" +
-            "-fx-padding: 3 4 3 4;" +
-            "-fx-background-radius: 6;"
+            "-fx-padding: 4 6 4 6;" +
+            "-fx-background-radius: 8;" +
+            "-fx-border-color: rgba(26,19,99,0.12);" +
+            "-fx-border-radius: 8;" +
+            "-fx-border-width: 1;"
         ));
         btn.setOnMouseExited(e -> btn.setStyle(
-            "-fx-background-color: transparent;" +
+            "-fx-background-color: rgba(26,19,99,0.045);" +
             "-fx-text-fill: " + readableColor + ";" +
             "-fx-font-size: 12;" +
             "-fx-font-weight: bold;" +
             "-fx-cursor: hand;" +
-            "-fx-padding: 3 4 3 4;" +
-            "-fx-background-radius: 6;" +
-            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.85), 1, 0.0, 0, 0);"
+            "-fx-padding: 4 6 4 6;" +
+            "-fx-background-radius: 8;" +
+            "-fx-border-color: rgba(26,19,99,0.08);" +
+            "-fx-border-radius: 8;" +
+            "-fx-border-width: 1;"
         ));
         return btn;
     }
@@ -1148,23 +1191,21 @@ public class MemberManagementScreen extends Application {
         chip.setStyle(
             "-fx-background-color: " + BG_CARD + ";" +
             "-fx-background-radius: 18;" +
-            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-color: " + readableAccent(color) + " " + BORDER + " " + BORDER + " " + readableAccent(color) + ";" +
             "-fx-border-radius: 18;" +
-            "-fx-border-width: 1;"
+            "-fx-border-width: 1 1 1 4;"
         );
         HBox.setHgrow(chip, Priority.ALWAYS);
         DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000", 0.2));
+        ds.setColor(Color.web(ACCENT, 0.09));
         ds.setRadius(8); ds.setOffsetY(3);
         chip.setEffect(ds);
         Text val = new Text(value);
         val.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
         val.setFill(Color.web(readableAccent(color)));
-        outlineText(val, 0.30);
         Text lbl = new Text(label);
         lbl.setFont(Font.font("Poppins", 11));
         lbl.setFill(Color.web(TEXT_DIM));
-        outlineText(lbl, 0.18);
         chip.getChildren().addAll(new VBox(2, lbl, val));
         return chip;
     }
@@ -1178,8 +1219,7 @@ public class MemberManagementScreen extends Application {
             "-fx-text-fill: " + TEXT_WHITE + ";" +
             "-fx-font-family: Poppins;" +
             "-fx-font-size: 12;" +
-            "-fx-pref-height: 38;" +
-            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.70), 1, 0.0, 0, 0);"
+            "-fx-pref-height: 38;"
         );
     }
 
@@ -1187,9 +1227,10 @@ public class MemberManagementScreen extends Application {
         Button b = new Button(text);
         b.setFont(Font.font("Poppins", active ? FontWeight.BOLD : FontWeight.NORMAL, 11));
         String bg = active ? ACCENT : BG_CARD;
+        String fg = active ? ModernDesignSystem.WHITE : TEXT_MUTED;
         b.setStyle(
             "-fx-background-color: " + bg + ";" +
-            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-text-fill: " + fg + ";" +
             "-fx-background-radius: 6;" +
             "-fx-cursor: hand;" +
             "-fx-padding: 5 12 5 12;"
@@ -1269,7 +1310,6 @@ public class MemberManagementScreen extends Application {
         Label pl = new Label("PLAN");
         pl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         pl.setTextFill(Color.web(ACCENT));
-        pl.setStyle("-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);");
         plan.setPrefHeight(40);
         planBox.getChildren().addAll(pl, plan);
         form.add(planBox, 1, r++);
@@ -1277,7 +1317,6 @@ public class MemberManagementScreen extends Application {
         Label gl = new Label("GENDER");
         gl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         gl.setTextFill(Color.web(ACCENT));
-        gl.setStyle("-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);");
         gender.setPrefHeight(40);
         gBox.getChildren().addAll(gl, gender);
         form.add(gBox, 0, r++, 2, 1);
@@ -1367,7 +1406,6 @@ public class MemberManagementScreen extends Application {
         Label lbl = new Label(label);
         lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         lbl.setTextFill(Color.web(ACCENT));
-        lbl.setStyle("-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);");
         field.setPromptText(prompt);
         field.setPrefHeight(40);
         applyFieldStyle(field);
@@ -1380,11 +1418,10 @@ public class MemberManagementScreen extends Application {
         Label lbl = new Label(label);
         lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         lbl.setTextFill(Color.web(ACCENT));
-        lbl.setStyle("-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.75), 1, 0.0, 0, 0);");
         picker.setPrefHeight(40);
         picker.setMaxWidth(Double.MAX_VALUE);
         picker.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
+            "-fx-background-color: " + BG_CARD + ";" +
             "-fx-border-color: " + BORDER + ";" +
             "-fx-border-radius: 16;" +
             "-fx-background-radius: 16;" +
@@ -1489,34 +1526,32 @@ public class MemberManagementScreen extends Application {
 
     private void applyFieldStyle(TextField f) {
         f.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
+            "-fx-background-color: " + BG_CARD + ";" +
             "-fx-border-color: " + BORDER + ";" +
             "-fx-border-radius: 16;" +
             "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + ACCENT + ";" +
+            "-fx-text-fill: " + TEXT_WHITE + ";" +
             "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
             "-fx-padding: 0 12 0 12;" +
             "-fx-font-family: Poppins;" +
-            "-fx-font-size: 12;" +
-            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.72), 1, 0.0, 0, 0);"
+            "-fx-font-size: 12;"
         );
         f.focusedProperty().addListener((o, old, focused) -> f.setStyle(
-            "-fx-background-color: " + BG_MAIN + ";" +
+            "-fx-background-color: " + BG_CARD + ";" +
             "-fx-border-color: " + (focused ? ACCENT : BORDER) + ";" +
             "-fx-border-radius: 16;" +
             "-fx-background-radius: 16;" +
-            "-fx-text-fill: " + ACCENT + ";" +
+            "-fx-text-fill: " + TEXT_WHITE + ";" +
             "-fx-prompt-text-fill: " + TEXT_DIM + ";" +
             "-fx-padding: 0 12 0 12;" +
             "-fx-font-family: Poppins;" +
-            "-fx-font-size: 12;" +
-            "-fx-effect: dropshadow(gaussian, rgba(255,255,255,0.72), 1, 0.0, 0, 0);"
+            "-fx-font-size: 12;"
         ));
     }
 
     private void outlineText(Text text, double width) {
-        text.setStroke(Color.web(ModernDesignSystem.WHITE, 0.82));
-        text.setStrokeWidth(width);
+        text.setStroke(Color.TRANSPARENT);
+        text.setStrokeWidth(0);
     }
 
     private String readableAccent(String color) {

@@ -2,6 +2,7 @@ package mj23gym.ui;
 
 import java.sql.Date;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -62,6 +63,7 @@ public class InventoryScreen extends Application {
     static final String SUCCESS_TEXT = "#237A36";
     static final String WARNING_TEXT = "#6E6400";
     static final String ERROR_TEXT   = "#B3261E";
+    static final String ERROR_BG     = "#FEE2E2";
     static final String TEXT_TITLE   = ModernDesignSystem.PRIMARY;
     static final String TEXT_SOFT    = ModernDesignSystem.TEXT_MUTED;
     static final String TEXT_DARK    = ModernDesignSystem.PRIMARY_DARK;
@@ -268,13 +270,15 @@ public class InventoryScreen extends Application {
         Label monitorAlert = new Label();
         monitorAlert.setWrapText(true);
         monitorAlert.setStyle(
-            "-fx-background-color: rgba(253,238,33,0.18);" +
-            "-fx-text-fill: " + WARNING_TEXT + ";" +
-            "-fx-font: bold 12 Poppins;" +
-            "-fx-padding: 10 14;" +
-            "-fx-background-radius: 14;" +
-            "-fx-border-color: rgba(110,100,0,0.20);" +
-            "-fx-border-radius: 14;"
+            "-fx-background-color: #FFFDF2;" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-font: 12 Poppins;" +
+            "-fx-padding: 12 16 12 16;" +
+            "-fx-background-radius: 16;" +
+            "-fx-border-color: #EFE6B8;" +
+            "-fx-border-width: 1;" +
+            "-fx-border-radius: 16;" +
+            "-fx-cursor: hand;"
         );
 
         VBox tableCard = new VBox(0);
@@ -638,11 +642,12 @@ public class InventoryScreen extends Application {
             HBox.setHgrow(rGrid, Priority.ALWAYS);
             String code = "#" + it.itemCode();
             int q = it.currentStock();
-            String qtyColor = q <= 0 ? TEXT_TITLE : (q <= it.reorderLevel() ? WARNING_TEXT : SUCCESS_TEXT);
+            boolean needsRestock = isLowStock(it);
+            boolean needsDateAttention = isExpiredOrExpiringSoon(it);
             rGrid.add(makeCell(code, TEXT_SOFT, true), 0, 0);
             rGrid.add(makeCell(it.itemName(), TEXT_TITLE, true), 1, 0);
             rGrid.add(makeCatBadge(it.category()), 2, 0);
-            rGrid.add(makeCell(String.valueOf(q), qtyColor, true), 3, 0);
+            rGrid.add(makeQuantityCell(it), 3, 0);
             rGrid.add(makeCell("PHP " + String.format("%,.2f", it.sellingPrice()), TEXT_SOFT, false), 4, 0);
             rGrid.add(makeExpiryBadge(it.expirationDate()), 5, 0);
             rGrid.add(makeStockBadge(it.status()), 6, 0);
@@ -678,6 +683,15 @@ public class InventoryScreen extends Application {
             rGrid.add(actions, 7, 0);
             row.getChildren().add(rGrid);
             String fBg = bg;
+            if (needsRestock || needsDateAttention) {
+                row.setCursor(javafx.scene.Cursor.HAND);
+                row.setOnMouseClicked(e -> {
+                    if (e.getTarget() instanceof Button) {
+                        return;
+                    }
+                    showRestockDetails(it);
+                });
+            }
             row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: rgba(26,19,99,0.06);"));
             row.setOnMouseExited(e -> row.setStyle("-fx-background-color: " + fBg + ";"));
             rowsBox.getChildren().add(row);
@@ -833,22 +847,102 @@ public class InventoryScreen extends Application {
         }
     }
 
+    private boolean isLowStock(InventoryDAO.InventoryRecord item) {
+        return item != null && item.isActive() && item.currentStock() <= item.reorderLevel();
+    }
+
+    private boolean isExpiredOrExpiringSoon(InventoryDAO.InventoryRecord item) {
+        if (item == null || !item.isActive() || item.expirationDate() == null) {
+            return false;
+        }
+        return !item.expirationDate().toLocalDate().isAfter(LocalDate.now().plusDays(30));
+    }
+
+    private StackPane makeQuantityCell(InventoryDAO.InventoryRecord item) {
+        boolean needsRestock = isLowStock(item);
+        StackPane cell = new StackPane();
+        cell.setAlignment(Pos.CENTER_LEFT);
+        cell.setMaxWidth(Double.MAX_VALUE);
+
+        if (needsRestock) {
+            HBox qtyLine = new HBox(5);
+            qtyLine.setAlignment(Pos.CENTER_LEFT);
+            qtyLine.setCursor(javafx.scene.Cursor.HAND);
+
+            Label marker = new Label("⚠");
+            marker.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
+            marker.setStyle("-fx-text-fill: " + ERROR_TEXT + ";");
+
+            Label qty = new Label(String.valueOf(item.currentStock()));
+            qty.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+            qty.setStyle("-fx-text-fill: " + ERROR_TEXT + ";");
+
+            qtyLine.getChildren().addAll(marker, qty);
+            cell.getChildren().add(qtyLine);
+            cell.setOnMouseClicked(e -> {
+                showRestockDetails(item);
+                e.consume();
+            });
+        } else {
+            Label qty = makeCell(String.valueOf(item.currentStock()), SUCCESS_TEXT, true);
+            cell.getChildren().add(qty);
+        }
+
+        return cell;
+    }
+
+    private void showRestockDetails(InventoryDAO.InventoryRecord item) {
+        StringBuilder details = new StringBuilder();
+        details.append("Item: ").append(item.itemName()).append("\n");
+        details.append("Item ID: ").append(item.itemCode()).append("\n");
+        details.append("Current stock: ").append(item.currentStock()).append("\n");
+        details.append("Reorder level: ").append(item.reorderLevel()).append("\n");
+        details.append("Minimum stock: ").append(item.minimumStock()).append("\n");
+        details.append("Recommended restock: ").append(Math.max(0, item.reorderLevel() - item.currentStock() + 1)).append("\n");
+        details.append("Supplier: ").append(blankFallback(item.supplier(), "No supplier saved")).append("\n");
+        details.append("Last restock: ").append(item.lastRestock() != null ? item.lastRestock() : "No date saved").append("\n");
+        details.append("Expiration: ").append(expiryDetailText(item.expirationDate())).append("\n");
+        details.append("Status: ").append(blankFallback(item.status(), "No status")).append("\n");
+        details.append("Notes: ").append(blankFallback(item.notes(), "No notes"));
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Restock Attention");
+        alert.setHeaderText(attentionHeader(item));
+        alert.setContentText(details.toString());
+        alert.showAndWait();
+    }
+
+    private String attentionHeader(InventoryDAO.InventoryRecord item) {
+        if (isLowStock(item) && isExpiredOrExpiringSoon(item)) {
+            return "Low stock and expiry need attention";
+        }
+        if (isLowStock(item)) {
+            return "Low stock: restock recommended";
+        }
+        if (isExpiredOrExpiringSoon(item)) {
+            return "Expiration date needs attention";
+        }
+        return "Inventory item details";
+    }
+
     private void updateMonitorAlert(
         Label monitorAlert,
         List<InventoryDAO.InventoryRecord> lowStock,
         List<InventoryDAO.InventoryRecord> expiring
     ) {
         if (lowStock.isEmpty() && expiring.isEmpty()) {
-            monitorAlert.setText("Inventory monitor: All active stock levels are above reorder level.");
+            monitorAlert.setText("Inventory monitor: Stock levels are healthy. No restock reminders right now.");
             monitorAlert.setStyle(
-                "-fx-background-color: rgba(228,255,223,0.55);" +
+                "-fx-background-color: " + CARD_SURFACE + ";" +
                 "-fx-text-fill: " + SUCCESS_TEXT + ";" +
-                "-fx-font: bold 12 Poppins;" +
-                "-fx-padding: 10 14;" +
-                "-fx-background-radius: 14;" +
-                "-fx-border-color: rgba(35,122,54,0.18);" +
-                "-fx-border-radius: 14;"
+                "-fx-font: 12 Poppins;" +
+                "-fx-padding: 12 16 12 16;" +
+                "-fx-background-radius: 16;" +
+                "-fx-border-color: rgba(35,122,54,0.22);" +
+                "-fx-border-width: 1;" +
+                "-fx-border-radius: 16;"
             );
+            monitorAlert.setOnMouseClicked(null);
             return;
         }
         List<String> alerts = new ArrayList<>();
@@ -858,7 +952,7 @@ public class InventoryScreen extends Application {
             if (names.size() == 5) break;
         }
         if (!names.isEmpty()) {
-            alerts.add("Restock: " + String.join(", ", names));
+            alerts.add("⚠ Restock needed: " + String.join(", ", names));
         }
         List<String> expiringNames = new ArrayList<>();
         for (InventoryDAO.InventoryRecord item : expiring) {
@@ -866,18 +960,56 @@ public class InventoryScreen extends Application {
             if (expiringNames.size() == 5) break;
         }
         if (!expiringNames.isEmpty()) {
-            alerts.add("Expiry: " + String.join(", ", expiringNames));
+            alerts.add("Expiry watch: " + String.join(", ", expiringNames));
         }
-        monitorAlert.setText(String.join(" | ", alerts));
+        monitorAlert.setText(String.join("    |    ", alerts) + "    Click for supplier and restock details.");
         monitorAlert.setStyle(
-            "-fx-background-color: rgba(253,238,33,0.18);" +
-            "-fx-text-fill: " + WARNING_TEXT + ";" +
-            "-fx-font: bold 12 Poppins;" +
-            "-fx-padding: 10 14;" +
-            "-fx-background-radius: 14;" +
-            "-fx-border-color: rgba(110,100,0,0.20);" +
-            "-fx-border-radius: 14;"
+            "-fx-background-color: #FFFDF2;" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-font: 12 Poppins;" +
+            "-fx-padding: 12 16 12 16;" +
+            "-fx-background-radius: 16;" +
+            "-fx-border-color: #EFE6B8;" +
+            "-fx-border-width: 1;" +
+            "-fx-border-radius: 16;" +
+            "-fx-cursor: hand;"
         );
+        monitorAlert.setOnMouseClicked(e -> showInventoryMonitorDetails(lowStock, expiring));
+    }
+
+    private void showInventoryMonitorDetails(
+        List<InventoryDAO.InventoryRecord> lowStock,
+        List<InventoryDAO.InventoryRecord> expiring
+    ) {
+        StringBuilder message = new StringBuilder();
+        if (!lowStock.isEmpty()) {
+            message.append("RESTOCK LIST\n");
+            for (InventoryDAO.InventoryRecord item : lowStock) {
+                message.append("- ")
+                    .append(item.itemName())
+                    .append(" | Stock: ").append(item.currentStock())
+                    .append(" | Reorder: ").append(item.reorderLevel())
+                    .append(" | Supplier: ").append(blankFallback(item.supplier(), "No supplier saved"))
+                    .append("\n");
+            }
+            message.append("\n");
+        }
+        if (!expiring.isEmpty()) {
+            message.append("EXPIRATION WATCH\n");
+            for (InventoryDAO.InventoryRecord item : expiring) {
+                message.append("- ")
+                    .append(item.itemName())
+                    .append(" | ").append(expiryDetailText(item.expirationDate()))
+                    .append(" | Supplier: ").append(blankFallback(item.supplier(), "No supplier saved"))
+                    .append("\n");
+            }
+        }
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Inventory Restock Reminder");
+        alert.setHeaderText("Restock and expiration details");
+        alert.setContentText(message.toString());
+        alert.showAndWait();
     }
 
     private Label formLabel(String text) {
@@ -972,8 +1104,27 @@ public class InventoryScreen extends Application {
         return expiry.toString();
     }
 
+    private String expiryDetailText(Date expirationDate) {
+        if (expirationDate == null) {
+            return "No expiry saved";
+        }
+        LocalDate expiry = expirationDate.toLocalDate();
+        long days = ChronoUnit.DAYS.between(LocalDate.now(), expiry);
+        if (days < 0) {
+            return "Expired " + Math.abs(days) + " day(s) ago (" + expiry + ")";
+        }
+        if (days == 0) {
+            return "Expires today (" + expiry + ")";
+        }
+        return "Expires in " + days + " day(s) (" + expiry + ")";
+    }
+
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private String blankFallback(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     private GridPane makeGrid(double[] widths) {

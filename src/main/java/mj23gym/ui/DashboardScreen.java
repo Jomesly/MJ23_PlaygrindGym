@@ -415,6 +415,20 @@ public class DashboardScreen extends Application {
 
         int totalMembers = memberDAO.countAll();
         double revenueToday = paymentDAO.todayRevenue() + posDAO.todayPosTotal();
+        LocalDate today = LocalDate.now();
+        LocalDate monthStart = today.withDayOfMonth(1);
+        LocalDate yesterday = today.minusDays(1);
+        int membersThisMonth = memberDAO.countCreatedBetween(
+            java.sql.Date.valueOf(monthStart),
+            java.sql.Date.valueOf(today)
+        );
+        double revenueYesterday = paymentDAO.sumCompletedBetween(
+            java.sql.Date.valueOf(yesterday),
+            java.sql.Date.valueOf(yesterday)
+        ) + posDAO.sumPosRevenueBetween(
+            java.sql.Date.valueOf(yesterday),
+            java.sql.Date.valueOf(yesterday)
+        );
         int lowStockCount = inventoryDAO.countLowStock();
         int maintDue = equipmentDAO.findMaintenanceDue().size();
         searchField.setOnAction(e -> showDashboardSearch(searchField.getText()));
@@ -431,8 +445,8 @@ public class DashboardScreen extends Application {
 
         String revStr = String.format("%.0f", revenueToday);
         summaryCards.getChildren().addAll(
-            makeSummaryCard("👥", "Total Members",    String.valueOf(totalMembers),  "+5 this month",  ACCENT,   false),
-            makeSummaryCard("💰", "Revenue Today",    revStr, "+820 vs. yesterday", SUCCESS, false),
+            makeSummaryCard("👥", "Total Members",    String.valueOf(totalMembers),  formatMembersThisMonth(membersThisMonth),  ACCENT,   true),
+            makeSummaryCard("💰", "Revenue Today",    revStr, formatRevenueDelta(revenueToday, revenueYesterday), SUCCESS, false),
             makeSummaryCard("📦", "Low Stock Items",  String.valueOf(lowStockCount),    "Needs restocking", WARNING, false),
             makeSummaryCard("🔧", "Maintenance Due", String.valueOf(maintDue),
                 maintDue > 0 ? "Within 30 days" : "None due soon", INFO, false)
@@ -577,7 +591,7 @@ public class DashboardScreen extends Application {
             "-fx-background-radius: 18;" +
             "-fx-border-color: " + color + ";" +
             "-fx-border-radius: 18;" +
-            "-fx-border-width: 1.5;";
+            "-fx-border-width: 3;";
 
         DropShadow baseShadow = createSummaryShadow(ACCENT, 0.10, 12, 4);
         DropShadow hoverShadow = createSummaryShadow(ACCENT, 0.16, 18, 6);
@@ -1099,6 +1113,19 @@ public class DashboardScreen extends Application {
 
     private String formatCurrency(double amount) {
         return "PHP " + String.format("%,.2f", amount);
+    }
+
+    private String formatMembersThisMonth(int membersThisMonth) {
+        return membersThisMonth + (membersThisMonth == 1 ? " new member this month" : " new members this month");
+    }
+
+    private String formatRevenueDelta(double todayRevenue, double yesterdayRevenue) {
+        double difference = todayRevenue - yesterdayRevenue;
+        if (Math.abs(difference) < 0.01) {
+            return "Same as yesterday";
+        }
+        String prefix = difference > 0 ? "+" : "-";
+        return prefix + formatCurrency(Math.abs(difference)) + " vs. yesterday";
     }
 
     private void showDashboardSearch(String query) {

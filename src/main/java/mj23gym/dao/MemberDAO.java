@@ -124,6 +124,21 @@ public class MemberDAO {
         }
     }
 
+    public int countCreatedBetween(Date from, Date to) {
+        String sql = "SELECT COUNT(*) FROM members WHERE DATE(created_at) BETWEEN ? AND ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDate(1, from);
+            ps.setDate(2, to);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (SQLException e) {
+            System.err.println("[MemberDAO] countCreatedBetween error: " + e.getMessage());
+            return 0;
+        }
+    }
+
     // ── CREATE ────────────────────────────────────────────────────
 
     /**

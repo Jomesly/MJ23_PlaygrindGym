@@ -276,6 +276,8 @@ CREATE TABLE IF NOT EXISTS pos_transactions (
     payment_method  ENUM('Cash','GCash','Bank Transfer','Other') DEFAULT 'Cash',
     reference_number VARCHAR(100),
     total_amount    DECIMAL(10,2) NOT NULL,
+    amount_paid     DECIMAL(10,2) NOT NULL DEFAULT 0,
+    change_amount   DECIMAL(10,2) NOT NULL DEFAULT 0,
     sale_date       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     processed_by    INT,
     notes           TEXT,

@@ -24,7 +24,7 @@ public static void shutdown() {
     private static final int    PORT     = 3306;
     private static final String DB_NAME  = "mj23gym";
     private static final String USERNAME = "root";
-    private static final String PASSWORD = "admin123";          // change as needed
+    private static final String PASSWORD = "HNLwFxBd@PQ2AzJ";          // change as needed
 
     private static final String URL = String.format(
         "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false" +

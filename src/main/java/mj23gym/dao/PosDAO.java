@@ -28,6 +28,8 @@ public final class PosDAO {
         String paymentMethod,
         String referenceNumber,
         double totalAmount,
+        double amountPaid,
+        double changeAmount,
         String processedBy,
         List<ReceiptLine> lines
     ) {}
@@ -121,9 +123,10 @@ public final class PosDAO {
     }
 
     public Optional<PosReceipt> findReceipt(int transactionId) {
+        ensurePaymentColumns();
         String txSql =
             "SELECT pt.transaction_id, DATE(pt.sale_date) AS sale_day, pt.payment_method," +
-            " pt.reference_number, pt.total_amount, u.full_name AS processed_by_name" +
+            " pt.reference_number, pt.total_amount, pt.amount_paid, pt.change_amount, u.full_name AS processed_by_name" +
             " FROM pos_transactions pt" +
             " LEFT JOIN users u ON pt.processed_by = u.user_id" +
             " WHERE pt.transaction_id=?";
@@ -157,6 +160,8 @@ public final class PosDAO {
                     txRs.getString("payment_method"),
                     txRs.getString("reference_number"),
                     txRs.getDouble("total_amount"),
+                    txRs.getDouble("amount_paid"),
+                    txRs.getDouble("change_amount"),
                     txRs.getString("processed_by_name"),
                     lines
                 ));
@@ -179,6 +184,24 @@ public final class PosDAO {
         int processedBy,
         List<SaleLine> lines
     ) {
+        double total = 0;
+        if (lines != null) {
+            for (SaleLine l : lines) {
+                total += l.unitPrice() * l.quantity();
+            }
+        }
+        return completeSale(memberId, paymentMethod, referenceNumber, processedBy, lines, total, 0);
+    }
+
+    public int completeSale(
+        Integer memberId,
+        String paymentMethod,
+        String referenceNumber,
+        int processedBy,
+        List<SaleLine> lines,
+        double amountPaid,
+        double changeAmount
+    ) {
         if (lines == null || lines.isEmpty()) {
             return -1;
         }
@@ -187,9 +210,10 @@ public final class PosDAO {
             total += l.unitPrice() * l.quantity();
         }
         String insertTx =
-            "INSERT INTO pos_transactions (member_id, payment_method, reference_number, total_amount, processed_by) " +
-            "VALUES (?,?,?,?,?)";
+            "INSERT INTO pos_transactions (member_id, payment_method, reference_number, total_amount, amount_paid, change_amount, processed_by) " +
+            "VALUES (?,?,?,?,?,?,?)";
         try (Connection conn = DatabaseConnection.getConnection()) {
+            ensurePaymentColumns(conn);
             for (SaleLine l : lines) {
                 try (PreparedStatement chk = conn.prepareStatement(
                         "SELECT current_stock FROM inventory WHERE item_id=? AND is_active=TRUE")) {
@@ -214,10 +238,12 @@ public final class PosDAO {
                     ps.setString(2, paymentMethod != null ? paymentMethod : "Cash");
                     ps.setString(3, referenceNumber != null && !referenceNumber.isBlank() ? referenceNumber : null);
                     ps.setDouble(4, total);
+                    ps.setDouble(5, amountPaid);
+                    ps.setDouble(6, changeAmount);
                     if (processedBy > 0) {
-                        ps.setInt(5, processedBy);
+                        ps.setInt(7, processedBy);
                     } else {
-                        ps.setNull(5, Types.INTEGER);
+                        ps.setNull(7, Types.INTEGER);
                     }
                     ps.executeUpdate();
                     try (ResultSet gk = ps.getGeneratedKeys()) {
@@ -274,6 +300,36 @@ public final class PosDAO {
         } catch (SQLException e) {
             System.err.println("[PosDAO] completeSale connection error: " + e.getMessage());
             return -1;
+        }
+    }
+
+    private void ensurePaymentColumns() {
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            ensurePaymentColumns(conn);
+        } catch (SQLException e) {
+            System.err.println("[PosDAO] ensure payment columns error: " + e.getMessage());
+        }
+    }
+
+    private void ensurePaymentColumns(Connection conn) {
+        ensureColumn(conn, "amount_paid", "DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER total_amount");
+        ensureColumn(conn, "change_amount", "DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER amount_paid");
+    }
+
+    private void ensureColumn(Connection conn, String column, String definition) {
+        try (ResultSet rs = conn.getMetaData().getColumns(null, null, "pos_transactions", column)) {
+            if (rs.next()) {
+                return;
+            }
+        } catch (SQLException e) {
+            System.err.println("[PosDAO] check column " + column + " error: " + e.getMessage());
+            return;
+        }
+
+        try (Statement st = conn.createStatement()) {
+            st.executeUpdate("ALTER TABLE pos_transactions ADD COLUMN " + column + " " + definition);
+        } catch (SQLException e) {
+            System.err.println("[PosDAO] add column " + column + " error: " + e.getMessage());
         }
     }
 }
