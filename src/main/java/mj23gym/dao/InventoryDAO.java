@@ -39,6 +39,19 @@ public class InventoryDAO {
         boolean isActive
     ) {}
 
+    public record InventoryBatchRecord(
+        int batchId,
+        int itemId,
+        String itemCode,
+        String itemName,
+        String batchCode,
+        int quantity,
+        Date expirationDate,
+        Date receivedDate,
+        String notes,
+        int createdBy
+    ) {}
+
     // ── READ ──────────────────────────────────────────────────────
 
     public List<InventoryRecord> findAll() {
@@ -79,6 +92,28 @@ public class InventoryDAO {
             "SELECT * FROM inventory WHERE is_active=TRUE AND expiration_date IS NOT NULL " +
             "AND expiration_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) ORDER BY expiration_date, item_name",
             ps -> {}
+        );
+    }
+
+    public List<InventoryBatchRecord> findBatchesByItem(int itemId) {
+        ensureBatchTable();
+        return batchQuery(
+            "SELECT b.*, i.item_code, i.item_name FROM inventory_batches b " +
+            "JOIN inventory i ON b.item_id = i.item_id WHERE b.item_id=? " +
+            "ORDER BY b.expiration_date IS NULL, b.expiration_date ASC, b.received_date ASC",
+            ps -> ps.setInt(1, itemId)
+        );
+    }
+
+    public List<InventoryBatchRecord> findExpiringSoonBatches(int daysAhead) {
+        ensureBatchTable();
+        return batchQuery(
+            "SELECT b.*, i.item_code, i.item_name FROM inventory_batches b " +
+            "JOIN inventory i ON b.item_id = i.item_id WHERE i.is_active=TRUE " +
+            "AND b.expiration_date IS NOT NULL " +
+            "AND b.expiration_date <= DATE_ADD(CURDATE(), INTERVAL ? DAY) " +
+            "ORDER BY b.expiration_date ASC, i.item_name ASC",
+            ps -> ps.setInt(1, Math.max(0, daysAhead))
         );
     }
 
@@ -190,6 +225,62 @@ public class InventoryDAO {
         }
     }
 
+    public boolean insertBatch(int itemId, int quantity, Date expirationDate, Date receivedDate,
+                               String batchCode, String notes, int createdBy) {
+        if (quantity <= 0) {
+            return false;
+        }
+        String insertBatch =
+            "INSERT INTO inventory_batches (item_id, batch_code, quantity, expiration_date, received_date, notes, created_by) " +
+            "VALUES (?,?,?,?,?,?,?)";
+        String updateStock =
+            "UPDATE inventory SET current_stock = current_stock + ?, quantity = quantity + ?, last_restock=?, " +
+            "expiration_date = COALESCE(?, expiration_date), " +
+            "status = CASE WHEN current_stock + ? <= 0 THEN 'Out of Stock' " +
+            "WHEN current_stock + ? <= reorder_level THEN 'Low Stock' ELSE 'In Stock' END, updated_at=NOW() " +
+            "WHERE item_id=?";
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            ensureBatchTable(conn);
+            conn.setAutoCommit(false);
+            try (PreparedStatement batchPs = conn.prepareStatement(insertBatch);
+                 PreparedStatement stockPs = conn.prepareStatement(updateStock)) {
+                Date received = receivedDate != null ? receivedDate : new Date(System.currentTimeMillis());
+                batchPs.setInt(1, itemId);
+                batchPs.setString(2, batchCode != null && !batchCode.isBlank() ? batchCode : null);
+                batchPs.setInt(3, quantity);
+                batchPs.setDate(4, expirationDate);
+                batchPs.setDate(5, received);
+                batchPs.setString(6, notes);
+                if (createdBy > 0) batchPs.setInt(7, createdBy); else batchPs.setNull(7, Types.INTEGER);
+                batchPs.executeUpdate();
+
+                stockPs.setInt(1, quantity);
+                stockPs.setInt(2, quantity);
+                stockPs.setDate(3, received);
+                stockPs.setDate(4, expirationDate);
+                stockPs.setInt(5, quantity);
+                stockPs.setInt(6, quantity);
+                stockPs.setInt(7, itemId);
+                int updated = stockPs.executeUpdate();
+                if (updated <= 0) {
+                    conn.rollback();
+                    return false;
+                }
+                conn.commit();
+                return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                System.err.println("[InventoryDAO] insertBatch transaction error: " + e.getMessage());
+                return false;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        } catch (SQLException e) {
+            System.err.println("[InventoryDAO] insertBatch error: " + e.getMessage());
+            return false;
+        }
+    }
+
     /** Soft-delete (is_active = false). */
     public boolean deactivate(int itemId) {
         String sql = "UPDATE inventory SET is_active=FALSE, updated_at=NOW() WHERE item_id=?";
@@ -231,6 +322,35 @@ public class InventoryDAO {
             }
         } catch (SQLException e) {
             System.err.println("[InventoryDAO] query error: " + e.getMessage());
+        }
+        return list;
+    }
+
+    private List<InventoryBatchRecord> batchQuery(String sql, ParamSetter setter) {
+        List<InventoryBatchRecord> list = new ArrayList<>();
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            ensureBatchTable(conn);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                setter.set(ps);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        list.add(new InventoryBatchRecord(
+                            rs.getInt("batch_id"),
+                            rs.getInt("item_id"),
+                            rs.getString("item_code"),
+                            rs.getString("item_name"),
+                            rs.getString("batch_code"),
+                            rs.getInt("quantity"),
+                            rs.getDate("expiration_date"),
+                            rs.getDate("received_date"),
+                            rs.getString("notes"),
+                            rs.getInt("created_by")
+                        ));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[InventoryDAO] batchQuery error: " + e.getMessage());
         }
         return list;
     }
@@ -326,6 +446,37 @@ public class InventoryDAO {
             st.executeUpdate("ALTER TABLE inventory ADD COLUMN expiration_date DATE NULL AFTER last_restock");
         } catch (SQLException e) {
             System.err.println("[InventoryDAO] add expiration_date error: " + e.getMessage());
+        }
+    }
+
+    private void ensureBatchTable() {
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            ensureBatchTable(conn);
+        } catch (SQLException e) {
+            System.err.println("[InventoryDAO] ensureBatchTable error: " + e.getMessage());
+        }
+    }
+
+    private void ensureBatchTable(Connection conn) {
+        String sql =
+            "CREATE TABLE IF NOT EXISTS inventory_batches (" +
+            "batch_id INT AUTO_INCREMENT PRIMARY KEY," +
+            "item_id INT NOT NULL," +
+            "batch_code VARCHAR(30)," +
+            "quantity INT NOT NULL DEFAULT 0," +
+            "expiration_date DATE," +
+            "received_date DATE NOT NULL DEFAULT (CURDATE())," +
+            "notes TEXT," +
+            "created_by INT," +
+            "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
+            "FOREIGN KEY (item_id) REFERENCES inventory(item_id) ON DELETE CASCADE," +
+            "FOREIGN KEY (created_by) REFERENCES users(user_id) ON DELETE SET NULL," +
+            "INDEX idx_item_expiry (item_id, expiration_date)" +
+            ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+        try (Statement st = conn.createStatement()) {
+            st.executeUpdate(sql);
+        } catch (SQLException e) {
+            System.err.println("[InventoryDAO] create inventory_batches error: " + e.getMessage());
         }
     }
 }

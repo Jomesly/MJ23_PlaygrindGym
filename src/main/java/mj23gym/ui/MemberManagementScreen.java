@@ -39,6 +39,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import mj23gym.dao.MemberDAO;
+import mj23gym.dao.PaymentDAO;
 import mj23gym.dao.PlanDAO;
 
 /**
@@ -693,6 +694,7 @@ public class MemberManagementScreen extends Application {
                 a.setContentText(
                     "Code: " + m.memberCode() + "\nEmail: " + m.email() + "\nPhone: " + m.contactNumber()
                         + "\nAddress: " + m.address() + "\nPlan: " + m.membershipType()
+                        + sessionCreditText(m)
                         + "\nStart: " + start + "\nEnd: "
                         + (m.membershipEndDate() != null ? m.membershipEndDate().toString() : "")
                         + "\nStatus: " + m.status()
@@ -764,6 +766,7 @@ public class MemberManagementScreen extends Application {
                 + "\nGender: " + m.gender()
                 + "\nDate of Birth: " + textDate(m.dateOfBirth())
                 + "\nPlan: " + m.membershipType()
+                + sessionCreditText(m)
                 + "\nStart: " + textDate(m.membershipStartDate())
                 + "\nEnd: " + textDate(m.membershipEndDate())
                 + "\nStatus: " + statusText(m.status())
@@ -792,7 +795,11 @@ public class MemberManagementScreen extends Application {
                 ok.showAndWait();
                 fullRefresh.run();
             } else {
-                alertErr("Could not record attendance. Please check the database connection.");
+                if ("Per Session".equalsIgnoreCase(m.membershipType())) {
+                    alertErr("No remaining sessions. Record a Per Session payment before checking this member in.");
+                } else {
+                    alertErr("Could not record attendance. Please check the database connection.");
+                }
             }
         }
     }
@@ -897,7 +904,9 @@ public class MemberManagementScreen extends Application {
                 Date.valueOf(end),
                 "Active",
                 m.emergencyContact(),
-                m.emergencyPhone()
+                m.emergencyPhone(),
+                m.sessionsPaid(),
+                m.sessionsRemaining()
             );
 
             if (new MemberDAO().update(renewed)) {
@@ -1035,10 +1044,29 @@ public class MemberManagementScreen extends Application {
                 m.membershipEndDate(),
                 status.getValue(),
                 emergencyContact.getText().trim(),
-                emergencyPhone.getText().trim()
+                emergencyPhone.getText().trim(),
+                m.sessionsPaid(),
+                m.sessionsRemaining()
             );
 
-            if (new MemberDAO().update(updated)) {
+            boolean planChanged = !safeText(m.membershipType()).equalsIgnoreCase(safeText(updated.membershipType()));
+            if (planChanged) {
+                try {
+                    PaymentDAO.UpgradeResult result = new PaymentDAO().processPlanUpgrade(
+                        updated,
+                        AppSession.currentUser().userId()
+                    );
+                    dialog.close();
+                    onSaved.run();
+                    Alert ok = new Alert(Alert.AlertType.INFORMATION);
+                    ok.setTitle("Plan Upgrade");
+                    ok.setHeaderText("Previous billing closed. New " + result.newPlan() + " billing created.");
+                    ok.setContentText("Old plan snapshot: " + safeText(result.previousPlan()));
+                    ok.showAndWait();
+                } catch (RuntimeException ex) {
+                    alertErr("Could not complete plan upgrade. No changes were saved.");
+                }
+            } else if (new MemberDAO().update(updated)) {
                 dialog.close();
                 onSaved.run();
             } else {
@@ -1071,6 +1099,14 @@ public class MemberManagementScreen extends Application {
 
     private String safeText(String text) {
         return text != null && !text.isBlank() ? text : "";
+    }
+
+    private String sessionCreditText(MemberDAO.MemberRecord m) {
+        if (!"Per Session".equalsIgnoreCase(m.membershipType())) {
+            return "";
+        }
+        return "\nSessions Paid: " + m.sessionsPaid()
+            + "\nSessions Remaining: " + m.sessionsRemaining();
     }
 
     private String statusText(String status) {
@@ -1381,7 +1417,9 @@ public class MemberManagementScreen extends Application {
                 end,
                 "Active",
                 "",
-                ""
+                "",
+                0,
+                0
             );
             int newId = dao.insert(rec, uid);
             if (newId > 0) {

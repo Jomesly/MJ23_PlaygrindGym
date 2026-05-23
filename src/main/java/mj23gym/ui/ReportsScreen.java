@@ -611,7 +611,7 @@ public class ReportsScreen extends Application {
 
     private void populatePaymentRows(VBox rowsBox, List<PaymentDAO.PaymentSummaryRow> rows) {
         rowsBox.getChildren().clear();
-        double[] colW = {22, 13, 14, 16, 15, 12};
+        double[] colW = {20, 16, 13, 14, 15, 12};
         int r = 0;
         for (PaymentDAO.PaymentSummaryRow pr : rows) {
             String bg = (r % 2 == 0) ? CARD_SURFACE : BG_ROW_ALT;
@@ -621,7 +621,7 @@ public class ReportsScreen extends Application {
             GridPane rg = makeGrid(colW);
             rg.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(rg, Priority.ALWAYS);
-            String plan = pr.membershipType() != null ? pr.membershipType() : "";
+            String plan = pr.planTypeSnapshot() != null ? pr.planTypeSnapshot() : "";
             String method = pr.paymentMethod() != null ? pr.paymentMethod() : "Cash";
             String dateStr = pr.paymentDate() != null ? pr.paymentDate().toString() : "";
             String statusLbl = displayPaymentStatus(pr.status());
@@ -771,8 +771,8 @@ public class ReportsScreen extends Application {
 
     private VBox buildPaymentSummaryShell(Text titleNode, VBox rowsBox) {
         return buildDataTableShell(titleNode, rowsBox, null,
-            new String[] {"Member", "Plan", "Amount Paid", "Method", "Date", "Status"},
-            new double[] {22, 13, 14, 16, 15, 12});
+            new String[] {"Member", "Plan at Payment", "Amount Paid", "Method", "Date", "Status"},
+            new double[] {20, 16, 13, 14, 15, 12});
     }
 
     private VBox buildInventorySummaryShell(VBox rowsBox) {

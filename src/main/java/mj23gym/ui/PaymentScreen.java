@@ -11,6 +11,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -528,6 +529,16 @@ public class PaymentScreen extends Application {
                 setValidation(paymentMsg, "Reference number is required for GCash and bank transfer payments.");
                 return;
             }
+            if ("Per Session".equalsIgnoreCase(selectedMember[0].membershipType())) {
+                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+                confirm.setTitle("Per Session Payment");
+                confirm.setHeaderText("1 session credit will be added");
+                confirm.setContentText("Continue recording this payment for " + selectedMember[0].fullName() + "?");
+                Optional<ButtonType> result = confirm.showAndWait();
+                if (result.isEmpty() || result.get() != ButtonType.OK) {
+                    return;
+                }
+            }
             int uid = AppSession.currentUser().userId();
             if (selectedBillingId[0] <= 0) {
                 selectedBillingId[0] = paymentDAO.ensureBillingForMember(
@@ -645,7 +656,7 @@ public class PaymentScreen extends Application {
         );
         header.getChildren().addAll(t, sp, filter);
 
-        String[] hdrs = {"Member", "Amount", "Method", "Date", "Status"};
+        String[] hdrs = {"Member", "Plan at Payment", "Amount", "Method", "Date", "Status"};
         HBox tblHdr = new HBox();
         tblHdr.setPadding(new Insets(10, 20, 10, 20));
         tblHdr.setStyle(
@@ -700,15 +711,17 @@ public class PaymentScreen extends Application {
             rg.setMaxWidth(Double.MAX_VALUE);
             HBox.setHgrow(rg, Priority.ALWAYS);
             String name = pr.memberName() != null ? pr.memberName() : "Member";
+            String planSnapshot = pr.planTypeSnapshot() != null ? pr.planTypeSnapshot() : "-";
             String amt = String.format("%.2f", pr.amount());
             String method = pr.paymentMethod() != null ? pr.paymentMethod() : "Cash";
             String dateStr = pr.paymentDate() != null ? pr.paymentDate().toString() : "";
             String statusLbl = "Completed".equalsIgnoreCase(pr.status()) ? "Paid" : pr.status();
             rg.add(makeCell(name, TEXT_TITLE, false), 0, 0);
-            rg.add(makeCell(amt, SUCCESS_TEXT, true), 1, 0);
-            rg.add(makeMethodBadge(method), 2, 0);
-            rg.add(makeCell(dateStr, TEXT_SOFT, false), 3, 0);
-            rg.add(makeStatusBadge(statusLbl), 4, 0);
+            rg.add(makeCell(planSnapshot, TEXT_SOFT, false), 1, 0);
+            rg.add(makeCell(amt, SUCCESS_TEXT, true), 2, 0);
+            rg.add(makeMethodBadge(method), 3, 0);
+            rg.add(makeCell(dateStr, TEXT_SOFT, false), 4, 0);
+            rg.add(makeStatusBadge(statusLbl), 5, 0);
             dataRow.getChildren().add(rg);
             String fBg = bg;
             dataRow.setOnMouseEntered(e -> dataRow.setStyle("-fx-background-color: rgba(26,19,99,0.05);"));
@@ -846,7 +859,7 @@ public class PaymentScreen extends Application {
 
     private GridPane makePayGrid() {
         GridPane g = new GridPane();
-        double[] widths = {28, 14, 18, 18, 14};
+        double[] widths = {24, 18, 12, 16, 16, 14};
         for (double w : widths) {
             ColumnConstraints cc = new ColumnConstraints();
             cc.setPercentWidth(w);

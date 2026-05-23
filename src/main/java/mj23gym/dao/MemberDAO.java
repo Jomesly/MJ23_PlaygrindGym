@@ -36,7 +36,9 @@ public class MemberDAO {
         Date   membershipEndDate,
         String status,
         String emergencyContact,
-        String emergencyPhone
+        String emergencyPhone,
+        int    sessionsPaid,
+        int    sessionsRemaining
     ) {
         public String fullName() { return firstName + " " + lastName; }
     }
@@ -225,14 +227,48 @@ public class MemberDAO {
     }
 
     public boolean recordAttendance(int memberId, String sessionType, String notes) {
-        String sql = "INSERT INTO attendance (member_id, time_in, attendance_date, session_type, notes) " +
-                     "VALUES (?, NOW(), CURDATE(), ?, ?)";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, memberId);
-            ps.setString(2, sessionType != null ? sessionType : "Monthly");
-            ps.setString(3, notes);
-            return ps.executeUpdate() > 0;
+        String memberSql = "SELECT membership_type, sessions_remaining FROM members WHERE member_id=? FOR UPDATE";
+        String insertSql = "INSERT INTO attendance (member_id, time_in, attendance_date, session_type, notes) " +
+                           "VALUES (?, NOW(), CURDATE(), ?, ?)";
+        String creditSql = "UPDATE members SET sessions_remaining=sessions_remaining-1, updated_at=NOW() WHERE member_id=?";
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            ensureSessionColumns(conn);
+            conn.setAutoCommit(false);
+            String currentPlan;
+            int remaining;
+            try (PreparedStatement ps = conn.prepareStatement(memberSql)) {
+                ps.setInt(1, memberId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        conn.rollback();
+                        return false;
+                    }
+                    currentPlan = rs.getString("membership_type");
+                    remaining = rs.getInt("sessions_remaining");
+                }
+            }
+            boolean perSession = "Per Session".equalsIgnoreCase(currentPlan);
+            if (perSession && remaining <= 0) {
+                conn.rollback();
+                return false;
+            }
+            try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
+                ps.setInt(1, memberId);
+                ps.setString(2, sessionType != null ? sessionType : currentPlan);
+                ps.setString(3, notes);
+                if (ps.executeUpdate() <= 0) {
+                    conn.rollback();
+                    return false;
+                }
+            }
+            if (perSession) {
+                try (PreparedStatement ps = conn.prepareStatement(creditSql)) {
+                    ps.setInt(1, memberId);
+                    ps.executeUpdate();
+                }
+            }
+            conn.commit();
+            return true;
         } catch (SQLException e) {
             System.err.println("[MemberDAO] recordAttendance error: " + e.getMessage());
             return false;
@@ -293,6 +329,7 @@ public class MemberDAO {
         List<MemberRecord> list = new ArrayList<>();
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
+            ensureSessionColumns(conn);
             setter.set(ps);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) list.add(map(rs));
@@ -319,8 +356,31 @@ public class MemberDAO {
             rs.getDate("membership_end_date"),
             rs.getString("status"),
             rs.getString("emergency_contact"),
-            rs.getString("emergency_phone")
+            rs.getString("emergency_phone"),
+            rs.getInt("sessions_paid"),
+            rs.getInt("sessions_remaining")
         );
+    }
+
+    private void ensureSessionColumns(Connection conn) {
+        try (ResultSet rs = conn.getMetaData().getColumns(null, null, "members", "sessions_paid")) {
+            if (!rs.next()) {
+                try (Statement st = conn.createStatement()) {
+                    st.executeUpdate("ALTER TABLE members ADD COLUMN sessions_paid INT NOT NULL DEFAULT 0");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[MemberDAO] ensure sessions_paid error: " + e.getMessage());
+        }
+        try (ResultSet rs = conn.getMetaData().getColumns(null, null, "members", "sessions_remaining")) {
+            if (!rs.next()) {
+                try (Statement st = conn.createStatement()) {
+                    st.executeUpdate("ALTER TABLE members ADD COLUMN sessions_remaining INT NOT NULL DEFAULT 0");
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[MemberDAO] ensure sessions_remaining error: " + e.getMessage());
+        }
     }
 
     private String generateNextCode() {

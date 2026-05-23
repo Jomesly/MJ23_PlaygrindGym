@@ -15,8 +15,16 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.animation.FadeTransition;
 import javafx.util.Duration;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import mj23gym.dao.UserDAO;
+import mj23gym.util.DatabaseConnection;
 
 /**
  * MJ23 Playgrind Gym  Settings Screen
@@ -36,6 +44,17 @@ public class SettingsScreen extends Application {
     static final String SUCCESS     = ModernDesignSystem.SUCCESS;
     static final String WARNING     = ModernDesignSystem.ACCENT_YELLOW;
     static final String INFO        = ModernDesignSystem.PRIMARY;
+
+    private record AuditRow(
+        int logId,
+        String entityType,
+        int entityId,
+        String action,
+        String oldValues,
+        String newValues,
+        String status,
+        String createdAt
+    ) {}
 
     @Override
     public void start(Stage stage) {
@@ -216,7 +235,7 @@ public class SettingsScreen extends Application {
         savePrefBtn.getChildren().add(savePrefs);
         sysCard.getChildren().addAll(prefGrid, savePrefBtn);
 
-        tabContent.getChildren().addAll(pwCard, accessCard, sysCard);
+        tabContent.getChildren().addAll(pwCard, accessCard, buildAuditLogViewer(), sysCard);
         body.getChildren().addAll(tabRow, tabContent);
         scroll.setContent(body);
         content.getChildren().addAll(topBar, scroll);
@@ -238,6 +257,180 @@ public class SettingsScreen extends Application {
         hdr.getChildren().addAll(t, s, ul);
         card.getChildren().add(hdr);
         return card;
+    }
+
+    private VBox buildAuditLogViewer() {
+        VBox card = buildSectionCard("  Audit Log Viewer", "Read-only trail for critical database changes");
+
+        ComboBox<String> entityFilter = new ComboBox<>();
+        entityFilter.getItems().addAll("All", "members", "payment_records", "billing");
+        entityFilter.setValue("All");
+        styleCombo(entityFilter);
+
+        ComboBox<String> actionFilter = new ComboBox<>();
+        actionFilter.getItems().addAll("All", "UPDATE", "DELETE", "CANCELLED_ON_UPGRADE");
+        actionFilter.setValue("All");
+        styleCombo(actionFilter);
+
+        DatePicker fromDate = new DatePicker(LocalDate.now().minusDays(30));
+        DatePicker toDate = new DatePicker(LocalDate.now());
+        styleDatePicker(fromDate);
+        styleDatePicker(toDate);
+
+        Button refresh = makeAccentBtn("Refresh");
+
+        HBox filters = new HBox(12);
+        filters.setAlignment(Pos.CENTER_LEFT);
+        filters.getChildren().addAll(
+            filterGroup("ENTITY", entityFilter),
+            filterGroup("ACTION", actionFilter),
+            filterGroup("FROM", fromDate),
+            filterGroup("TO", toDate),
+            refresh
+        );
+
+        TableView<AuditRow> table = new TableView<>();
+        table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
+        table.setPrefHeight(310);
+        table.setEditable(false);
+        table.setStyle(
+            "-fx-background-color: " + BG_MAIN + ";" +
+            "-fx-control-inner-background: " + BG_MAIN + ";" +
+            "-fx-table-cell-border-color: " + BORDER + ";" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 12;" +
+            "-fx-background-radius: 12;"
+        );
+
+        TableColumn<AuditRow, String> timeCol = textColumn("Created", row -> row.createdAt());
+        TableColumn<AuditRow, String> entityCol = textColumn("Entity", row -> row.entityType());
+        TableColumn<AuditRow, String> idCol = textColumn("ID", row -> String.valueOf(row.entityId()));
+        TableColumn<AuditRow, String> actionCol = textColumn("Action", row -> row.action());
+        TableColumn<AuditRow, String> oldCol = textColumn("Old Values", row -> compact(row.oldValues()));
+        TableColumn<AuditRow, String> newCol = textColumn("New Values", row -> compact(row.newValues()));
+        TableColumn<AuditRow, String> statusCol = textColumn("Status", row -> row.status());
+        table.getColumns().addAll(timeCol, entityCol, idCol, actionCol, oldCol, newCol, statusCol);
+
+        Label hint = new Label("Read-only. No edit, delete, or bulk actions are available on audit entries.");
+        hint.setFont(Font.font("Poppins", 10));
+        hint.setTextFill(Color.web(TEXT_MUTED));
+
+        Runnable load = () -> table.getItems().setAll(loadAuditRows(
+            entityFilter.getValue(),
+            actionFilter.getValue(),
+            fromDate.getValue(),
+            toDate.getValue()
+        ));
+        refresh.setOnAction(e -> load.run());
+        load.run();
+
+        card.getChildren().addAll(filters, table, hint);
+        return card;
+    }
+
+    private TableColumn<AuditRow, String> textColumn(String title, java.util.function.Function<AuditRow, String> getter) {
+        TableColumn<AuditRow, String> col = new TableColumn<>(title);
+        col.setCellValueFactory(data -> new javafx.beans.property.SimpleStringProperty(getter.apply(data.getValue())));
+        col.setCellFactory(column -> {
+            TableCell<AuditRow, String> cell = new TableCell<>() {
+                @Override
+                protected void updateItem(String item, boolean empty) {
+                    super.updateItem(item, empty);
+                    setText(empty || item == null ? "" : item);
+                    setWrapText(true);
+                    setTextFill(Color.web(TEXT_WHITE));
+                    setFont(Font.font("Poppins", 10));
+                }
+            };
+            return cell;
+        });
+        return col;
+    }
+
+    private List<AuditRow> loadAuditRows(String entity, String action, LocalDate from, LocalDate to) {
+        String sql =
+            "SELECT log_id, entity_type, entity_id, action, old_values, new_values, status, created_at " +
+            "FROM audit_logs WHERE (?='All' OR entity_type=?) " +
+            "AND (?='All' OR action=?) " +
+            "AND DATE(created_at) BETWEEN ? AND ? " +
+            "ORDER BY created_at DESC, log_id DESC LIMIT 250";
+        java.util.ArrayList<AuditRow> rows = new java.util.ArrayList<>();
+        LocalDate start = from != null ? from : LocalDate.now().minusDays(30);
+        LocalDate end = to != null ? to : LocalDate.now();
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, entity);
+            ps.setString(2, entity);
+            ps.setString(3, action);
+            ps.setString(4, action);
+            ps.setDate(5, Date.valueOf(start));
+            ps.setDate(6, Date.valueOf(end));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    rows.add(new AuditRow(
+                        rs.getInt("log_id"),
+                        safe(rs.getString("entity_type")),
+                        rs.getInt("entity_id"),
+                        safe(rs.getString("action")),
+                        safe(rs.getString("old_values")),
+                        safe(rs.getString("new_values")),
+                        safe(rs.getString("status")),
+                        rs.getTimestamp("created_at") != null
+                            ? rs.getTimestamp("created_at").toLocalDateTime().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+                            : ""
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            warn("Could not load audit logs.");
+        }
+        return rows;
+    }
+
+    private VBox filterGroup(String label, Control control) {
+        VBox box = new VBox(6);
+        Label lbl = new Label(label);
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
+        lbl.setTextFill(Color.web(TEXT_MUTED));
+        control.setPrefHeight(38);
+        box.getChildren().addAll(lbl, control);
+        return box;
+    }
+
+    private void styleCombo(ComboBox<String> combo) {
+        combo.setMinWidth(150);
+        combo.setStyle(
+            "-fx-background-color: " + BG_MAIN + ";" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-font-family: Poppins;" +
+            "-fx-font-size: 12;"
+        );
+    }
+
+    private void styleDatePicker(DatePicker picker) {
+        picker.setMinWidth(145);
+        picker.setStyle(
+            "-fx-background-color: " + BG_MAIN + ";" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;"
+        );
+        picker.getEditor().setStyle(
+            "-fx-control-inner-background: " + BG_MAIN + ";" +
+            "-fx-text-fill: " + TEXT_WHITE + ";" +
+            "-fx-prompt-text-fill: " + TEXT_DIM + ";"
+        );
+    }
+
+    private String compact(String value) {
+        String cleaned = safe(value).replace('\n', ' ').replace('\r', ' ');
+        return cleaned.length() > 140 ? cleaned.substring(0, 137) + "..." : cleaned;
+    }
+
+    private String safe(String value) {
+        return value == null ? "" : value;
     }
 
     private void populateAccessControlList(

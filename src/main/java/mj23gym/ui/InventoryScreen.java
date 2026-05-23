@@ -644,12 +644,13 @@ public class InventoryScreen extends Application {
             int q = it.currentStock();
             boolean needsRestock = isLowStock(it);
             boolean needsDateAttention = isExpiredOrExpiringSoon(it);
+            boolean hasExpiringBatch = hasExpiringBatch(dao, it.itemId());
             rGrid.add(makeCell(code, TEXT_SOFT, true), 0, 0);
             rGrid.add(makeCell(it.itemName(), TEXT_TITLE, true), 1, 0);
             rGrid.add(makeCatBadge(it.category()), 2, 0);
             rGrid.add(makeQuantityCell(it), 3, 0);
             rGrid.add(makeCell("PHP " + String.format("%,.2f", it.sellingPrice()), TEXT_SOFT, false), 4, 0);
-            rGrid.add(makeExpiryBadge(it.expirationDate()), 5, 0);
+            rGrid.add(makeExpiryCell(dao, it), 5, 0);
             rGrid.add(makeStockBadge(it.status()), 6, 0);
             Button del = makeActionBtn("", TEXT_TITLE);
             del.setOnAction(e -> {
@@ -683,13 +684,17 @@ public class InventoryScreen extends Application {
             rGrid.add(actions, 7, 0);
             row.getChildren().add(rGrid);
             String fBg = bg;
-            if (needsRestock || needsDateAttention) {
+            if (needsRestock || needsDateAttention || hasExpiringBatch) {
                 row.setCursor(javafx.scene.Cursor.HAND);
                 row.setOnMouseClicked(e -> {
                     if (e.getTarget() instanceof Button) {
                         return;
                     }
-                    showRestockDetails(it);
+                    if (hasExpiringBatch) {
+                        showBatchesDialog(dao, it);
+                    } else {
+                        showRestockDetails(it);
+                    }
                 });
             }
             row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: rgba(26,19,99,0.06);"));
@@ -824,27 +829,87 @@ public class InventoryScreen extends Application {
     }
 
     private void showStockDialog(InventoryDAO dao, InventoryDAO.InventoryRecord item, Runnable onSaved) {
-        TextInputDialog dialog = new TextInputDialog(String.valueOf(item.currentStock()));
-        dialog.setTitle("Update Stock");
-        dialog.setHeaderText("Set current stock for " + item.itemName());
-        dialog.setContentText("Current stock:");
-        Optional<String> value = dialog.showAndWait();
-        if (value.isPresent()) {
-            try {
-                int stock = Integer.parseInt(value.get().trim());
-                if (stock < 0) {
-                    invAlert(Alert.AlertType.WARNING, "Stock cannot be negative.");
-                    return;
-                }
-                if (dao.adjustStock(item.itemId(), stock)) {
-                    onSaved.run();
-                } else {
-                    invAlert(Alert.AlertType.ERROR, "Could not update stock.");
-                }
-            } catch (NumberFormatException ex) {
-                invAlert(Alert.AlertType.ERROR, "Enter a valid stock quantity.");
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Restock Item");
+        dialog.setResizable(false);
+
+        VBox root = new VBox(14);
+        root.setPadding(new Insets(24));
+        root.setStyle("-fx-background-color: " + BG_CARD + ";");
+        root.setPrefWidth(440);
+
+        Text title = new Text("Restock " + item.itemName());
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
+        title.setFill(Color.web(TEXT_TITLE));
+
+        TextField qtyTf = new TextField();
+        TextField batchCodeTf = new TextField();
+        DatePicker expiryPicker = new DatePicker(item.expirationDate() != null ? item.expirationDate().toLocalDate() : null);
+        expiryPicker.getEditor().setPromptText("YYYY-MM-DD optional");
+        DatePicker receivedPicker = new DatePicker(LocalDate.now());
+        receivedPicker.getEditor().setPromptText("YYYY-MM-DD");
+        TextField notesTf = new TextField();
+
+        VBox qtyBox = labeledInv("BATCH QUANTITY", qtyTf, "Quantity received");
+        Label qtyError = makeValidationLabel();
+        qtyBox.getChildren().add(qtyError);
+        VBox expiryBox = datePickerInv("EXPIRATION DATE", expiryPicker);
+        Label expiryError = makeValidationLabel();
+        expiryBox.getChildren().add(expiryError);
+        VBox receivedBox = datePickerInv("RECEIVED DATE", receivedPicker);
+        Label receivedError = makeValidationLabel();
+        receivedBox.getChildren().add(receivedError);
+
+        root.getChildren().addAll(
+            title,
+            qtyBox,
+            labeledInv("BATCH CODE", batchCodeTf, "Optional batch or lot code"),
+            expiryBox,
+            receivedBox,
+            labeledInv("NOTES", notesTf, "Optional")
+        );
+
+        HBox buttons = new HBox(12);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+        Button cancel = new Button("Cancel");
+        cancel.setOnAction(e -> dialog.close());
+        Button save = makeAccentBtn("Add Batch");
+        save.setOnAction(e -> {
+            clearValidation(qtyError, expiryError, receivedError);
+            Integer qty = parseNonNegativeInt(qtyTf.getText().trim(), qtyError, "Batch quantity");
+            if (qty == null || qty <= 0) {
+                setValidation(qtyError, "Batch quantity must be greater than zero.");
+                return;
             }
-        }
+            Date expiry = dateFromPickerOrMark(expiryPicker, expiryError);
+            Date received = dateFromPickerOrMark(receivedPicker, receivedError);
+            boolean invalidDate = isInvalidDatePickerText(expiryPicker, expiry)
+                || isInvalidDatePickerText(receivedPicker, received);
+            if (invalidDate) {
+                return;
+            }
+            int uid = AppSession.currentUser().userId();
+            boolean ok = dao.insertBatch(
+                item.itemId(),
+                qty,
+                expiry,
+                received,
+                batchCodeTf.getText().trim(),
+                notesTf.getText().trim(),
+                uid
+            );
+            if (ok) {
+                dialog.close();
+                onSaved.run();
+            } else {
+                invAlert(Alert.AlertType.ERROR, "Could not save restock batch.");
+            }
+        });
+        buttons.getChildren().addAll(cancel, save);
+        root.getChildren().add(buttons);
+        dialog.setScene(new Scene(root));
+        dialog.showAndWait();
     }
 
     private boolean isLowStock(InventoryDAO.InventoryRecord item) {
@@ -1287,6 +1352,58 @@ public class InventoryScreen extends Application {
             "-fx-padding: 4 10 4 10;"
         );
         return b;
+    }
+
+    private HBox makeExpiryCell(InventoryDAO dao, InventoryDAO.InventoryRecord item) {
+        HBox cell = new HBox(6);
+        cell.setAlignment(Pos.CENTER_LEFT);
+        cell.getChildren().add(makeExpiryBadge(item.expirationDate()));
+        if (hasExpiringBatch(dao, item.itemId())) {
+            Button warning = new Button("⚠");
+            warning.setTooltip(new javafx.scene.control.Tooltip("Batch expiring within 30 days"));
+            warning.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+            warning.setStyle(
+                "-fx-background-color: transparent;" +
+                "-fx-text-fill: " + WARNING_TEXT + ";" +
+                "-fx-padding: 0 2 0 2;" +
+                "-fx-cursor: hand;"
+            );
+            warning.setOnAction(e -> showBatchesDialog(dao, item));
+            cell.getChildren().add(warning);
+        }
+        return cell;
+    }
+
+    private boolean hasExpiringBatch(InventoryDAO dao, int itemId) {
+        LocalDate limit = LocalDate.now().plusDays(30);
+        for (InventoryDAO.InventoryBatchRecord batch : dao.findBatchesByItem(itemId)) {
+            if (batch.expirationDate() != null && !batch.expirationDate().toLocalDate().isAfter(limit)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void showBatchesDialog(InventoryDAO dao, InventoryDAO.InventoryRecord item) {
+        List<InventoryDAO.InventoryBatchRecord> batches = dao.findBatchesByItem(item.itemId());
+        StringBuilder message = new StringBuilder();
+        if (batches.isEmpty()) {
+            message.append("No restock batches saved for this item yet.");
+        } else {
+            for (InventoryDAO.InventoryBatchRecord batch : batches) {
+                message.append("Batch: ").append(batch.batchCode() != null ? batch.batchCode() : "-")
+                    .append("\nQuantity: ").append(batch.quantity())
+                    .append("\nReceived: ").append(batch.receivedDate() != null ? batch.receivedDate() : "-")
+                    .append("\nExpiry: ").append(expiryDetailText(batch.expirationDate()))
+                    .append("\nNotes: ").append(blankFallback(batch.notes(), "No notes"))
+                    .append("\n\n");
+            }
+        }
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Inventory Batches");
+        alert.setHeaderText(item.itemName() + " batches");
+        alert.setContentText(message.toString());
+        alert.showAndWait();
     }
 
     private Label makeCatBadge(String cat) {

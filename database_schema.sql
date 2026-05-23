@@ -77,6 +77,8 @@ CREATE TABLE IF NOT EXISTS members (
     membership_start_date  DATE NOT NULL,
     membership_end_date    DATE,
     membership_type        ENUM('Daily','Per Session','Monthly','Quarterly','Semi Annual','Yearly','Annual') DEFAULT 'Monthly',
+    sessions_paid          INT NOT NULL DEFAULT 0,
+    sessions_remaining     INT NOT NULL DEFAULT 0,
     status                 ENUM('Active','Expired','Suspended','Cancelled') DEFAULT 'Active',
     created_by             INT,
     created_at             TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -145,6 +147,21 @@ CREATE TABLE IF NOT EXISTS inventory (
     INDEX idx_item_code (item_code),
     INDEX idx_status    (status),
     INDEX idx_category  (category)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS inventory_batches (
+    batch_id        INT AUTO_INCREMENT PRIMARY KEY,
+    item_id         INT NOT NULL,
+    batch_code      VARCHAR(30),
+    quantity        INT NOT NULL DEFAULT 0,
+    expiration_date DATE,
+    received_date   DATE NOT NULL DEFAULT (CURDATE()),
+    notes           TEXT,
+    created_by      INT,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (item_id)    REFERENCES inventory(item_id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(user_id)    ON DELETE SET NULL,
+    INDEX idx_item_expiry (item_id, expiration_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -247,6 +264,7 @@ CREATE TABLE IF NOT EXISTS payment_records (
     billing_id      INT,
     payment_method  ENUM('Cash','GCash','Bank Transfer','Other') DEFAULT 'Cash',
     payment_type    ENUM('Membership','Personal Training','Merchandise','Other') DEFAULT 'Membership',
+    plan_type_snapshot VARCHAR(50) NULL,
     payment_date    DATE NOT NULL,
     amount          DECIMAL(10,2) NOT NULL,
     transaction_ref VARCHAR(100),
@@ -392,6 +410,112 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     INDEX idx_created_at (created_at),
     INDEX idx_entity     (entity_type, entity_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================================
+-- DATABASE-LEVEL AUDIT TRIGGERS
+-- ============================================================
+-- These protect critical membership and financial tables even when changes
+-- are made outside the Java application.
+DROP TRIGGER IF EXISTS trg_members_update;
+DROP TRIGGER IF EXISTS trg_members_delete;
+DROP TRIGGER IF EXISTS trg_payment_records_delete;
+DROP TRIGGER IF EXISTS trg_billing_update;
+
+DELIMITER $$
+
+CREATE TRIGGER trg_members_update
+BEFORE UPDATE ON members
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_logs (entity_type, entity_id, action, old_values, new_values, status, created_at)
+    VALUES (
+        'members',
+        OLD.member_id,
+        'UPDATE',
+        JSON_OBJECT(
+            'membership_type', OLD.membership_type,
+            'status', OLD.status,
+            'membership_end_date', OLD.membership_end_date
+        ),
+        JSON_OBJECT(
+            'membership_type', NEW.membership_type,
+            'status', NEW.status,
+            'membership_end_date', NEW.membership_end_date
+        ),
+        'Success',
+        NOW()
+    );
+END$$
+
+CREATE TRIGGER trg_members_delete
+BEFORE DELETE ON members
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_logs (entity_type, entity_id, action, old_values, status, created_at)
+    VALUES (
+        'members',
+        OLD.member_id,
+        'DELETE',
+        JSON_OBJECT(
+            'unique_member_code', OLD.unique_member_code,
+            'first_name', OLD.first_name,
+            'last_name', OLD.last_name,
+            'membership_type', OLD.membership_type,
+            'status', OLD.status
+        ),
+        'Success',
+        NOW()
+    );
+END$$
+
+CREATE TRIGGER trg_payment_records_delete
+BEFORE DELETE ON payment_records
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_logs (entity_type, entity_id, action, old_values, status, created_at)
+    VALUES (
+        'payment_records',
+        OLD.payment_id,
+        'DELETE',
+        JSON_OBJECT(
+            'member_id', OLD.member_id,
+            'amount', OLD.amount,
+            'payment_date', OLD.payment_date,
+            'payment_type', OLD.payment_type,
+            'status', OLD.status
+        ),
+        'Success',
+        NOW()
+    );
+END$$
+
+CREATE TRIGGER trg_billing_update
+BEFORE UPDATE ON billing
+FOR EACH ROW
+BEGIN
+    INSERT INTO audit_logs (entity_type, entity_id, action, old_values, new_values, status, created_at)
+    VALUES (
+        'billing',
+        OLD.billing_id,
+        'UPDATE',
+        JSON_OBJECT(
+            'payment_status', OLD.payment_status,
+            'status', OLD.status,
+            'amount_paid', OLD.amount_paid
+        ),
+        JSON_OBJECT(
+            'payment_status', NEW.payment_status,
+            'status', NEW.status,
+            'amount_paid', NEW.amount_paid
+        ),
+        'Success',
+        NOW()
+    );
+END$$
+
+DELIMITER ;
+
+REVOKE DELETE ON mj23gym.audit_logs FROM 'root'@'localhost';
 
 
 -- ============================================================

@@ -430,6 +430,7 @@ public class DashboardScreen extends Application {
             java.sql.Date.valueOf(yesterday)
         );
         int lowStockCount = inventoryDAO.countLowStock();
+        int batchExpiringCount = inventoryDAO.findExpiringSoonBatches(30).size();
         int maintDue = equipmentDAO.findMaintenanceDue().size();
         searchField.setOnAction(e -> showDashboardSearch(searchField.getText()));
         notifBtn.setOnAction(e -> showDashboardNotifications(lowStockCount, maintDue));
@@ -448,6 +449,8 @@ public class DashboardScreen extends Application {
             makeSummaryCard("👥", "Total Members",    String.valueOf(totalMembers),  formatMembersThisMonth(membersThisMonth),  ACCENT,   true),
             makeSummaryCard("💰", "Revenue Today",    revStr, formatRevenueDelta(revenueToday, revenueYesterday), SUCCESS, false),
             makeSummaryCard("📦", "Low Stock Items",  String.valueOf(lowStockCount),    "Needs restocking", WARNING, false),
+            makeSummaryCard("⚠", "Expiring Batches", String.valueOf(batchExpiringCount),
+                batchExpiringCount > 0 ? "Within 30 days" : "No batches due", WARNING, false),
             makeSummaryCard("🔧", "Maintenance Due", String.valueOf(maintDue),
                 maintDue > 0 ? "Within 30 days" : "None due soon", INFO, false)
         );
@@ -462,6 +465,7 @@ public class DashboardScreen extends Application {
             () -> dashboardDetails.getChildren().setAll(buildMembersDetail(memberDAO, totalMembers, recentMembers)),
             () -> dashboardDetails.getChildren().setAll(buildRevenueDetail(paymentDAO, posDAO, revenueToday)),
             () -> dashboardDetails.getChildren().setAll(buildLowStockDetail(inventoryDAO)),
+            () -> dashboardDetails.getChildren().setAll(buildExpiringBatchDetail(inventoryDAO)),
             () -> dashboardDetails.getChildren().setAll(buildMaintenanceDetail(equipmentDAO))
         );
 
@@ -570,7 +574,7 @@ public class DashboardScreen extends Application {
                                   String sub, String color, boolean highlighted) {
         VBox card = new VBox(12);
         card.setPadding(new Insets(22, 24, 22, 24));
-        card.setPrefWidth(220);
+        card.setPrefWidth(180);
         card.setMinHeight(160);
         card.setCursor(javafx.scene.Cursor.HAND);
         String readableColor = readableAccent(color);
@@ -991,6 +995,41 @@ public class DashboardScreen extends Application {
             "Restock List",
             new String[]{"Code", "Item", "Category", "Stock", "Reorder", "Status"},
             rows.length > 0 ? rows : new String[][]{{"No records", "All items are above reorder level", "-", "0", "0", "Active"}},
+            true
+        );
+    }
+
+    private VBox buildExpiringBatchDetail(InventoryDAO inventoryDAO) {
+        List<InventoryDAO.InventoryBatchRecord> batches = inventoryDAO.findExpiringSoonBatches(30);
+        String[][] rows = new String[Math.min(10, batches.size())][6];
+        int expired = 0;
+        for (InventoryDAO.InventoryBatchRecord batch : batches) {
+            if (batch.expirationDate() != null && batch.expirationDate().toLocalDate().isBefore(LocalDate.now())) {
+                expired++;
+            }
+        }
+        for (int i = 0; i < rows.length; i++) {
+            InventoryDAO.InventoryBatchRecord batch = batches.get(i);
+            rows[i][0] = batch.itemCode() != null ? batch.itemCode() : "-";
+            rows[i][1] = batch.itemName();
+            rows[i][2] = batch.batchCode() != null ? batch.batchCode() : "-";
+            rows[i][3] = String.valueOf(batch.quantity());
+            rows[i][4] = batch.expirationDate() != null ? batch.expirationDate().toString() : "No expiry";
+            rows[i][5] = batch.receivedDate() != null ? batch.receivedDate().toString() : "-";
+        }
+
+        return buildDashboardDetailSection(
+            "Expiring Batches",
+            "Inventory batches expiring within 30 days",
+            new String[][]{
+                {"Expiring Soon", String.valueOf(batches.size()), WARNING_TEXT},
+                {"Expired", String.valueOf(expired), ACCENT},
+                {"Upcoming", String.valueOf(Math.max(0, batches.size() - expired)), SUCCESS_TEXT},
+                {"Shown", String.valueOf(rows.length), TEXT_MUTED}
+            },
+            "Batch Expiry List",
+            new String[]{"Code", "Item", "Batch", "Qty", "Expiry", "Received"},
+            rows.length > 0 ? rows : new String[][]{{"No records", "No batches expiring within 30 days", "-", "0", "-", "-"}},
             true
         );
     }
