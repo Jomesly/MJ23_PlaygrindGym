@@ -68,6 +68,18 @@ public class PaymentDAO {
         String processedBy
     ) {}
 
+    public record BillingSummaryRow(
+        int billingId,
+        int memberId,
+        String memberCode,
+        String memberName,
+        Date dueDate,
+        double amountDue,
+        double amountPaid,
+        String paymentStatus,
+        String status
+    ) {}
+
     public record UpgradeResult(
         int paymentId,
         int billingId,
@@ -128,6 +140,29 @@ public class PaymentDAO {
             "(payment_status='Unpaid' AND due_date < CURDATE()) ORDER BY due_date",
             ps -> {}
         );
+    }
+
+    public List<BillingSummaryRow> findPendingInvoiceSummaries() {
+        String sql =
+            "SELECT b.billing_id, b.member_id, m.unique_member_code AS member_code," +
+            " CONCAT(m.first_name,' ',m.last_name) AS member_name, b.due_date," +
+            " b.amount_due, b.amount_paid, b.payment_status, b.status" +
+            " FROM billing b JOIN members m ON b.member_id=m.member_id" +
+            " WHERE b.payment_status='Unpaid' AND b.due_date >= CURDATE() AND b.status <> 'Cancelled'" +
+            " ORDER BY b.due_date ASC, b.billing_id DESC";
+        return billingSummaryQuery(sql);
+    }
+
+    public List<BillingSummaryRow> findOverdueInvoiceSummaries() {
+        String sql =
+            "SELECT b.billing_id, b.member_id, m.unique_member_code AS member_code," +
+            " CONCAT(m.first_name,' ',m.last_name) AS member_name, b.due_date," +
+            " b.amount_due, b.amount_paid, b.payment_status, b.status" +
+            " FROM billing b JOIN members m ON b.member_id=m.member_id" +
+            " WHERE (b.payment_status='Overdue' OR (b.payment_status='Unpaid' AND b.due_date < CURDATE()))" +
+            " AND b.status <> 'Cancelled'" +
+            " ORDER BY b.due_date ASC, b.billing_id DESC";
+        return billingSummaryQuery(sql);
     }
 
     // ── BILLING CREATE ────────────────────────────────────────────
@@ -261,7 +296,9 @@ public class PaymentDAO {
             " m.unique_member_code AS member_code" +
             " FROM payment_records pr" +
             " JOIN members m ON pr.member_id = m.member_id" +
-            " WHERE pr.payment_date BETWEEN ? AND ? ORDER BY pr.payment_date DESC";
+            " WHERE pr.payment_date BETWEEN ? AND ?" +
+            " AND m.status <> 'Cancelled'" +
+            " ORDER BY pr.payment_date DESC";
         return paymentQuery(sql, ps -> { ps.setDate(1, from); ps.setDate(2, to); });
     }
 
@@ -283,6 +320,8 @@ public class PaymentDAO {
             " FROM payment_records pr" +
             " JOIN members m ON pr.member_id = m.member_id" +
             " WHERE pr.payment_date BETWEEN ? AND ?" +
+            " AND pr.amount > 0" +
+            " AND m.status <> 'Cancelled'" +
             " ORDER BY pr.payment_date DESC, pr.created_at DESC";
         List<PaymentSummaryRow> list = new ArrayList<>();
         try (Connection conn = DatabaseConnection.getConnection()) {
@@ -314,7 +353,7 @@ public class PaymentDAO {
     public double sumCompletedBetween(Date from, Date to) {
         String sql =
             "SELECT COALESCE(SUM(amount),0) FROM payment_records" +
-            " WHERE status='Completed' AND payment_date BETWEEN ? AND ?";
+            " WHERE status='Completed' AND amount > 0 AND payment_date BETWEEN ? AND ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDate(1, from);
@@ -328,7 +367,7 @@ public class PaymentDAO {
     }
 
     public int countBetween(Date from, Date to) {
-        String sql = "SELECT COUNT(*) FROM payment_records WHERE payment_date BETWEEN ? AND ?";
+        String sql = "SELECT COUNT(*) FROM payment_records WHERE amount > 0 AND payment_date BETWEEN ? AND ?";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setDate(1, from);
@@ -343,14 +382,14 @@ public class PaymentDAO {
 
     /** Total revenue for today. */
     public double todayRevenue() {
-        String sql = "SELECT COALESCE(SUM(amount),0) FROM payment_records WHERE payment_date=CURDATE() AND status='Completed'";
+        String sql = "SELECT COALESCE(SUM(amount),0) FROM payment_records WHERE payment_date=CURDATE() AND status='Completed' AND amount > 0";
         return scalarDouble(sql);
     }
 
     /** Total revenue for a given month (YYYY-MM). */
     public double monthRevenue(String yyyyMm) {
         String sql = "SELECT COALESCE(SUM(amount),0) FROM payment_records " +
-                     "WHERE DATE_FORMAT(payment_date,'%Y-%m')=? AND status='Completed'";
+                     "WHERE DATE_FORMAT(payment_date,'%Y-%m')=? AND status='Completed' AND amount > 0";
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, yyyyMm);
@@ -794,19 +833,19 @@ public class PaymentDAO {
 
     /** Billing rows still marked Unpaid (not yet fully paid). */
     public int countPendingInvoices() {
-        String sql = "SELECT COUNT(*) FROM billing WHERE payment_status = 'Unpaid'";
+        String sql = "SELECT COUNT(*) FROM billing WHERE payment_status = 'Unpaid' AND due_date >= CURDATE() AND status <> 'Cancelled'";
         return scalarInt(sql);
     }
 
     /** Billing overdue or unpaid past due date. */
     public int countOverdueAccounts() {
-        return findOverdue().size();
+        return findOverdueInvoiceSummaries().size();
     }
 
     /** Completed membership (or any) payments recorded this calendar month. */
     public int countCompletedPaymentsThisMonth() {
         String sql =
-            "SELECT COUNT(*) FROM payment_records WHERE status = 'Completed' " +
+            "SELECT COUNT(*) FROM payment_records WHERE status = 'Completed' AND amount > 0 " +
             "AND YEAR(payment_date) = YEAR(CURDATE()) AND MONTH(payment_date) = MONTH(CURDATE())";
         return scalarInt(sql);
     }
@@ -819,6 +858,30 @@ public class PaymentDAO {
         } catch (SQLException e) {
             return 0;
         }
+    }
+
+    private List<BillingSummaryRow> billingSummaryQuery(String sql) {
+        List<BillingSummaryRow> rows = new ArrayList<>();
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                rows.add(new BillingSummaryRow(
+                    rs.getInt("billing_id"),
+                    rs.getInt("member_id"),
+                    rs.getString("member_code"),
+                    rs.getString("member_name"),
+                    rs.getDate("due_date"),
+                    rs.getDouble("amount_due"),
+                    rs.getDouble("amount_paid"),
+                    rs.getString("payment_status"),
+                    rs.getString("status")
+                ));
+            }
+        } catch (SQLException e) {
+            System.err.println("[PaymentDAO] billingSummaryQuery error: " + e.getMessage());
+        }
+        return rows;
     }
 
     private int findPlanId(String planName) {

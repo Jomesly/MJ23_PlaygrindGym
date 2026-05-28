@@ -108,16 +108,16 @@ public final class ReportDAO {
 
     public ReportMetrics buildMetrics(Date from, Date to) {
         return new ReportMetrics(
-            scalarInt("SELECT COUNT(*) FROM members WHERE created_at BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)", from, to),
+            scalarInt("SELECT COUNT(*) FROM members WHERE status <> 'Cancelled' AND created_at BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)", from, to),
             scalarInt("SELECT COUNT(*) FROM members WHERE status='Active'", from, to),
-            scalarInt("SELECT COUNT(*) FROM attendance WHERE attendance_date BETWEEN ? AND ?", from, to),
+            scalarInt("SELECT COUNT(*) FROM attendance a JOIN members m ON a.member_id=m.member_id WHERE m.status <> 'Cancelled' AND a.attendance_date BETWEEN ? AND ?", from, to),
             scalarInt("SELECT COUNT(*) FROM inventory WHERE is_active=TRUE", from, to),
             scalarInt("SELECT COUNT(*) FROM inventory WHERE is_active=TRUE AND current_stock <= reorder_level", from, to),
             scalarInt("SELECT COUNT(*) FROM equipment WHERE is_active=TRUE", from, to),
             scalarInt("SELECT COUNT(*) FROM equipment WHERE is_active=TRUE AND (`condition`='Maintenance' OR `condition`='Broken' OR next_maintenance <= DATE_ADD(CURDATE(), INTERVAL 30 DAY))", from, to),
-            scalarDouble("SELECT COALESCE(SUM(amount),0) FROM payment_records WHERE status='Completed' AND payment_date BETWEEN ? AND ?", from, to),
+            scalarDouble("SELECT COALESCE(SUM(pr.amount),0) FROM payment_records pr JOIN members m ON pr.member_id=m.member_id WHERE pr.status='Completed' AND pr.amount > 0 AND m.status <> 'Cancelled' AND pr.payment_date BETWEEN ? AND ?", from, to),
             scalarDouble("SELECT COALESCE(SUM(total_amount),0) FROM pos_transactions WHERE DATE(sale_date) BETWEEN ? AND ?", from, to),
-            scalarInt("SELECT COUNT(*) FROM payment_records WHERE payment_date BETWEEN ? AND ?", from, to),
+            scalarInt("SELECT COUNT(*) FROM payment_records pr JOIN members m ON pr.member_id=m.member_id WHERE pr.amount > 0 AND m.status <> 'Cancelled' AND pr.payment_date BETWEEN ? AND ?", from, to),
             scalarInt("SELECT COUNT(*) FROM pos_transactions WHERE DATE(sale_date) BETWEEN ? AND ?", from, to)
         );
     }
@@ -185,9 +185,13 @@ public final class ReportDAO {
         }
         if ("Membership".equalsIgnoreCase(reportType)
                 || "Attendance".equalsIgnoreCase(reportType)
+                || "Attendance Report".equalsIgnoreCase(reportType)
                 || "Inventory".equalsIgnoreCase(reportType)
                 || "Inventory Report".equalsIgnoreCase(reportType)
                 || "Equipment".equalsIgnoreCase(reportType)) {
+            if (reportType.toLowerCase().contains("attendance")) {
+                return "Attendance";
+            }
             return reportType.toLowerCase().contains("inventory") ? "Inventory" : capitalize(reportType);
         }
         return "Other";

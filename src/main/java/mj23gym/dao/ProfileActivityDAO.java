@@ -37,7 +37,7 @@ public final class ProfileActivityDAO {
             ),
             scalarInt(
                 "SELECT " +
-                "(SELECT COUNT(*) FROM payment_records WHERE processed_by=? AND payment_date=CURDATE()) + " +
+                "(SELECT COUNT(*) FROM payment_records WHERE processed_by=? AND payment_date=CURDATE() AND amount > 0) + " +
                 "(SELECT COUNT(*) FROM pos_transactions WHERE processed_by=? AND DATE(sale_date)=CURDATE())",
                 userId,
                 userId

@@ -356,29 +356,33 @@ public class SearchScreen {
         HBox chip = new HBox(12);
         chip.setAlignment(Pos.CENTER_LEFT);
         chip.setPadding(new Insets(14, 18, 14, 18));
+        String outline = readableAccent(color);
         chip.setStyle(
             "-fx-background-color: " + CARD_SURFACE + ";" +
             "-fx-background-radius: 16;" +
-            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-color: " + outline + ";" +
             "-fx-border-radius: 16;" +
-            "-fx-border-width: 1;"
+            "-fx-border-width: 1.5;"
         );
         HBox.setHgrow(chip, Priority.ALWAYS);
         DropShadow d = new DropShadow();
-        d.setColor(Color.web("#000000", 0.08));
-        d.setRadius(8);
+        d.setColor(Color.web(outline, 0.08));
+        d.setRadius(6);
         d.setOffsetY(2);
         chip.setEffect(d);
-        Rectangle accent = new Rectangle(4, 36);
-        accent.setArcWidth(4);
-        accent.setArcHeight(4);
-        accent.setFill(Color.web(color));
-        value.setFill(Color.web(color));
+        value.setFill(Color.web(outline));
         Text lbl = new Text(label);
         lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         lbl.setFill(Color.web(TEXT_SOFT));
-        chip.getChildren().addAll(accent, new VBox(2, lbl, value));
+        chip.getChildren().addAll(new VBox(2, lbl, value));
         return chip;
+    }
+
+    private String readableAccent(String color) {
+        if (color == null || color.isBlank() || "#FDEE21".equalsIgnoreCase(color)) {
+            return WARNING_TEXT;
+        }
+        return color;
     }
 
     private TextField styledField() {

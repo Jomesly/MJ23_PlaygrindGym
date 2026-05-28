@@ -23,6 +23,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
@@ -46,9 +47,11 @@ import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import mj23gym.dao.InventoryDAO;
+import mj23gym.dao.MemberDAO;
 import mj23gym.dao.PaymentDAO;
 import mj23gym.dao.PosDAO;
 import mj23gym.dao.ReportDAO;
+import mj23gym.util.ReportExcelExporter;
 import mj23gym.util.ReportPdfExporter;
 
 /**
@@ -156,7 +159,8 @@ public class ReportsScreen extends Application {
         pg.getChildren().addAll(t1, t2);
         Region tSp = new Region(); HBox.setHgrow(tSp, Priority.ALWAYS);
         Button exportBtn = outlineButton("Export PDF");
-        topBar.getChildren().addAll(pg, tSp, exportBtn);
+        Button exportExcelBtn = outlineButton("Export Excel");
+        topBar.getChildren().addAll(pg, tSp, exportBtn, exportExcelBtn);
 
         ScrollPane scroll = new ScrollPane();
         scroll.setFitToWidth(true);
@@ -171,7 +175,7 @@ public class ReportsScreen extends Application {
         final Runnable[] refreshDisplay = new Runnable[1];
 
         ComboBox<String> groupBy = new ComboBox<>();
-        groupBy.getItems().addAll("Sales Report", "Payment Report", "Inventory Report");
+        groupBy.getItems().addAll("Sales Report", "Payment Report", "Attendance Report", "Inventory Report");
         groupBy.setValue(selectedReport[0]);
         styleCombo(groupBy);
 
@@ -181,6 +185,7 @@ public class ReportsScreen extends Application {
         String[][] reportTypes = {
             {"POS", "Sales Report",     "Revenue from product sales"},
             {"PAY", "Payment Report",   "Membership dues and payments"},
+            {"ATT", "Attendance Report", "Check-ins by session type"},
             {"INV", "Inventory Report", "Stock levels and item status"},
         };
         List<VBox> reportCards = new ArrayList<>();
@@ -229,15 +234,24 @@ public class ReportsScreen extends Application {
         payHdr.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
         payHdr.setFill(Color.web(TEXT_TITLE));
 
-        TextField tfFrom = new TextField();
-        TextField tfTo = new TextField();
         LocalDate today = LocalDate.now();
-        tfFrom.setText(today.withDayOfMonth(1).toString());
-        tfTo.setText(today.toString());
+        DatePicker tfFrom = new DatePicker(today.withDayOfMonth(1));
+        DatePicker tfTo = new DatePicker(today);
         VBox dateFrom = wrapLabeledField("DATE FROM", tfFrom);
         VBox dateTo = wrapLabeledField("DATE TO", tfTo);
+        tfFrom.valueProperty().addListener((o, old, value) -> {
+            if (refreshDisplay[0] != null) {
+                refreshDisplay[0].run();
+            }
+        });
+        tfTo.valueProperty().addListener((o, old, value) -> {
+            if (refreshDisplay[0] != null) {
+                refreshDisplay[0].run();
+            }
+        });
 
         PaymentDAO paymentDAO = new PaymentDAO();
+        MemberDAO memberDAO = new MemberDAO();
         PosDAO posDAO = new PosDAO();
         ReportDAO reportDAO = new ReportDAO();
         InventoryDAO inventoryDAO = new InventoryDAO();
@@ -269,6 +283,7 @@ public class ReportsScreen extends Application {
         HBox salesTotalRow = buildSalesTotalRow(salesTotQty, salesTotAmt);
 
         VBox payRows = new VBox(0);
+        VBox attendanceRows = new VBox(0);
         VBox inventoryRows = new VBox(0);
 
         Runnable refreshAll = () -> applyReportRange(
@@ -288,7 +303,9 @@ public class ReportsScreen extends Application {
             salesTotQty,
             salesTotAmt,
             payRows,
+            attendanceRows,
             inventoryRows,
+            memberDAO,
             paymentDAO,
             posDAO,
             inventoryDAO
@@ -305,10 +322,14 @@ public class ReportsScreen extends Application {
         HBox.setHgrow(fSp, Priority.ALWAYS);
         Button genBtn = makeAccentBtn("  Generate PDF Report");
         genBtn.setPrefHeight(42);
+        Button genExcelBtn = outlineButton("Export Excel");
+        genExcelBtn.setPrefHeight(42);
         genBtn.setOnAction(e -> generateAndSaveReport(tfFrom, tfTo, groupBy, refreshAll, reportDAO, savedReportRows));
         exportBtn.setOnAction(e -> generateAndSaveReport(tfFrom, tfTo, groupBy, refreshAll, reportDAO, savedReportRows));
+        genExcelBtn.setOnAction(e -> exportExcelReport(tfFrom, tfTo, groupBy, refreshAll, paymentDAO, memberDAO, posDAO, inventoryDAO));
+        exportExcelBtn.setOnAction(e -> exportExcelReport(tfFrom, tfTo, groupBy, refreshAll, paymentDAO, memberDAO, posDAO, inventoryDAO));
 
-        filterRow.getChildren().addAll(dateFrom, dateTo, groupBox, fSp, genBtn);
+        filterRow.getChildren().addAll(dateFrom, dateTo, groupBox, fSp, genBtn, genExcelBtn);
         filterCard.getChildren().add(filterRow);
 
         Text revSub = new Text("Selected report total");
@@ -325,6 +346,7 @@ public class ReportsScreen extends Application {
 
         VBox salesTable = buildSalesTableShell(salesHdr, salesRows, salesTotalRow);
         VBox paymentSummary = buildPaymentSummaryShell(payHdr, payRows);
+        VBox attendanceSummary = buildAttendanceSummaryShell(attendanceRows);
         VBox inventorySummary = buildInventorySummaryShell(inventoryRows);
         VBox savedReports = buildSavedReportsShell(savedReportRows, reportDAO);
         refreshDisplay[0] = () -> {
@@ -333,11 +355,13 @@ public class ReportsScreen extends Application {
             salesTable.setManaged("Sales Report".equals(selectedReport[0]));
             paymentSummary.setVisible("Payment Report".equals(selectedReport[0]));
             paymentSummary.setManaged("Payment Report".equals(selectedReport[0]));
+            attendanceSummary.setVisible("Attendance Report".equals(selectedReport[0]));
+            attendanceSummary.setManaged("Attendance Report".equals(selectedReport[0]));
             inventorySummary.setVisible("Inventory Report".equals(selectedReport[0]));
             inventorySummary.setManaged("Inventory Report".equals(selectedReport[0]));
         };
 
-        body.getChildren().addAll(typeRow, filterCard, summaryStats, salesTable, paymentSummary, inventorySummary, savedReports);
+        body.getChildren().addAll(typeRow, filterCard, summaryStats, salesTable, paymentSummary, attendanceSummary, inventorySummary, savedReports);
         scroll.setContent(body);
         content.getChildren().addAll(topBar, scroll);
         VBox.setVgrow(scroll, Priority.ALWAYS);
@@ -352,8 +376,8 @@ public class ReportsScreen extends Application {
     }
 
     private void generateAndSaveReport(
-        TextField tfFrom,
-        TextField tfTo,
+        DatePicker tfFrom,
+        DatePicker tfTo,
         ComboBox<String> reportType,
         Runnable refreshAll,
         ReportDAO reportDAO,
@@ -362,10 +386,10 @@ public class ReportsScreen extends Application {
         LocalDate fromLd;
         LocalDate toLd;
         try {
-            fromLd = LocalDate.parse(tfFrom.getText().trim());
-            toLd = LocalDate.parse(tfTo.getText().trim());
+            fromLd = selectedDate(tfFrom);
+            toLd = selectedDate(tfTo);
         } catch (Exception ex) {
-            new Alert(Alert.AlertType.WARNING, "Use YYYY-MM-DD for both dates.").showAndWait();
+            new Alert(Alert.AlertType.WARNING, "Select both report dates.").showAndWait();
             return;
         }
         if (toLd.isBefore(fromLd)) {
@@ -380,9 +404,11 @@ public class ReportsScreen extends Application {
         String selectedName = reportType.getValue() != null ? reportType.getValue() : "Sales Report";
         String type = reportDAO.normalizeReportType(selectedName);
         ReportDAO.ReportMetrics metrics = reportDAO.buildMetrics(from, to);
-        String notes = reportDAO.buildNotes(selectedName, from, to, metrics);
+        String notes = "Attendance Report".equals(selectedName)
+            ? buildAttendanceReportNotes(new MemberDAO().findAttendanceBetween(from, to), from, to)
+            : reportDAO.buildNotes(selectedName, from, to, metrics);
         String name = selectedName + " - " + fromLd + " to " + toLd;
-        Path outputFile = reportOutputPath(name);
+        Path outputFile = reportOutputPath(name, ".pdf");
         try {
             ReportPdfExporter.exportReport(
                 name,
@@ -412,12 +438,73 @@ public class ReportsScreen extends Application {
         ));
     }
 
-    private Path reportOutputPath(String reportName) {
+    private void exportExcelReport(
+        DatePicker tfFrom,
+        DatePicker tfTo,
+        ComboBox<String> reportType,
+        Runnable refreshAll,
+        PaymentDAO paymentDAO,
+        MemberDAO memberDAO,
+        PosDAO posDAO,
+        InventoryDAO inventoryDAO
+    ) {
+        LocalDate fromLd;
+        LocalDate toLd;
+        try {
+            fromLd = selectedDate(tfFrom);
+            toLd = selectedDate(tfTo);
+        } catch (Exception ex) {
+            new Alert(Alert.AlertType.WARNING, "Select both report dates.").showAndWait();
+            return;
+        }
+        if (toLd.isBefore(fromLd)) {
+            new Alert(Alert.AlertType.WARNING, "End date must be on or after start date.").showAndWait();
+            return;
+        }
+
+        refreshAll.run();
+
+        Date from = Date.valueOf(fromLd);
+        Date to = Date.valueOf(toLd);
+        String selectedName = reportType.getValue() != null ? reportType.getValue() : "Sales Report";
+        String name = selectedName + " - " + fromLd + " to " + toLd;
+        Path outputFile = reportOutputPath(name, ".xlsx");
+        try {
+            if ("Payment Report".equals(selectedName)) {
+                ReportExcelExporter.exportMembershipReport(
+                    paymentDAO.findPaymentSummaryBetween(from, to),
+                    outputFile.toString()
+                );
+            } else if ("Attendance Report".equals(selectedName)) {
+                ReportExcelExporter.exportAttendanceReport(
+                    memberDAO.findAttendanceBetween(from, to),
+                    outputFile.toString()
+                );
+            } else if ("Inventory Report".equals(selectedName)) {
+                ReportExcelExporter.exportInventoryReport(
+                    inventoryDAO.findAll(),
+                    outputFile.toString()
+                );
+            } else {
+                ReportExcelExporter.exportSalesReport(
+                    posDAO.findSaleLinesBetween(from, to),
+                    outputFile.toString()
+                );
+            }
+        } catch (IOException ex) {
+            new Alert(Alert.AlertType.ERROR, "Excel file could not be saved: " + ex.getMessage()).showAndWait();
+            return;
+        }
+        new Alert(Alert.AlertType.INFORMATION, "Excel file saved to:\n" + outputFile.toAbsolutePath()).showAndWait();
+    }
+
+    private Path reportOutputPath(String reportName, String extension) {
         String safeName = reportName.replaceAll("[^A-Za-z0-9._-]+", "_");
         if (safeName.length() > 90) {
             safeName = safeName.substring(0, 90);
         }
-        String fileName = safeName + "_" + LocalDateTime.now().format(FILE_TIME_FORMAT) + ".pdf";
+        String ext = extension != null && extension.startsWith(".") ? extension : ".pdf";
+        String fileName = safeName + "_" + LocalDateTime.now().format(FILE_TIME_FORMAT) + ext;
         return Path.of("reports", fileName);
     }
 
@@ -437,10 +524,29 @@ public class ReportsScreen extends Application {
         return g;
     }
 
+    private VBox wrapLabeledField(String label, DatePicker picker) {
+        VBox g = new VBox(6);
+        Label lbl = new Label(label);
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
+        lbl.setTextFill(Color.web(TEXT_SOFT));
+        picker.setPrefHeight(40);
+        picker.setPrefWidth(150);
+        applyDatePickerStyle(picker);
+        g.getChildren().addAll(lbl, picker);
+        return g;
+    }
+
+    private LocalDate selectedDate(DatePicker picker) {
+        if (picker.getValue() == null) {
+            throw new IllegalArgumentException("Missing date");
+        }
+        return picker.getValue();
+    }
+
     private void applyReportRange(
         String reportMode,
-        TextField tfFrom,
-        TextField tfTo,
+        DatePicker tfFrom,
+        DatePicker tfTo,
         Text revVal,
         Text trxVal,
         Text topProd,
@@ -454,7 +560,9 @@ public class ReportsScreen extends Application {
         Label salesTotQty,
         Label salesTotAmt,
         VBox payRows,
+        VBox attendanceRows,
         VBox inventoryRows,
+        MemberDAO memberDAO,
         PaymentDAO paymentDAO,
         PosDAO posDAO,
         InventoryDAO inventoryDAO
@@ -462,10 +570,10 @@ public class ReportsScreen extends Application {
         LocalDate fromLd;
         LocalDate toLd;
         try {
-            fromLd = LocalDate.parse(tfFrom.getText().trim());
-            toLd = LocalDate.parse(tfTo.getText().trim());
+            fromLd = selectedDate(tfFrom);
+            toLd = selectedDate(tfTo);
         } catch (Exception ex) {
-            new Alert(Alert.AlertType.WARNING, "Use YYYY-MM-DD for both dates.").showAndWait();
+            new Alert(Alert.AlertType.WARNING, "Select both report dates.").showAndWait();
             return;
         }
         if (toLd.isBefore(fromLd)) {
@@ -476,19 +584,22 @@ public class ReportsScreen extends Application {
         Date from = Date.valueOf(fromLd);
         Date to = Date.valueOf(toLd);
 
-        double payRev = paymentDAO.sumCompletedBetween(from, to);
+        List<PaymentDAO.PaymentSummaryRow> paymentRows = paymentDAO.findPaymentSummaryBetween(from, to);
+        double payRev = reportPaymentRevenue(paymentRows);
         double posRev = posDAO.sumPosRevenueBetween(from, to);
         double totalRev = switch (reportMode) {
             case "Payment Report" -> payRev;
+            case "Attendance Report" -> memberDAO.findAttendanceBetween(from, to).size();
             case "Inventory Report" -> inventoryValue(inventoryDAO.findAll());
             default -> posRev;
         };
 
-        int payCount = paymentDAO.countBetween(from, to);
+        int payCount = paymentRows.size();
         int posCount = posDAO.countPosTransactionsBetween(from, to);
         List<InventoryDAO.InventoryRecord> inventory = inventoryDAO.findAll();
         int trx = switch (reportMode) {
             case "Payment Report" -> payCount;
+            case "Attendance Report" -> memberDAO.findAttendanceBetween(from, to).size();
             case "Inventory Report" -> inventory.size();
             default -> posCount;
         };
@@ -514,12 +625,19 @@ public class ReportsScreen extends Application {
             }
         }
 
-        revVal.setText("PHP " + String.format("%,.0f", totalRev));
+        revVal.setText("Attendance Report".equals(reportMode)
+            ? String.valueOf((int) totalRev)
+            : "PHP " + String.format("%,.0f", totalRev));
         trxVal.setText(String.valueOf(trx));
+        List<MemberDAO.AttendanceRecord> attendance = memberDAO.findAttendanceBetween(from, to);
         if ("Payment Report".equals(reportMode)) {
             topProd.setText(String.valueOf(payCount));
             topSub.setText("Membership payment records in range");
             topProdSub.setText("Payment transactions");
+        } else if ("Attendance Report".equals(reportMode)) {
+            topProd.setText(String.valueOf(countSessionType(attendance, "Per Session")));
+            topSub.setText("Per-session check-ins in range");
+            topProdSub.setText("Walk-in visits");
         } else if ("Inventory Report".equals(reportMode)) {
             int lowStock = inventoryDAO.countLowStock();
             topProd.setText(String.valueOf(lowStock));
@@ -530,14 +648,114 @@ public class ReportsScreen extends Application {
             topSub.setText(topQty > 0 ? topQty + " units (POS) in range" : "No POS line items in range");
             topProdSub.setText(topQty > 0 ? "Best seller in POS lines" : " ");
         }
-        avgVal.setText("PHP " + String.format("%,.0f", avg));
+        avgVal.setText("Attendance Report".equals(reportMode)
+            ? String.format("%.1f", avg)
+            : "PHP " + String.format("%,.0f", avg));
 
         salesHdr.setText("POS Sales - " + fromLd + " to " + toLd);
         payHdr.setText("Membership Payments - " + fromLd + " to " + toLd);
 
         populateSalesRows(salesRows, lines, salesTotalRow, salesTotQty, salesTotAmt);
-        populatePaymentRows(payRows, paymentDAO.findPaymentSummaryBetween(from, to));
+        populatePaymentRows(payRows, paymentRows);
+        populateAttendanceRows(attendanceRows, attendance);
         populateInventoryRows(inventoryRows, inventory);
+    }
+
+    private double reportPaymentRevenue(List<PaymentDAO.PaymentSummaryRow> rows) {
+        double total = 0;
+        for (PaymentDAO.PaymentSummaryRow row : rows) {
+            if ("Completed".equalsIgnoreCase(row.status())) {
+                total += row.amount();
+            }
+        }
+        return total;
+    }
+
+    private int countSessionType(List<MemberDAO.AttendanceRecord> rows, String type) {
+        int count = 0;
+        for (MemberDAO.AttendanceRecord row : rows) {
+            if (type.equalsIgnoreCase(row.sessionType())) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private void populateAttendanceRows(VBox rowsBox, List<MemberDAO.AttendanceRecord> rows) {
+        rowsBox.getChildren().clear();
+        double[] colW = {13, 22, 14, 18, 18, 15};
+        int r = 0;
+        for (MemberDAO.AttendanceRecord ar : rows) {
+            String bg = (r % 2 == 0) ? CARD_SURFACE : BG_ROW_ALT;
+            HBox row = new HBox();
+            row.setPadding(new Insets(10, 20, 10, 20));
+            row.setStyle("-fx-background-color: " + bg + ";");
+            GridPane rg = makeGrid(colW);
+            rg.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(rg, Priority.ALWAYS);
+            rg.add(makeCell(ar.attendanceDate() != null ? ar.attendanceDate().toString() : "", TEXT_SOFT, false), 0, 0);
+            rg.add(makeCell(ar.memberName(), TEXT_TITLE, true), 1, 0);
+            rg.add(makeCell(ar.memberCode(), TEXT_SOFT, false), 2, 0);
+            rg.add(makeAttendanceSessionBadge(ar.sessionType()), 3, 0);
+            rg.add(makeCell(ar.timeIn() != null ? ar.timeIn().toLocalDateTime().toString().replace('T', ' ') : "-", TEXT_SOFT, false), 4, 0);
+            rg.add(makeCell(ar.notes() == null || ar.notes().isBlank() ? "-" : ar.notes(), TEXT_SOFT, false), 5, 0);
+            row.getChildren().add(rg);
+            rowsBox.getChildren().add(row);
+            r++;
+        }
+        if (rows.isEmpty()) {
+            Label empty = new Label("No attendance records in this date range.");
+            empty.setTextFill(Color.web(TEXT_SOFT));
+            empty.setPadding(new Insets(16, 20, 16, 20));
+            rowsBox.getChildren().add(empty);
+        }
+    }
+
+    private Label makeAttendanceSessionBadge(String sessionType) {
+        String value = sessionType == null || sessionType.isBlank() ? "Member Session" : sessionType;
+        String color;
+        String bg;
+        if ("Per Session".equalsIgnoreCase(value)) {
+            color = WARNING_TEXT;
+            bg = "rgba(253,238,33,0.28)";
+        } else if ("Daily".equalsIgnoreCase(value)) {
+            color = "#1D4ED8";
+            bg = "#DBEAFE";
+        } else {
+            color = SUCCESS_TEXT;
+            bg = "rgba(228,255,223,0.75)";
+        }
+        Label badge = new Label(value);
+        badge.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        badge.setStyle(
+            "-fx-text-fill: " + color + ";" +
+            "-fx-background-color: " + bg + ";" +
+            "-fx-background-radius: 14;" +
+            "-fx-padding: 4 10 4 10;"
+        );
+        return badge;
+    }
+
+    private String buildAttendanceReportNotes(List<MemberDAO.AttendanceRecord> rows, Date from, Date to) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Report Type: Attendance Report\n");
+        sb.append("Period: ").append(from).append(" to ").append(to).append("\n\n");
+        sb.append("Attendance Summary\n");
+        sb.append("- Total Check-ins: ").append(rows.size()).append('\n');
+        sb.append("- Member Sessions: ").append(countSessionType(rows, "Member Session")).append('\n');
+        sb.append("- Per Session Visits: ").append(countSessionType(rows, "Per Session")).append('\n');
+        sb.append("- Daily Visits: ").append(countSessionType(rows, "Daily")).append("\n\n");
+        sb.append("Date | Member | Code | Session Type | Check-in Time | Notes\n");
+        for (MemberDAO.AttendanceRecord row : rows) {
+            sb.append(row.attendanceDate()).append(" | ")
+                .append(row.memberName()).append(" | ")
+                .append(row.memberCode()).append(" | ")
+                .append(row.sessionType()).append(" | ")
+                .append(row.timeIn() != null ? row.timeIn().toLocalDateTime().toString().replace('T', ' ') : "-").append(" | ")
+                .append(row.notes() == null || row.notes().isBlank() ? "-" : row.notes())
+                .append('\n');
+        }
+        return sb.toString();
     }
 
     private HBox buildSalesTotalRow(Label qtyLbl, Label amtLbl) {
@@ -773,6 +991,15 @@ public class ReportsScreen extends Application {
         return buildDataTableShell(titleNode, rowsBox, null,
             new String[] {"Member", "Plan at Payment", "Amount Paid", "Method", "Date", "Status"},
             new double[] {20, 16, 13, 14, 15, 12});
+    }
+
+    private VBox buildAttendanceSummaryShell(VBox rowsBox) {
+        Text title = new Text("Attendance Check-ins");
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
+        title.setFill(Color.web(TEXT_TITLE));
+        return buildDataTableShell(title, rowsBox, null,
+            new String[] {"Date", "Member", "Code", "Session Type", "Check-in Time", "Notes"},
+            new double[] {13, 22, 14, 18, 18, 15});
     }
 
     private VBox buildInventorySummaryShell(VBox rowsBox) {
@@ -1047,6 +1274,27 @@ public class ReportsScreen extends Application {
             "-fx-font-size: 12;";
         f.setStyle(base);
         f.focusedProperty().addListener((o, old, focused) -> f.setStyle(
+            base + "-fx-border-color: " + (focused ? ACCENT : BORDER) + ";"
+        ));
+    }
+
+    private void applyDatePickerStyle(DatePicker picker) {
+        String base =
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-font-family: Poppins;" +
+            "-fx-font-size: 12;";
+        picker.setStyle(base);
+        picker.getEditor().setStyle(
+            "-fx-control-inner-background: " + CARD_SURFACE + ";" +
+            "-fx-text-fill: " + TEXT_TITLE + ";" +
+            "-fx-prompt-text-fill: " + TEXT_SOFT + ";" +
+            "-fx-font-family: Poppins;" +
+            "-fx-font-size: 12;"
+        );
+        picker.focusedProperty().addListener((o, old, focused) -> picker.setStyle(
             base + "-fx-border-color: " + (focused ? ACCENT : BORDER) + ";"
         ));
     }

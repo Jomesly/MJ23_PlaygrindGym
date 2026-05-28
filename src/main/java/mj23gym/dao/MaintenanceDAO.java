@@ -28,7 +28,7 @@ import java.util.List;
 public final class MaintenanceDAO {
     private static final String[] BACKUP_TABLES = {
         "users", "plans", "members", "attendance", "inventory", "equipment", "maintenance_logs",
-        "billing", "payment_records", "pos_transactions", "pos_transaction_items", "reports",
+        "maintenance_parts", "billing", "payment_records", "pos_transactions", "pos_transaction_items", "reports",
         "system_tools"
     };
 
@@ -51,6 +51,23 @@ public final class MaintenanceDAO {
         int updatedBy,
         Timestamp createdAt,
         Timestamp updatedAt
+    ) {}
+
+    public record PartRecord(
+        int partId,
+        int equipmentId,
+        String equipmentName,
+        String partName,
+        double quantity,
+        String unitOfMeasure,
+        double unitCost,
+        double totalCost,
+        Date datePurchased,
+        Date dateInstalled,
+        String supplier,
+        String notes,
+        int recordedBy,
+        Timestamp createdAt
     ) {}
 
     public void ensureMaintenanceTables() {
@@ -82,10 +99,61 @@ public final class MaintenanceDAO {
                 "FOREIGN KEY (updated_by) REFERENCES users(user_id) ON DELETE SET NULL," +
                 "INDEX idx_tool_status (status)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
             );
+            ensureMaintenancePartsTable(st);
             seedDefaultTools(conn);
         } catch (SQLException e) {
             System.err.println("[MaintenanceDAO] ensureMaintenanceTables error: " + e.getMessage());
         }
+    }
+
+    public int insertPart(int equipmentId, String partName, double quantity, String unitOfMeasure,
+                          double unitCost, Date datePurchased, Date dateInstalled,
+                          String supplier, String notes, int recordedBy) {
+        ensureMaintenanceTables();
+        String sql =
+            "INSERT INTO maintenance_parts (equipment_id, part_name, quantity, unit_of_measure," +
+            " unit_cost, total_cost, date_purchased, date_installed, supplier, notes, recorded_by)" +
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?)";
+        double totalCost = quantity * unitCost;
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setInt(1, equipmentId);
+            ps.setString(2, partName);
+            ps.setDouble(3, quantity);
+            ps.setString(4, unitOfMeasure == null || unitOfMeasure.isBlank() ? "pcs" : unitOfMeasure);
+            ps.setDouble(5, unitCost);
+            ps.setDouble(6, totalCost);
+            ps.setDate(7, datePurchased);
+            ps.setDate(8, dateInstalled);
+            ps.setString(9, supplier);
+            ps.setString(10, notes);
+            setUser(ps, 11, recordedBy);
+            ps.executeUpdate();
+            try (ResultSet keys = ps.getGeneratedKeys()) {
+                return keys.next() ? keys.getInt(1) : -1;
+            }
+        } catch (SQLException e) {
+            System.err.println("[MaintenanceDAO] insertPart error: " + e.getMessage());
+            return -1;
+        }
+    }
+
+    public List<PartRecord> findPartsByEquipment(int equipmentId) {
+        ensureMaintenanceTables();
+        String sql =
+            "SELECT p.*, e.equipment_name FROM maintenance_parts p " +
+            "JOIN equipment e ON p.equipment_id=e.equipment_id " +
+            "WHERE p.equipment_id=? ORDER BY p.date_purchased DESC, p.part_id DESC";
+        return partQuery(sql, ps -> ps.setInt(1, equipmentId));
+    }
+
+    public List<PartRecord> findRecentParts(int limit) {
+        ensureMaintenanceTables();
+        String sql =
+            "SELECT p.*, e.equipment_name FROM maintenance_parts p " +
+            "JOIN equipment e ON p.equipment_id=e.equipment_id " +
+            "ORDER BY p.date_purchased DESC, p.part_id DESC LIMIT ?";
+        return partQuery(sql, ps -> ps.setInt(1, Math.max(1, limit)));
     }
 
     public BackupRecord createBackup(Path workspaceRoot, int generatedBy) {
@@ -356,6 +424,67 @@ public final class MaintenanceDAO {
             }
             insert.executeBatch();
         }
+    }
+
+    @FunctionalInterface
+    private interface PartParamSetter { void set(PreparedStatement ps) throws SQLException; }
+
+    private List<PartRecord> partQuery(String sql, PartParamSetter setter) {
+        List<PartRecord> rows = new ArrayList<>();
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            setter.set(ps);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    rows.add(mapPart(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[MaintenanceDAO] partQuery error: " + e.getMessage());
+        }
+        return rows;
+    }
+
+    private PartRecord mapPart(ResultSet rs) throws SQLException {
+        return new PartRecord(
+            rs.getInt("part_id"),
+            rs.getInt("equipment_id"),
+            rs.getString("equipment_name"),
+            rs.getString("part_name"),
+            rs.getDouble("quantity"),
+            rs.getString("unit_of_measure"),
+            rs.getDouble("unit_cost"),
+            rs.getDouble("total_cost"),
+            rs.getDate("date_purchased"),
+            rs.getDate("date_installed"),
+            rs.getString("supplier"),
+            rs.getString("notes"),
+            rs.getInt("recorded_by"),
+            rs.getTimestamp("created_at")
+        );
+    }
+
+    private void ensureMaintenancePartsTable(Statement st) throws SQLException {
+        st.executeUpdate(
+            "CREATE TABLE IF NOT EXISTS maintenance_parts (" +
+            "part_id INT AUTO_INCREMENT PRIMARY KEY," +
+            "equipment_id INT NOT NULL," +
+            "part_name VARCHAR(150) NOT NULL," +
+            "quantity DECIMAL(10,2) NOT NULL," +
+            "unit_of_measure VARCHAR(30) DEFAULT 'pcs'," +
+            "unit_cost DECIMAL(10,2) NOT NULL," +
+            "total_cost DECIMAL(10,2) NOT NULL," +
+            "date_purchased DATE NOT NULL," +
+            "date_installed DATE," +
+            "supplier VARCHAR(150)," +
+            "notes TEXT," +
+            "recorded_by INT," +
+            "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP," +
+            "FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id) ON DELETE CASCADE," +
+            "FOREIGN KEY (recorded_by) REFERENCES users(user_id) ON DELETE SET NULL," +
+            "INDEX idx_equipment_id (equipment_id)," +
+            "INDEX idx_date_purchased (date_purchased)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
     }
 
     private ToolRecord mapTool(ResultSet rs) throws SQLException {

@@ -257,15 +257,17 @@ public class InventoryScreen extends Application {
         styleCombo(catFilter);
 
         ComboBox<String> stockFilter = new ComboBox<>();
-        stockFilter.getItems().addAll("All Stock", "In Stock", "Low Stock", "Out of Stock", "Archived");
+        stockFilter.getItems().addAll("All Stock", "In Stock", "Low Stock", "Out of Stock");
         stockFilter.setValue("All Stock");
         styleCombo(stockFilter);
 
         Region sp = new Region(); HBox.setHgrow(sp, Priority.ALWAYS);
 
+        Button archivedBtn = outlineButton("Archived Items");
+        archivedBtn.setPrefHeight(38);
         Button addBtn = makeAccentBtn("  Add Item");
 
-        controls.getChildren().addAll(search, catFilter, stockFilter, sp, addBtn);
+        controls.getChildren().addAll(search, catFilter, stockFilter, sp, archivedBtn, addBtn);
 
         Label monitorAlert = new Label();
         monitorAlert.setWrapText(true);
@@ -341,6 +343,7 @@ public class InventoryScreen extends Application {
         search.setOnAction(e -> refreshHolder[0].run());
         catFilter.setOnAction(e -> refreshHolder[0].run());
         stockFilter.setOnAction(e -> refreshHolder[0].run());
+        archivedBtn.setOnAction(e -> showArchivedItemsDialog(inventoryDAO, refreshHolder[0]));
         addBtn.setOnAction(e -> showAddItemDialog(refreshHolder[0]));
         refreshHolder[0].run();
 
@@ -360,6 +363,127 @@ public class InventoryScreen extends Application {
         FadeTransition ft = new FadeTransition(Duration.millis(350), body);
         ft.setFromValue(0); ft.setToValue(1); ft.play();
         return content;
+    }
+
+    private void showArchivedItemsDialog(InventoryDAO dao, Runnable mainRefresh) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Archived Items");
+        dialog.setResizable(true);
+
+        VBox root = new VBox(18);
+        root.setPadding(new Insets(24));
+        root.setPrefSize(880, 540);
+        root.setStyle("-fx-background-color: " + BG_MAIN + ";");
+
+        HBox titleRow = new HBox(12);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+        Rectangle accent = new Rectangle(5, 44);
+        accent.setArcWidth(5);
+        accent.setArcHeight(5);
+        accent.setFill(Color.web(ACCENT));
+
+        Text title = new Text("Archived Items");
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
+        title.setFill(Color.web(TEXT_TITLE));
+        Text subtitle = new Text("Archived inventory is hidden from the active item list. Use Restore to bring an item back.");
+        subtitle.setFont(Font.font("Poppins", 11));
+        subtitle.setFill(Color.web(TEXT_SOFT));
+        titleRow.getChildren().addAll(accent, new VBox(2, title, subtitle));
+
+        HBox filters = new HBox(12);
+        filters.setAlignment(Pos.CENTER_LEFT);
+        TextField search = new TextField();
+        search.setPromptText("Search archived item...");
+        search.setPrefWidth(260);
+        applyFieldStyle(search);
+        ComboBox<String> category = new ComboBox<>();
+        category.getItems().addAll("All Categories", "Supplements", "Drinks", "Equipment", "Accessories", "Snacks", "Other");
+        category.setValue("All Categories");
+        styleCombo(category);
+        Region filterSp = new Region();
+        HBox.setHgrow(filterSp, Priority.ALWAYS);
+        filters.getChildren().addAll(search, category, filterSp);
+
+        VBox tableCard = new VBox(0);
+        tableCard.setStyle(
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 18;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 18;" +
+            "-fx-border-width: 1;"
+        );
+        DropShadow shadow = new DropShadow();
+        shadow.setColor(Color.web(ACCENT, 0.10));
+        shadow.setRadius(12);
+        shadow.setOffsetY(4);
+        tableCard.setEffect(shadow);
+
+        String[] headers = {"Item ID", "Item Name", "Category", "Qty", "Unit Price", "Expiry", "Stock Status", "Actions"};
+        double[] colW = {8, 20, 12, 7, 10, 12, 13, 18};
+        HBox header = new HBox();
+        header.setPadding(new Insets(12, 20, 12, 20));
+        header.setStyle(
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 18 18 0 0;" +
+            "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+            "-fx-border-width: 0 0 1 0;"
+        );
+        GridPane hGrid = makeGrid(colW);
+        hGrid.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(hGrid, Priority.ALWAYS);
+        for (int i = 0; i < headers.length; i++) {
+            Label h = new Label(headers[i].toUpperCase());
+            h.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
+            h.setStyle("-fx-text-fill: " + TEXT_SOFT + ";");
+            hGrid.add(h, i, 0);
+        }
+        header.getChildren().add(hGrid);
+
+        VBox rows = new VBox(0);
+        Text pageInfo = new Text();
+        pageInfo.setFont(Font.font("Poppins", 11));
+        pageInfo.setFill(Color.web(TEXT_SOFT));
+        Runnable[] refreshArchived = new Runnable[1];
+        refreshArchived[0] = () -> refreshInventoryRows(
+            rows,
+            pageInfo,
+            dao,
+            search.getText().trim(),
+            category.getValue(),
+            "Archived",
+            colW,
+            () -> {
+                mainRefresh.run();
+                refreshArchived[0].run();
+            }
+        );
+
+        search.setOnAction(e -> refreshArchived[0].run());
+        category.setOnAction(e -> refreshArchived[0].run());
+
+        ScrollPane rowsScroll = new ScrollPane(rows);
+        rowsScroll.setFitToWidth(true);
+        rowsScroll.setMaxHeight(320);
+        rowsScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+
+        HBox footer = new HBox(12);
+        footer.setAlignment(Pos.CENTER_RIGHT);
+        footer.setPadding(new Insets(14, 20, 14, 20));
+        footer.setStyle("-fx-border-color: " + BORDER + " transparent transparent transparent; -fx-border-width: 1 0 0 0;");
+        Region footerSp = new Region();
+        HBox.setHgrow(footerSp, Priority.ALWAYS);
+        Button close = outlineButton("Close");
+        close.setOnAction(e -> dialog.close());
+        footer.getChildren().addAll(pageInfo, footerSp, close);
+
+        tableCard.getChildren().addAll(header, rowsScroll, footer);
+        root.getChildren().addAll(titleRow, filters, tableCard);
+        VBox.setVgrow(tableCard, Priority.ALWAYS);
+
+        refreshArchived[0].run();
+        dialog.setScene(new Scene(root));
+        dialog.showAndWait();
     }
 
     //  Add Item Dialog 
@@ -568,28 +692,25 @@ public class InventoryScreen extends Application {
         HBox chip = new HBox(12);
         chip.setAlignment(Pos.CENTER_LEFT);
         chip.setPadding(new Insets(14, 18, 14, 18));
+        String outline = readableAccent(color);
         chip.setStyle(
             "-fx-background-color: " + CARD_SURFACE + ";" +
             "-fx-background-radius: 16;" +
-            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-color: " + outline + ";" +
             "-fx-border-radius: 16;" +
-            "-fx-border-width: 1;"
+            "-fx-border-width: 1.5;"
         );
         HBox.setHgrow(chip, Priority.ALWAYS);
         DropShadow d = new DropShadow();
-        d.setColor(Color.web("#000000", 0.08));
-        d.setRadius(8);
+        d.setColor(Color.web(outline, 0.08));
+        d.setRadius(6);
         d.setOffsetY(2);
         chip.setEffect(d);
-        Rectangle accent = new Rectangle(4, 36);
-        accent.setArcWidth(4);
-        accent.setArcHeight(4);
-        accent.setFill(Color.web(color));
-        valueNode.setFill(Color.web(color));
+        valueNode.setFill(Color.web(outline));
         Text lbl = new Text(label);
         lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         lbl.setFill(Color.web(TEXT_SOFT));
-        chip.getChildren().addAll(accent, new VBox(2, lbl, valueNode));
+        chip.getChildren().addAll(new VBox(2, lbl, valueNode));
         return chip;
     }
 
@@ -1188,6 +1309,13 @@ public class InventoryScreen extends Application {
         return value == null ? "" : value;
     }
 
+    private String readableAccent(String color) {
+        if (color == null || color.isBlank() || "#FDEE21".equalsIgnoreCase(color) || WARNING.equalsIgnoreCase(color)) {
+            return WARNING_TEXT;
+        }
+        return color;
+    }
+
     private String blankFallback(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value;
     }
@@ -1254,6 +1382,31 @@ public class InventoryScreen extends Application {
         b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;");
         b.setOnMouseEntered(e -> b.setStyle("-fx-background-color: " + ACCENT_DARK + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;"));
         b.setOnMouseExited(e -> b.setStyle("-fx-background-color: " + ACCENT + "; -fx-text-fill: white; -fx-background-radius: 16; -fx-cursor: hand;"));
+        return b;
+    }
+
+    private Button outlineButton(String text) {
+        Button b = new Button(text);
+        b.setPrefHeight(38);
+        b.setPadding(new Insets(0, 18, 0, 18));
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        String base =
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-text-fill: " + ACCENT + ";" +
+            "-fx-border-color: " + ACCENT + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
+            "-fx-cursor: hand;";
+        String hover =
+            "-fx-background-color: rgba(26,19,99,0.08);" +
+            "-fx-text-fill: " + ACCENT + ";" +
+            "-fx-border-color: " + ACCENT + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
+            "-fx-cursor: hand;";
+        b.setStyle(base);
+        b.setOnMouseEntered(e -> b.setStyle(hover));
+        b.setOnMouseExited(e -> b.setStyle(base));
         return b;
     }
 

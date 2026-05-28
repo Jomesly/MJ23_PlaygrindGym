@@ -305,7 +305,6 @@ public class AdminProfileScreen extends Application {
         TextField emailTf = profileField(user.email(), false);
         TextField phoneTf = profileField(user.phone(), false);
         TextField positionTf = profileField(user.position(), true);
-        editProfileBtn.setOnAction(e -> firstNameTf.requestFocus());
 
         detailsForm.add(fieldGroup("FIRST NAME", firstNameTf), 0, 0);
         detailsForm.add(fieldGroup("LAST NAME", lastNameTf), 1, 0);
@@ -321,6 +320,8 @@ public class AdminProfileScreen extends Application {
         saveProfile.setOnAction(e -> saveProfileChanges(firstNameTf, lastNameTf, emailTf, phoneTf, adminName));
         saveBtn.getChildren().add(saveProfile);
         detailsCard.getChildren().addAll(detailsForm, saveBtn);
+        detailsCard.setManaged(false);
+        detailsCard.setVisible(false);
         leftCol.getChildren().add(detailsCard);
 
         // Account Stats Card
@@ -417,7 +418,25 @@ public class AdminProfileScreen extends Application {
         updatePassword.setOnAction(e -> changePassword(currentPw, newPw, confirmPw));
         pwBtn.getChildren().add(updatePassword);
         pwCard.getChildren().addAll(strengthBox, pwBtn);
+        pwCard.setManaged(false);
+        pwCard.setVisible(false);
         rightCol.getChildren().add(pwCard);
+        rightCol.setManaged(false);
+        rightCol.setVisible(false);
+
+        editProfileBtn.setOnAction(e -> {
+            boolean show = !detailsCard.isVisible();
+            detailsCard.setManaged(show);
+            detailsCard.setVisible(show);
+            pwCard.setManaged(show);
+            pwCard.setVisible(show);
+            rightCol.setManaged(show);
+            rightCol.setVisible(show);
+            editProfileBtn.setText(show ? "Hide Edit" : "Edit Profile");
+            if (show) {
+                firstNameTf.requestFocus();
+            }
+        });
 
         twoCol.getChildren().addAll(leftCol, rightCol);
         body.getChildren().addAll(profileHeaderCard, twoCol);

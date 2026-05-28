@@ -3,6 +3,7 @@ package mj23gym.ui;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.sql.Date;
 
 import javafx.animation.FadeTransition;
 import javafx.application.Application;
@@ -11,6 +12,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
@@ -33,6 +36,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import mj23gym.dao.ActivityLogDAO;
@@ -40,6 +44,7 @@ import mj23gym.dao.EquipmentDAO;
 import mj23gym.dao.InventoryDAO;
 import mj23gym.dao.MemberDAO;
 import mj23gym.dao.PaymentDAO;
+import mj23gym.dao.PlanDAO;
 import mj23gym.dao.PosDAO;
 import mj23gym.dao.SearchDAO;
 
@@ -432,10 +437,13 @@ public class DashboardScreen extends Application {
         int lowStockCount = inventoryDAO.countLowStock();
         int batchExpiringCount = inventoryDAO.findExpiringSoonBatches(30).size();
         int maintDue = equipmentDAO.findMaintenanceDue().size();
+        List<MemberDAO.MemberRecord> expiringSoonMembers = memberDAO.findExpiringSoon(7);
+        List<MemberDAO.MemberRecord> expiredByEndDateMembers = memberDAO.findOverdueMembers();
         searchField.setOnAction(e -> showDashboardSearch(searchField.getText()));
         notifBtn.setOnAction(e -> showDashboardNotifications(lowStockCount, maintDue));
 
         List<MemberDAO.MemberRecord> recentMembers = memberDAO.findRecent(5);
+        List<MemberDAO.AttendanceRecord> recentCheckIns = memberDAO.findRecentAttendance(6);
         
         List<PaymentDAO.PaymentRecord> recentPayments = paymentDAO.findRecentPayments(5);
         List<ActivityLogDAO.ActivitySession> recentSessions = activityLogDAO.findRecentSessions(8);
@@ -535,7 +543,16 @@ public class DashboardScreen extends Application {
             }
         );
 
-        body.getChildren().addAll(summaryCards, dashboardDetails, buildActivitySessions(recentSessions));
+        if (!expiringSoonMembers.isEmpty() || !expiredByEndDateMembers.isEmpty()) {
+            body.getChildren().add(buildMembershipAlertBanner(expiringSoonMembers.size(), expiredByEndDateMembers.size()));
+        }
+        body.getChildren().addAll(
+            buildMembershipExpiryPanel(expiringSoonMembers, expiredByEndDateMembers),
+            summaryCards,
+            dashboardDetails,
+            buildRecentCheckInsCard(recentCheckIns),
+            buildActivitySessions(recentSessions)
+        );
         scrollPane.setContent(body);
 
         content.getChildren().addAll(topBar, scrollPane);
@@ -569,6 +586,560 @@ public class DashboardScreen extends Application {
         );
     }
 
+    private VBox buildRecentCheckInsCard(List<MemberDAO.AttendanceRecord> records) {
+        VBox card = new VBox(0);
+        card.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-radius: 22;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 22;" +
+            "-fx-border-width: 1;"
+        );
+        DropShadow ds = new DropShadow();
+        ds.setColor(Color.web("#000000", 0.18));
+        ds.setRadius(10);
+        ds.setOffsetY(4);
+        card.setEffect(ds);
+
+        Text title = new Text("Recent Check-ins");
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
+        title.setFill(Color.web(TEXT_WHITE));
+        HBox header = new HBox(title);
+        header.setPadding(new Insets(16, 20, 14, 20));
+        header.setStyle("-fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
+
+        String[] headers = {"Member", "Code", "Time", "Notes"};
+        double[] widths = {38, 16, 22, 24};
+        HBox tableHeader = new HBox();
+        tableHeader.setPadding(new Insets(10, 20, 10, 20));
+        tableHeader.setStyle("-fx-background-color: " + BG_ROW_ALT + ";");
+        GridPane headerGrid = new GridPane();
+        for (double width : widths) {
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.setPercentWidth(width);
+            headerGrid.getColumnConstraints().add(cc);
+        }
+        headerGrid.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(headerGrid, Priority.ALWAYS);
+        for (int i = 0; i < headers.length; i++) {
+            Label h = new Label(headers[i].toUpperCase());
+            h.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
+            h.setTextFill(Color.web(TEXT_MUTED));
+            headerGrid.add(h, i, 0);
+        }
+        tableHeader.getChildren().add(headerGrid);
+
+        VBox rows = new VBox(0);
+        if (records.isEmpty()) {
+            Label empty = new Label("No check-ins recorded yet.");
+            empty.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
+            empty.setTextFill(Color.web(TEXT_MUTED));
+            empty.setPadding(new Insets(14, 20, 16, 20));
+            rows.getChildren().add(empty);
+        } else {
+            for (int i = 0; i < records.size(); i++) {
+                rows.getChildren().add(buildCheckInRow(records.get(i), widths, i));
+            }
+        }
+        card.getChildren().addAll(header, tableHeader, rows);
+        return card;
+    }
+
+    private HBox buildCheckInRow(MemberDAO.AttendanceRecord record, double[] widths, int index) {
+        HBox row = new HBox();
+        row.setPadding(new Insets(10, 20, 10, 20));
+        row.setStyle("-fx-background-color: " + (index % 2 == 0 ? BG_CARD : BG_ROW_ALT) + ";");
+        GridPane grid = new GridPane();
+        for (double width : widths) {
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.setPercentWidth(width);
+            grid.getColumnConstraints().add(cc);
+        }
+        grid.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(grid, Priority.ALWAYS);
+
+        HBox member = new HBox(8);
+        member.setAlignment(Pos.CENTER_LEFT);
+        Label name = new Label(record.memberName() != null ? record.memberName() : "Unknown member");
+        name.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
+        name.setTextFill(Color.web(TEXT_WHITE));
+        member.getChildren().addAll(name, makeDashboardSessionBadge(record.sessionType()));
+        grid.add(member, 0, 0);
+        grid.add(dashboardCell("#" + record.memberCode(), TEXT_MUTED, false), 1, 0);
+        grid.add(dashboardCell(record.timeIn() != null ? record.timeIn().toLocalDateTime().format(ACTIVITY_TIME_FORMAT) : "-", TEXT_MUTED, false), 2, 0);
+        grid.add(dashboardCell(record.notes() == null || record.notes().isBlank() ? "-" : record.notes(), TEXT_MUTED, false), 3, 0);
+        row.getChildren().add(grid);
+        return row;
+    }
+
+    private Label dashboardCell(String text, String color, boolean bold) {
+        Label label = new Label(text);
+        label.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
+        label.setTextFill(Color.web(color));
+        label.setWrapText(true);
+        return label;
+    }
+
+    private Label makeDashboardSessionBadge(String sessionType) {
+        String value = sessionType == null || sessionType.isBlank() ? "Member Session" : sessionType;
+        String color;
+        String bg;
+        if ("Per Session".equalsIgnoreCase(value)) {
+            color = WARNING_TEXT;
+            bg = "rgba(253,238,33,0.32)";
+        } else if ("Daily".equalsIgnoreCase(value)) {
+            color = "#1D4ED8";
+            bg = "#DBEAFE";
+        } else {
+            color = SUCCESS_TEXT;
+            bg = "rgba(228,255,223,0.85)";
+        }
+        Label badge = new Label(value);
+        badge.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
+        badge.setTextFill(Color.web(color));
+        badge.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 14; -fx-padding: 2 8 2 8;");
+        return badge;
+    }
+
+    private HBox buildMembershipAlertBanner(int expiringCount, int expiredCount) {
+        HBox banner = new HBox(14);
+        banner.setAlignment(Pos.CENTER_LEFT);
+        banner.setPadding(new Insets(14, 16, 14, 16));
+        banner.setStyle(
+            "-fx-background-color: #FFF7DB;" +
+            "-fx-background-radius: 16;" +
+            "-fx-border-color: #F2CF58;" +
+            "-fx-border-radius: 16;" +
+            "-fx-border-width: 1;"
+        );
+        Rectangle cut = new Rectangle(5, 36);
+        cut.setArcWidth(5);
+        cut.setArcHeight(5);
+        cut.setFill(Color.web(expiredCount > 0 ? "#B3261E" : WARNING_TEXT));
+
+        StringBuilder message = new StringBuilder();
+        if (expiringCount > 0) {
+            message.append(expiringCount).append(" membership(s) expiring within 7 days");
+        }
+        if (expiredCount > 0) {
+            if (message.length() > 0) message.append(" and ");
+            message.append(expiredCount).append(" expired membership(s) - renew or follow up");
+        }
+        Text text = new Text(message.toString() + ".");
+        text.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        text.setFill(Color.web("#2F2A0C"));
+
+        Region sp = new Region();
+        HBox.setHgrow(sp, Priority.ALWAYS);
+        Button dismiss = new Button("Dismiss");
+        dismiss.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        dismiss.setStyle(
+            "-fx-background-color: transparent;" +
+            "-fx-text-fill: #6E6400;" +
+            "-fx-border-color: #D0B13D;" +
+            "-fx-border-radius: 12;" +
+            "-fx-background-radius: 12;" +
+            "-fx-cursor: hand;"
+        );
+        dismiss.setOnAction(e -> {
+            banner.setManaged(false);
+            banner.setVisible(false);
+        });
+        banner.getChildren().addAll(cut, text, sp, dismiss);
+        return banner;
+    }
+
+    private VBox buildMembershipExpiryPanel(
+        List<MemberDAO.MemberRecord> expiringSoon,
+        List<MemberDAO.MemberRecord> expired
+    ) {
+        VBox panel = new VBox(14);
+        panel.setStyle("-fx-background-color: transparent;");
+
+        VBox listHost = new VBox(0);
+        listHost.getChildren().setAll(
+            !expired.isEmpty()
+                ? buildMembershipExpiryList("Expired memberships", "Members past their membership end date", expired, "#B3261E", "Expired")
+                : buildMembershipExpiryList("Expiring in 7 days", "Active members nearing plan expiry", expiringSoon, WARNING_TEXT, "Expiring Soon")
+        );
+
+        HBox cards = new HBox(14);
+        cards.setAlignment(Pos.CENTER_LEFT);
+        cards.getChildren().addAll(
+            buildExpiryStatCard("Expiring in 7 days", expiringSoon.size(), WARNING_TEXT,
+                () -> listHost.getChildren().setAll(buildMembershipExpiryList(
+                    "Expiring in 7 days", "Active members nearing plan expiry", expiringSoon, WARNING_TEXT, "Expiring Soon"
+                ))),
+            buildExpiryStatCard("Expired memberships", expired.size(), "#B3261E",
+                () -> listHost.getChildren().setAll(buildMembershipExpiryList(
+                    "Expired memberships", "Members past their membership end date", expired, "#B3261E", "Expired"
+                )))
+        );
+        panel.getChildren().addAll(cards, listHost);
+        return panel;
+    }
+
+    private VBox buildExpiryStatCard(String title, int count, String color, Runnable action) {
+        VBox card = new VBox(6);
+        card.setPadding(new Insets(16));
+        card.setMinHeight(92);
+        card.setMaxWidth(Double.MAX_VALUE);
+        card.setCursor(javafx.scene.Cursor.HAND);
+        String outline = readableAccent(color);
+        card.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-radius: 16;" +
+            "-fx-border-color: " + outline + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-border-width: 1.5;"
+        );
+        Text label = new Text(title);
+        label.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        label.setFill(Color.web(TEXT_WHITE));
+        Text value = new Text(String.valueOf(count));
+        value.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
+        value.setFill(Color.web(outline));
+        Text sub = new Text(count == 1 ? "member needs attention" : "members need attention");
+        sub.setFont(Font.font("Poppins", 10));
+        sub.setFill(Color.web(TEXT_MUTED));
+        card.getChildren().addAll(label, value, sub);
+        DropShadow shadow = createSummaryShadow(outline, 0.08, 6, 2);
+        card.setEffect(shadow);
+        card.setOnMouseEntered(e -> {
+            card.setStyle(
+                "-fx-background-color: " + ModernDesignSystem.HOVER_EFFECT + ";" +
+                "-fx-background-radius: 16;" +
+                "-fx-border-color: " + outline + ";" +
+                "-fx-border-radius: 16;" +
+                "-fx-border-width: 2;"
+            );
+            card.setEffect(createSummaryShadow(outline, 0.14, 10, 3));
+        });
+        card.setOnMouseExited(e -> {
+            card.setStyle(
+                "-fx-background-color: " + BG_CARD + ";" +
+                "-fx-background-radius: 16;" +
+                "-fx-border-color: " + outline + ";" +
+                "-fx-border-radius: 16;" +
+                "-fx-border-width: 1.5;"
+            );
+            card.setEffect(shadow);
+        });
+        HBox.setHgrow(card, Priority.ALWAYS);
+        card.setOnMouseClicked(e -> action.run());
+        return card;
+    }
+
+    private VBox buildMembershipExpiryList(
+        String title,
+        String subtitle,
+        List<MemberDAO.MemberRecord> members,
+        String color,
+        String status
+    ) {
+        VBox card = new VBox(0);
+        card.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-radius: 18;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 18;" +
+            "-fx-border-width: 1;"
+        );
+        HBox header = new HBox(12);
+        header.setAlignment(Pos.CENTER_LEFT);
+        header.setPadding(new Insets(14, 18, 14, 18));
+        Rectangle cut = new Rectangle(5, 34);
+        cut.setArcWidth(5);
+        cut.setArcHeight(5);
+        cut.setFill(Color.web(color));
+        VBox titleBox = new VBox(1);
+        Text titleTxt = new Text(title);
+        titleTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 13));
+        titleTxt.setFill(Color.web(TEXT_WHITE));
+        Text subTxt = new Text(subtitle);
+        subTxt.setFont(Font.font("Poppins", 10));
+        subTxt.setFill(Color.web(TEXT_MUTED));
+        titleBox.getChildren().addAll(titleTxt, subTxt);
+        header.getChildren().addAll(cut, titleBox);
+
+        VBox rows = new VBox(0);
+        if (members.isEmpty()) {
+            Label empty = new Label("No memberships in this group.");
+            empty.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
+            empty.setTextFill(Color.web(TEXT_MUTED));
+            empty.setPadding(new Insets(14, 18, 16, 18));
+            rows.getChildren().add(empty);
+        } else {
+            HBox tableHeader = new HBox();
+            tableHeader.setPadding(new Insets(9, 18, 9, 18));
+            tableHeader.setStyle("-fx-background-color: " + BG_ROW_ALT + ";");
+            String[] headers = {"Member", "Code", "Plan", "Expiry", "Action"};
+            double[] widths = {31, 16, 20, 18, 15};
+            GridPane grid = new GridPane();
+            for (double w : widths) {
+                ColumnConstraints cc = new ColumnConstraints();
+                cc.setPercentWidth(w);
+                grid.getColumnConstraints().add(cc);
+            }
+            grid.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(grid, Priority.ALWAYS);
+            for (int i = 0; i < headers.length; i++) {
+                Label h = new Label(headers[i]);
+                h.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+                h.setTextFill(Color.web(TEXT_MUTED));
+                grid.add(h, i, 0);
+            }
+            tableHeader.getChildren().add(grid);
+            rows.getChildren().add(tableHeader);
+
+            for (int i = 0; i < members.size(); i++) {
+                MemberDAO.MemberRecord m = members.get(i);
+                rows.getChildren().add(buildExpiryMemberRow(m, widths, color, status, i));
+            }
+        }
+        card.getChildren().addAll(header, rows);
+        return card;
+    }
+
+    private HBox buildExpiryMemberRow(MemberDAO.MemberRecord m, double[] widths, String color, String status, int index) {
+        HBox row = new HBox();
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(10, 18, 10, 18));
+        row.setStyle(
+            "-fx-background-color: " + (index % 2 == 0 ? BG_CARD : BG_ROW_ALT) + ";" +
+            "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+            "-fx-border-width: 0 0 1 0;"
+        );
+        GridPane grid = new GridPane();
+        for (double w : widths) {
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.setPercentWidth(w);
+            grid.getColumnConstraints().add(cc);
+        }
+        grid.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(grid, Priority.ALWAYS);
+
+        grid.add(expiryCell(m.fullName(), TEXT_WHITE, true), 0, 0);
+        grid.add(expiryCell("#" + m.memberCode(), TEXT_MUTED, false), 1, 0);
+        grid.add(expiryCell(m.membershipType() != null ? m.membershipType() : "No plan", TEXT_MUTED, false), 2, 0);
+        grid.add(expiryCell(m.membershipEndDate() != null ? m.membershipEndDate().toString() : "-", color, true), 3, 0);
+        Button renew = new Button("Renew");
+        renew.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        renew.setStyle(
+            "-fx-background-color: transparent;" +
+            "-fx-text-fill: " + color + ";" +
+            "-fx-border-color: " + color + ";" +
+            "-fx-border-radius: 12;" +
+            "-fx-background-radius: 12;" +
+            "-fx-cursor: hand;"
+        );
+        renew.setTooltip(new Tooltip(status + " - choose plan and proceed to payment"));
+        renew.setOnAction(e -> showRenewMemberDialog(m));
+        grid.add(renew, 4, 0);
+        row.getChildren().add(grid);
+        return row;
+    }
+
+    private Label expiryCell(String text, String color, boolean bold) {
+        Label label = new Label(text);
+        label.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
+        label.setTextFill(Color.web(color));
+        label.setPadding(new Insets(0, 8, 0, 0));
+        return label;
+    }
+
+    private void openPaymentScreenForRenewal(MemberDAO.MemberRecord member) {
+        try {
+            Stage stage = new Stage();
+            new PaymentScreen(member.memberCode()).start(stage);
+            stage.setTitle("Renew Membership - " + member.fullName() + " (" + member.memberCode() + ")");
+        } catch (Exception ex) {
+            new Alert(Alert.AlertType.ERROR, "Could not open the payment screen.").showAndWait();
+        }
+    }
+
+    private void showRenewMemberDialog(MemberDAO.MemberRecord member) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Renew Member");
+        dialog.setResizable(false);
+
+        VBox root = new VBox(14);
+        root.setPadding(new Insets(26));
+        root.setPrefWidth(420);
+        root.setStyle("-fx-background-color: " + BG_CARD + ";");
+
+        Text title = new Text("Renew Member");
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
+        title.setFill(Color.web(TEXT_WHITE));
+
+        Text subtitle = new Text(member.fullName() + " keeps the same details. Select the new plan first.");
+        subtitle.setFont(Font.font("Poppins", 11));
+        subtitle.setFill(Color.web(TEXT_DIM));
+
+        ComboBox<String> plan = new ComboBox<>();
+        plan.getItems().addAll(new PlanDAO().activePlanNames());
+        plan.setValue(planValueOrDefault(member.membershipType(), plan.getItems()));
+        styleRenewCombo(plan);
+
+        DatePicker startDate = new DatePicker(LocalDate.now());
+        startDate.getEditor().setPromptText("YYYY-MM-DD");
+        styleRenewDatePicker(startDate);
+
+        TextField endDate = new TextField(membershipEndForPlan(LocalDate.now(), plan.getValue()).toString());
+        endDate.setEditable(false);
+        styleRenewTextField(endDate);
+
+        plan.setOnAction(e -> updateRenewEndDate(startDate, plan, endDate));
+        startDate.valueProperty().addListener((obs, old, value) -> updateRenewEndDate(startDate, plan, endDate));
+
+        HBox buttons = new HBox(12);
+        buttons.setAlignment(Pos.CENTER_RIGHT);
+        Button cancel = new Button("Cancel");
+        cancel.setPrefHeight(38);
+        cancel.setPadding(new Insets(0, 18, 0, 18));
+        cancel.setOnAction(e -> dialog.close());
+
+        Button proceed = new Button("Proceed to Payment");
+        proceed.setPrefHeight(38);
+        proceed.setPadding(new Insets(0, 20, 0, 20));
+        proceed.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        proceed.setStyle(
+            "-fx-background-color: " + ACCENT + ";" +
+            "-fx-text-fill: white;" +
+            "-fx-background-radius: 14;" +
+            "-fx-cursor: hand;"
+        );
+        proceed.setOnAction(e -> {
+            LocalDate start = startDate.getValue();
+            if (start == null) {
+                new Alert(Alert.AlertType.WARNING, "Please select a start date.").showAndWait();
+                return;
+            }
+            String selectedPlan = plan.getValue();
+            LocalDate end = membershipEndForPlan(start, selectedPlan);
+            MemberDAO.MemberRecord renewed = new MemberDAO.MemberRecord(
+                member.memberId(),
+                member.memberCode(),
+                member.firstName(),
+                member.lastName(),
+                member.contactNumber(),
+                member.email(),
+                member.address(),
+                member.dateOfBirth(),
+                member.gender(),
+                selectedPlan,
+                Date.valueOf(start),
+                Date.valueOf(end),
+                "Active",
+                member.emergencyContact(),
+                member.emergencyPhone(),
+                member.sessionsPaid(),
+                member.sessionsRemaining()
+            );
+
+            if (new MemberDAO().update(renewed)) {
+                new PaymentDAO().ensureBillingForMember(
+                    member.memberId(),
+                    selectedPlan,
+                    Date.valueOf(end),
+                    AppSession.currentUser().userId()
+                );
+                dialog.close();
+                openPaymentScreenForRenewal(member);
+            } else {
+                new Alert(Alert.AlertType.ERROR, "Could not renew member. Please check the database connection.").showAndWait();
+            }
+        });
+
+        buttons.getChildren().addAll(cancel, proceed);
+        root.getChildren().addAll(
+            title,
+            subtitle,
+            renewField("PLAN", plan),
+            renewField("START DATE", startDate),
+            renewField("END DATE", endDate),
+            buttons
+        );
+
+        dialog.setScene(new Scene(root));
+        dialog.showAndWait();
+    }
+
+    private VBox renewField(String label, javafx.scene.Node input) {
+        VBox box = new VBox(6);
+        Text caption = new Text(label);
+        caption.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        caption.setFill(Color.web(TEXT_MUTED));
+        box.getChildren().addAll(caption, input);
+        return box;
+    }
+
+    private void updateRenewEndDate(DatePicker startDate, ComboBox<String> plan, TextField endDate) {
+        LocalDate start = startDate.getValue();
+        endDate.setText(start == null ? "" : membershipEndForPlan(start, plan.getValue()).toString());
+    }
+
+    private LocalDate membershipEndForPlan(LocalDate start, String planType) {
+        if (start == null) {
+            start = LocalDate.now();
+        }
+        if (planType == null) {
+            return start.plusMonths(1);
+        }
+        return switch (PlanDAO.normalizePlanName(planType)) {
+            case "Daily", "Per Session" -> start.plusDays(1);
+            case "Monthly" -> start.plusMonths(1);
+            case "Quarterly" -> start.plusMonths(3);
+            case "Semi Annual" -> start.plusMonths(6);
+            case "Yearly", "Annual" -> start.plusYears(1);
+            default -> start.plusMonths(1);
+        };
+    }
+
+    private String planValueOrDefault(String requested, List<String> choices) {
+        String normalized = PlanDAO.normalizePlanName(requested);
+        if (choices.contains(normalized)) {
+            return normalized;
+        }
+        if (choices.contains("Monthly")) {
+            return "Monthly";
+        }
+        return choices.isEmpty() ? "Monthly" : choices.get(0);
+    }
+
+    private void styleRenewCombo(ComboBox<String> combo) {
+        combo.setMaxWidth(Double.MAX_VALUE);
+        combo.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-padding: 5 8 5 8;"
+        );
+    }
+
+    private void styleRenewDatePicker(DatePicker picker) {
+        picker.setMaxWidth(Double.MAX_VALUE);
+        picker.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;"
+        );
+    }
+
+    private void styleRenewTextField(TextField field) {
+        field.setMaxWidth(Double.MAX_VALUE);
+        field.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-text-fill: " + TEXT_WHITE + ";"
+        );
+    }
+
     //  Summary stat card - Enhanced with better visual design
     private VBox makeSummaryCard(String icon, String label, String value,
                                   String sub, String color, boolean highlighted) {
@@ -581,21 +1152,21 @@ public class DashboardScreen extends Application {
         String baseStyle =
             "-fx-background-color: " + BG_CARD + ";" +
             "-fx-background-radius: 18;" +
-            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-color: " + readableColor + ";" +
             "-fx-border-radius: 18;" +
-            "-fx-border-width: 1;";
+            "-fx-border-width: 1.5;";
         String hoverStyle =
             "-fx-background-color: " + ModernDesignSystem.HOVER_EFFECT + ";" +
             "-fx-background-radius: 18;" +
-            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-color: " + readableColor + ";" +
             "-fx-border-radius: 18;" +
-            "-fx-border-width: 1;";
+            "-fx-border-width: 2;";
         String selectedStyle =
             "-fx-background-color: " + ModernDesignSystem.HOVER_EFFECT + ";" +
             "-fx-background-radius: 18;" +
-            "-fx-border-color: " + color + ";" +
+            "-fx-border-color: " + readableColor + ";" +
             "-fx-border-radius: 18;" +
-            "-fx-border-width: 3;";
+            "-fx-border-width: 2.5;";
 
         DropShadow baseShadow = createSummaryShadow(ACCENT, 0.10, 12, 4);
         DropShadow hoverShadow = createSummaryShadow(ACCENT, 0.16, 18, 6);
@@ -620,11 +1191,6 @@ public class DashboardScreen extends Application {
                 selected ? "summarySelectedShadow" : "summaryBaseShadow");
         });
         HBox.setHgrow(card, Priority.ALWAYS);
-
-        Rectangle accentCut = new Rectangle(46, 4);
-        accentCut.setArcWidth(4);
-        accentCut.setArcHeight(4);
-        accentCut.setFill(Color.web(color));
 
         // Top row with icon and value
         HBox topRow = new HBox(14);
@@ -662,7 +1228,7 @@ public class DashboardScreen extends Application {
         subTxt.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         subTxt.setFill(Color.web(readableColor));
 
-        card.getChildren().addAll(accentCut, topRow, subTxt);
+        card.getChildren().addAll(topRow, subTxt);
         return card;
     }
 

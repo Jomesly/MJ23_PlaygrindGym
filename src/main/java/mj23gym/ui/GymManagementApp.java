@@ -183,19 +183,22 @@ public class GymManagementApp extends Application {
         VBox menu = new VBox(2);
         menu.setPadding(new javafx.geometry.Insets(0, 10, 0, 10));
 
-        String[][] items = {
-            {"DB", "Dashboard", "dashboard"},
-            {"MB", "Member Management", "members"},
-            {"PL", "Manage Plans", "plans"},
-            {"PAY", "Payment & Billing", "payment"},
-            {"INV", "Inventory", "inventory"},
-            {"EQ", "Equipment", "equipment"},
-            {"POS", "Point of Sale", "pos"},
-            {"SE", "Search", "search"},
-            {"REP", "Reports", "reports"}
-        };
+        java.util.List<String[]> itemsList = new java.util.ArrayList<>();
+        itemsList.add(new String[]{"DB", "Dashboard", "dashboard"});
+        itemsList.add(new String[]{"MB", "Member Management", "members"});
+        itemsList.add(new String[]{"PL", "Manage Plans", "plans"});
+        itemsList.add(new String[]{"PAY", "Payment & Billing", "payment"});
+        itemsList.add(new String[]{"INV", "Inventory", "inventory"});
+        itemsList.add(new String[]{"EQ", "Equipment", "equipment"});
+        itemsList.add(new String[]{"POS", "Point of Sale", "pos"});
+        itemsList.add(new String[]{"SE", "Search", "search"});
+        
+        // Only admins can access Reports
+        if (AppSession.currentUser().isAdmin()) {
+            itemsList.add(new String[]{"REP", "Reports", "reports"});
+        }
 
-        for (String[] item : items) {
+        for (String[] item : itemsList) {
             Button btn = createNavButton(item[0], item[1], item[2]);
             menu.getChildren().add(btn);
         }
@@ -396,7 +399,9 @@ public class GymManagementApp extends Application {
             case "equipment" -> new AddEquipmentScreen().buildContent();
             case "pos" -> new POSScreen().buildContent();
             case "search" -> new SearchScreen().buildContent();
-            case "reports" -> new ReportsScreen().buildContent();
+            case "reports" -> AppSession.currentUser().isAdmin()
+                ? new ReportsScreen().buildContent()
+                : createAccessDeniedScreen();
             case "maintenance" -> new MaintenanceScreen().buildContent();
             case "accounts", "registration" -> AppSession.currentUser().isAdmin()
                 ? new AccountManagementScreen().buildContent()
@@ -423,7 +428,7 @@ public class GymManagementApp extends Application {
         title.setFont(Font.font("Poppins", FontWeight.BOLD, 28));
         title.setFill(Color.web(TEXT_WHITE));
 
-        Label message = new Label("Account registration and verification are available to administrators only.");
+        Label message = new Label("This feature is available to administrators only.");
         message.setStyle("-fx-text-fill: " + TEXT_MUTED + "; -fx-font: 14 Poppins;");
 
         vbox.getChildren().addAll(title, message);

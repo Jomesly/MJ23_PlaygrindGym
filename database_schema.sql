@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS attendance (
     time_in         DATETIME,
     time_out        DATETIME,
     attendance_date DATE,
-    session_type    ENUM('Daily','Per Session','Monthly','Quarterly','Semi Annual','Yearly','Annual') DEFAULT 'Monthly',
+    session_type    ENUM('Daily','Per Session','Member Session','Monthly','Quarterly','Semi Annual','Yearly','Annual') DEFAULT 'Member Session',
     notes           VARCHAR(255),
 
     FOREIGN KEY (member_id) REFERENCES members(member_id) ON DELETE CASCADE,
@@ -251,6 +251,26 @@ CREATE TABLE IF NOT EXISTS maintenance_logs (
     FOREIGN KEY (recorded_by)  REFERENCES users(user_id)          ON DELETE SET NULL,
     INDEX idx_equipment_id   (equipment_id),
     INDEX idx_maintenance_date (maintenance_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS maintenance_parts (
+    part_id          INT AUTO_INCREMENT PRIMARY KEY,
+    equipment_id     INT NOT NULL,
+    part_name        VARCHAR(150) NOT NULL,
+    quantity         DECIMAL(10,2) NOT NULL,
+    unit_of_measure  VARCHAR(30) DEFAULT 'pcs',
+    unit_cost        DECIMAL(10,2) NOT NULL,
+    total_cost       DECIMAL(10,2) NOT NULL,
+    date_purchased   DATE NOT NULL,
+    date_installed   DATE,
+    supplier         VARCHAR(150),
+    notes            TEXT,
+    recorded_by      INT,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id) ON DELETE CASCADE,
+    FOREIGN KEY (recorded_by)  REFERENCES users(user_id) ON DELETE SET NULL,
+    INDEX idx_equipment_id  (equipment_id),
+    INDEX idx_date_purchased (date_purchased)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 

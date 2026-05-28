@@ -211,7 +211,7 @@ public class PlanDAO {
     private void ensurePlanEnums() {
         String planSql = "ALTER TABLE plans MODIFY duration ENUM(" + PLAN_ENUM + ") DEFAULT 'Monthly'";
         String memberSql = "ALTER TABLE members MODIFY membership_type ENUM(" + PLAN_ENUM + ") DEFAULT 'Monthly'";
-        String attendanceSql = "ALTER TABLE attendance MODIFY session_type ENUM(" + PLAN_ENUM + ") DEFAULT 'Monthly'";
+        String attendanceSql = "ALTER TABLE attendance MODIFY session_type ENUM('Daily','Per Session','Member Session','Monthly','Quarterly','Semi Annual','Yearly','Annual') DEFAULT 'Member Session'";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement st = conn.createStatement()) {
             st.executeUpdate(planSql);

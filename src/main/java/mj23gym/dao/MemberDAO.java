@@ -98,6 +98,27 @@ public class MemberDAO {
         return res.isEmpty() ? Optional.empty() : Optional.of(res.get(0));
     }
 
+    public List<MemberRecord> findExpiringSoon(int daysAhead) {
+        return query(
+            "SELECT * FROM members " +
+            "WHERE status = 'Active' " +
+            "AND membership_end_date BETWEEN CURDATE() " +
+            "AND DATE_ADD(CURDATE(), INTERVAL ? DAY) " +
+            "ORDER BY membership_end_date ASC",
+            ps -> ps.setInt(1, Math.max(0, daysAhead))
+        );
+    }
+
+    public List<MemberRecord> findOverdueMembers() {
+        return query(
+            "SELECT * FROM members " +
+            "WHERE status = 'Active' " +
+            "AND membership_end_date < CURDATE() " +
+            "ORDER BY membership_end_date ASC",
+            ps -> {}
+        );
+    }
+
     // ── COUNT / STATS ─────────────────────────────────────────────
 
     public int countByStatus(String status) {
@@ -233,6 +254,7 @@ public class MemberDAO {
         String creditSql = "UPDATE members SET sessions_remaining=sessions_remaining-1, updated_at=NOW() WHERE member_id=?";
         try (Connection conn = DatabaseConnection.getConnection()) {
             ensureSessionColumns(conn);
+            ensureAttendanceSessionTypeColumn(conn);
             conn.setAutoCommit(false);
             String currentPlan;
             int remaining;
@@ -248,13 +270,14 @@ public class MemberDAO {
                 }
             }
             boolean perSession = "Per Session".equalsIgnoreCase(currentPlan);
+            String derivedSessionType = attendanceSessionType(currentPlan);
             if (perSession && remaining <= 0) {
                 conn.rollback();
                 return false;
             }
             try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
                 ps.setInt(1, memberId);
-                ps.setString(2, sessionType != null ? sessionType : currentPlan);
+                ps.setString(2, derivedSessionType);
                 ps.setString(3, notes);
                 if (ps.executeUpdate() <= 0) {
                     conn.rollback();
@@ -304,6 +327,40 @@ public class MemberDAO {
             }
         } catch (SQLException e) {
             System.err.println("[MemberDAO] findRecentAttendance error: " + e.getMessage());
+        }
+        return list;
+    }
+
+    public List<AttendanceRecord> findAttendanceBetween(Date from, Date to) {
+        String sql =
+            "SELECT a.attendance_id, a.member_id, m.unique_member_code, " +
+            "CONCAT(m.first_name, ' ', m.last_name) AS member_name, " +
+            "a.time_in, a.attendance_date, a.session_type, a.notes " +
+            "FROM attendance a JOIN members m ON a.member_id = m.member_id " +
+            "WHERE a.attendance_date BETWEEN ? AND ? " +
+            "AND m.status <> 'Cancelled' " +
+            "ORDER BY a.attendance_date DESC, a.time_in DESC, a.attendance_id DESC";
+        List<AttendanceRecord> list = new ArrayList<>();
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDate(1, from);
+            ps.setDate(2, to);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(new AttendanceRecord(
+                        rs.getInt("attendance_id"),
+                        rs.getInt("member_id"),
+                        rs.getString("unique_member_code"),
+                        rs.getString("member_name"),
+                        rs.getTimestamp("time_in"),
+                        rs.getDate("attendance_date"),
+                        rs.getString("session_type"),
+                        rs.getString("notes")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[MemberDAO] findAttendanceBetween error: " + e.getMessage());
         }
         return list;
     }
@@ -381,6 +438,28 @@ public class MemberDAO {
         } catch (SQLException e) {
             System.err.println("[MemberDAO] ensure sessions_remaining error: " + e.getMessage());
         }
+    }
+
+    private void ensureAttendanceSessionTypeColumn(Connection conn) {
+        try (Statement st = conn.createStatement()) {
+            st.executeUpdate(
+                "ALTER TABLE attendance MODIFY session_type " +
+                "ENUM('Daily','Per Session','Member Session','Monthly','Quarterly','Semi Annual','Yearly','Annual') " +
+                "DEFAULT 'Member Session'"
+            );
+        } catch (SQLException e) {
+            System.err.println("[MemberDAO] ensure attendance session_type error: " + e.getMessage());
+        }
+    }
+
+    private String attendanceSessionType(String membershipType) {
+        if ("Per Session".equalsIgnoreCase(membershipType)) {
+            return "Per Session";
+        }
+        if ("Daily".equalsIgnoreCase(membershipType)) {
+            return "Daily";
+        }
+        return "Member Session";
     }
 
     private String generateNextCode() {

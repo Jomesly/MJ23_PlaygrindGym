@@ -38,8 +38,8 @@ public final class SearchDAO {
     private List<SearchResult> searchMembers(String like) {
         String sql =
             "SELECT unique_member_code, first_name, last_name, email, contact_number, membership_type, status, created_at " +
-            "FROM members WHERE unique_member_code LIKE ? OR first_name LIKE ? OR last_name LIKE ? " +
-            "OR email LIKE ? OR contact_number LIKE ? ORDER BY updated_at DESC LIMIT 25";
+            "FROM members WHERE status <> 'Cancelled' AND (unique_member_code LIKE ? OR first_name LIKE ? OR last_name LIKE ? " +
+            "OR email LIKE ? OR contact_number LIKE ?) ORDER BY updated_at DESC LIMIT 25";
         return query(sql, like, rs -> new SearchResult(
             "Members",
             rs.getString("unique_member_code") + " - " + rs.getString("first_name") + " " + rs.getString("last_name"),
@@ -52,8 +52,8 @@ public final class SearchDAO {
     private List<SearchResult> searchInventory(String like) {
         String sql =
             "SELECT item_code, item_name, category, current_stock, reorder_level, status, updated_at " +
-            "FROM inventory WHERE item_code LIKE ? OR item_name LIKE ? OR category LIKE ? " +
-            "OR supplier LIKE ? OR status LIKE ? ORDER BY updated_at DESC LIMIT 25";
+            "FROM inventory WHERE is_active=TRUE AND (item_code LIKE ? OR item_name LIKE ? OR category LIKE ? " +
+            "OR supplier LIKE ? OR status LIKE ?) ORDER BY updated_at DESC LIMIT 25";
         return query(sql, like, rs -> new SearchResult(
             "Inventory",
             rs.getString("item_code") + " - " + rs.getString("item_name"),
@@ -68,8 +68,8 @@ public final class SearchDAO {
             "SELECT pr.payment_id, pr.amount, pr.payment_method, pr.transaction_ref, pr.status, pr.created_at, " +
             "m.unique_member_code, CONCAT(m.first_name,' ',m.last_name) AS member_name " +
             "FROM payment_records pr JOIN members m ON pr.member_id=m.member_id " +
-            "WHERE CAST(pr.payment_id AS CHAR) LIKE ? OR pr.transaction_ref LIKE ? OR pr.payment_method LIKE ? " +
-            "OR m.unique_member_code LIKE ? OR m.first_name LIKE ? OR m.last_name LIKE ? " +
+            "WHERE pr.amount > 0 AND m.status <> 'Cancelled' AND (CAST(pr.payment_id AS CHAR) LIKE ? OR pr.transaction_ref LIKE ? OR pr.payment_method LIKE ? " +
+            "OR m.unique_member_code LIKE ? OR m.first_name LIKE ? OR m.last_name LIKE ?) " +
             "ORDER BY pr.created_at DESC LIMIT 25";
         return query(sql, like, rs -> new SearchResult(
             "Payments",

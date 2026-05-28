@@ -33,6 +33,7 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 import mj23gym.dao.EquipmentDAO;
@@ -221,7 +222,9 @@ public class AddEquipmentScreen extends Application {
         styleCombo(condFilter);
         Region ctrlSp = new Region();
         HBox.setHgrow(ctrlSp, Priority.ALWAYS);
-        controls.getChildren().addAll(search, catFilter, condFilter, ctrlSp);
+        Button archivedBtn = outlineButton("Archived Equipment");
+        Button addBtn = makeAccentBtn("Add Equipment");
+        controls.getChildren().addAll(search, catFilter, condFilter, ctrlSp, archivedBtn, addBtn);
 
         HBox conditionLegend = buildConditionLegend();
         HBox monitorStats = new HBox(10);
@@ -232,37 +235,15 @@ public class AddEquipmentScreen extends Application {
         monitorDetail.setTextFill(Color.web(TEXT_MUTED));
         VBox monitorPanel = buildEquipmentMonitorPanel(monitorStats, monitorDetail);
 
-        GridPane mainRow = new GridPane();
-        mainRow.setHgap(14);
-        mainRow.setMaxWidth(Double.MAX_VALUE);
-
         VBox rows = new VBox(0);
         Text pgInfo = new Text();
         pgInfo.setFont(Font.font("Poppins", 11));
         pgInfo.setFill(Color.web(TEXT_MUTED));
 
-        double[] colW = {7, 15, 9, 5, 10, 11, 43};
+        double[] colW = {8, 22, 13, 7, 14, 16, 20};
         VBox tableCard = buildEquipmentTableShell(colW, rows, pgInfo);
         tableCard.setMinWidth(0);
         tableCard.setMaxWidth(Double.MAX_VALUE);
-
-        TextField addName = new TextField();
-        ComboBox<String> addCat = new ComboBox<>();
-        addCat.getItems().addAll("Cardio", "Strength", "Bodyweight", "Flexibility", "Other");
-        addCat.setValue("Cardio");
-        styleCombo(addCat);
-        TextField addQty = new TextField();
-        addQty.setPromptText("1");
-        ComboBox<String> addCond = new ComboBox<>();
-        addCond.getItems().addAll("Good", "Fair", "Maintenance", "Broken");
-        addCond.setValue("Good");
-        styleCombo(addCond);
-        DatePicker addPurchase = new DatePicker();
-        addPurchase.getEditor().setPromptText("Purchase date optional");
-        DatePicker addNextMaint = new DatePicker();
-        addNextMaint.getEditor().setPromptText("Next maintenance optional");
-        TextField addNotes = new TextField();
-        addNotes.setPromptText("Optional notes");
 
         final Runnable[] refreshHolder = new Runnable[1];
         refreshHolder[0] = () -> {
@@ -283,42 +264,12 @@ public class AddEquipmentScreen extends Application {
         search.setOnAction(e -> refreshHolder[0].run());
         catFilter.setOnAction(e -> refreshHolder[0].run());
         condFilter.setOnAction(e -> refreshHolder[0].run());
+        archivedBtn.setOnAction(e -> showArchivedEquipmentDialog(equipmentDAO, refreshHolder[0]));
+        addBtn.setOnAction(e -> showAddEquipmentDialog(equipmentDAO, refreshHolder[0]));
         refreshHolder[0].run();
 
-        VBox addCard = buildQuickAddCard(
-            equipmentDAO,
-            addName,
-            addCat,
-            addQty,
-            addCond,
-            addPurchase,
-            addNextMaint,
-            addNotes,
-            refreshHolder[0]
-        );
-        addCard.setMinWidth(240);
-        addCard.setMaxWidth(Double.MAX_VALUE);
-
-        ColumnConstraints tableCol = new ColumnConstraints();
-        tableCol.setPercentWidth(66);
-        tableCol.setHgrow(Priority.ALWAYS);
-        tableCol.setFillWidth(true);
-        ColumnConstraints addCol = new ColumnConstraints();
-        addCol.setPercentWidth(34);
-        addCol.setHgrow(Priority.ALWAYS);
-        addCol.setFillWidth(true);
-        addCol.setMinWidth(240);
-        addCol.setMaxWidth(300);
-        mainRow.getColumnConstraints().addAll(tableCol, addCol);
-        mainRow.add(tableCard, 0, 0);
-        mainRow.add(addCard, 1, 0);
-        GridPane.setHgrow(tableCard, Priority.ALWAYS);
-        GridPane.setHgrow(addCard, Priority.ALWAYS);
-        GridPane.setVgrow(tableCard, Priority.ALWAYS);
-        GridPane.setVgrow(addCard, Priority.ALWAYS);
-
         body.setMaxWidth(Double.MAX_VALUE);
-        body.getChildren().addAll(stats, controls, conditionLegend, monitorPanel, mainRow);
+        body.getChildren().addAll(stats, controls, conditionLegend, monitorPanel, tableCard);
         scroll.setContent(body);
         content.getChildren().addAll(topBar, scroll);
         VBox.setVgrow(scroll, Priority.ALWAYS);
@@ -328,6 +279,170 @@ public class AddEquipmentScreen extends Application {
         ft.setToValue(1);
         ft.play();
         return content;
+    }
+
+    private void showAddEquipmentDialog(EquipmentDAO dao, Runnable onSaved) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Add Equipment");
+        dialog.setResizable(false);
+
+        TextField addName = new TextField();
+        ComboBox<String> addCat = new ComboBox<>();
+        addCat.getItems().addAll("Cardio", "Strength", "Bodyweight", "Flexibility", "Other");
+        addCat.setValue("Cardio");
+        styleCombo(addCat);
+        TextField addQty = new TextField();
+        addQty.setPromptText("1");
+        ComboBox<String> addCond = new ComboBox<>();
+        addCond.getItems().addAll("Good", "Fair", "Maintenance", "Broken");
+        addCond.setValue("Good");
+        styleCombo(addCond);
+        DatePicker addPurchase = new DatePicker();
+        addPurchase.getEditor().setPromptText("Purchase date optional");
+        DatePicker addNextMaint = new DatePicker();
+        addNextMaint.getEditor().setPromptText("Next maintenance optional");
+        TextField addNotes = new TextField();
+        addNotes.setPromptText("Optional notes");
+
+        VBox root = buildQuickAddCard(
+            dao,
+            addName,
+            addCat,
+            addQty,
+            addCond,
+            addPurchase,
+            addNextMaint,
+            addNotes,
+            () -> {
+                onSaved.run();
+                dialog.close();
+            }
+        );
+        root.setPadding(new Insets(22));
+        root.setPrefWidth(430);
+        dialog.setScene(new Scene(root));
+        dialog.showAndWait();
+    }
+
+    private void showArchivedEquipmentDialog(EquipmentDAO dao, Runnable mainRefresh) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Archived Equipment");
+        dialog.setResizable(true);
+
+        VBox root = new VBox(18);
+        root.setPadding(new Insets(24));
+        root.setPrefSize(860, 520);
+        root.setStyle("-fx-background-color: " + BG_MAIN + ";");
+
+        HBox titleRow = new HBox(12);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+        Rectangle accent = new Rectangle(5, 44);
+        accent.setArcWidth(5);
+        accent.setArcHeight(5);
+        accent.setFill(Color.web(ACCENT));
+        Text title = new Text("Archived Equipment");
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
+        title.setFill(Color.web(TEXT_WHITE));
+        Text subtitle = new Text("Archived equipment is hidden from the active equipment list. Restore equipment when it returns to use.");
+        subtitle.setFont(Font.font("Poppins", 11));
+        subtitle.setFill(Color.web(TEXT_MUTED));
+        titleRow.getChildren().addAll(accent, new VBox(2, title, subtitle));
+
+        HBox filters = new HBox(12);
+        filters.setAlignment(Pos.CENTER_LEFT);
+        TextField search = new TextField();
+        search.setPromptText("Search archived equipment...");
+        search.setPrefWidth(260);
+        search.setPrefHeight(38);
+        applyFieldStyle(search);
+        ComboBox<String> category = new ComboBox<>();
+        category.getItems().addAll("All Types", "Cardio", "Strength", "Bodyweight", "Flexibility", "Other");
+        category.setValue("All Types");
+        styleCombo(category);
+        Region filterSp = new Region();
+        HBox.setHgrow(filterSp, Priority.ALWAYS);
+        filters.getChildren().addAll(search, category, filterSp);
+
+        VBox tableCard = new VBox(0);
+        tableCard.setStyle(
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 18;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 18;" +
+            "-fx-border-width: 1;"
+        );
+        DropShadow shadow = new DropShadow();
+        shadow.setColor(Color.web(ACCENT, 0.10));
+        shadow.setRadius(12);
+        shadow.setOffsetY(4);
+        tableCard.setEffect(shadow);
+
+        double[] colW = {9, 25, 14, 8, 15, 14, 15};
+        String[] headers = {"ID", "Name", "Type", "Qty", "Condition", "Next Maint.", "Actions"};
+        HBox header = new HBox();
+        header.setPadding(new Insets(12, 16, 12, 16));
+        header.setStyle(
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 18 18 0 0;" +
+            "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+            "-fx-border-width: 0 0 1 0;"
+        );
+        GridPane hGrid = makeGrid(colW);
+        hGrid.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(hGrid, Priority.ALWAYS);
+        for (int i = 0; i < headers.length; i++) {
+            Label h = new Label(headers[i].toUpperCase());
+            h.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
+            h.setTextFill(Color.web(TEXT_MUTED));
+            hGrid.add(h, i, 0);
+        }
+        header.getChildren().add(hGrid);
+
+        VBox rows = new VBox(0);
+        Text pageInfo = new Text();
+        pageInfo.setFont(Font.font("Poppins", 11));
+        pageInfo.setFill(Color.web(TEXT_MUTED));
+
+        Runnable[] refreshArchived = new Runnable[1];
+        refreshArchived[0] = () -> refreshArchivedEquipmentRows(
+            rows,
+            pageInfo,
+            dao,
+            search.getText().trim(),
+            category.getValue(),
+            colW,
+            () -> {
+                mainRefresh.run();
+                refreshArchived[0].run();
+            }
+        );
+        search.setOnAction(e -> refreshArchived[0].run());
+        category.setOnAction(e -> refreshArchived[0].run());
+
+        ScrollPane rowsScroll = new ScrollPane(rows);
+        rowsScroll.setFitToWidth(true);
+        rowsScroll.setMaxHeight(330);
+        rowsScroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+
+        HBox footer = new HBox(12);
+        footer.setAlignment(Pos.CENTER_RIGHT);
+        footer.setPadding(new Insets(14, 16, 14, 16));
+        footer.setStyle("-fx-border-color: " + BORDER + " transparent transparent transparent; -fx-border-width: 1 0 0 0;");
+        Region footerSp = new Region();
+        HBox.setHgrow(footerSp, Priority.ALWAYS);
+        Button close = outlineButton("Close");
+        close.setOnAction(e -> dialog.close());
+        footer.getChildren().addAll(pageInfo, footerSp, close);
+
+        tableCard.getChildren().addAll(header, rowsScroll, footer);
+        root.getChildren().addAll(titleRow, filters, tableCard);
+        VBox.setVgrow(tableCard, Priority.ALWAYS);
+
+        refreshArchived[0].run();
+        dialog.setScene(new Scene(root));
+        dialog.showAndWait();
     }
 
     private VBox buildEquipmentTableShell(double[] colW, VBox rows, Text pgInfo) {
@@ -349,8 +464,8 @@ public class AddEquipmentScreen extends Application {
         tblHdr.setPadding(new Insets(10, 14, 10, 14));
         tblHdr.setStyle(
             "-fx-background-color: " + CARD_SURFACE + ";" +
-            "-fx-background-radius: 12 12 0 0;" +
-            "-fx-border-color: " + BORDER + " transparent transparent transparent;" +
+            "-fx-background-radius: 20 20 0 0;" +
+            "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
             "-fx-border-width: 0 0 1 0;"
         );
         GridPane hGrid = makeGrid(colW);
@@ -431,27 +546,99 @@ public class AddEquipmentScreen extends Application {
             rg.add(makeCell(String.valueOf(eq.quantity()), TEXT_WHITE, true), 3, 0);
             rg.add(makeCondBadge(eq.condition() != null ? eq.condition() : "Good"), 4, 0);
             rg.add(makeCell(next, TEXT_MUTED, false), 5, 0);
-            Button editBtn = makeActionBtn("Edit", WARNING);
+            Button editBtn = makeActionBtn("Edit", WARNING_TEXT);
             editBtn.setOnAction(e -> showEditEquipmentDialog(eq, fullRefresh));
             Button maintBtn = makeActionBtn("Maint", INFO);
             maintBtn.setOnAction(e -> showMaintenanceDialog(dao, eq, fullRefresh));
 
-            Button delBtn = makeActionBtn("", ACCENT);
-            delBtn.setText("Delete");
+            Button delBtn = makeActionBtn("Archive", TEXT_MUTED);
             delBtn.setOnAction(e -> {
                 Alert c = new Alert(Alert.AlertType.CONFIRMATION);
-                c.setTitle("Deactivate Equipment");
-                c.setHeaderText("Deactivate " + eq.equipmentName() + "?");
+                c.setTitle("Archive Equipment");
+                c.setHeaderText("Archive " + eq.equipmentName() + "?");
                 c.setContentText("This keeps the equipment history but removes it from active equipment records.");
                 Optional<ButtonType> res = c.showAndWait();
                 if (res.isPresent() && res.get() == ButtonType.OK && dao.deactivate(eq.equipmentId())) {
                     fullRefresh.run();
                 }
             });
-            HBox actions = new HBox(4, editBtn, maintBtn, delBtn);
+            HBox actions = new HBox(6, editBtn, maintBtn, delBtn);
             actions.setAlignment(Pos.CENTER_LEFT);
             rg.add(actions, 6, 0);
 
+            row.getChildren().add(rg);
+            String fBg = bg;
+            row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: rgba(26,19,99,0.06);"));
+            row.setOnMouseExited(e -> row.setStyle("-fx-background-color: " + fBg + ";"));
+            rows.getChildren().add(row);
+            r++;
+        }
+    }
+
+    private void refreshArchivedEquipmentRows(
+        VBox rows,
+        Text pgInfo,
+        EquipmentDAO dao,
+        String keyword,
+        String catFilterVal,
+        double[] colW,
+        Runnable fullRefresh
+    ) {
+        rows.getChildren().clear();
+        String q = keyword.toLowerCase();
+        List<EquipmentDAO.EquipmentRecord> filtered = new ArrayList<>();
+        for (EquipmentDAO.EquipmentRecord eq : dao.findArchived()) {
+            if (!"All Types".equals(catFilterVal)
+                && (eq.category() == null || !eq.category().equalsIgnoreCase(catFilterVal))) {
+                continue;
+            }
+            if (!q.isEmpty()) {
+                String blob = ((eq.equipmentName() != null ? eq.equipmentName() : "") + " "
+                    + (eq.equipmentCode() != null ? eq.equipmentCode() : "")).toLowerCase();
+                if (!blob.contains(q)) {
+                    continue;
+                }
+            }
+            filtered.add(eq);
+        }
+        pgInfo.setText("Showing " + filtered.size() + " archived equipment");
+        if (filtered.isEmpty()) {
+            rows.getChildren().add(makeEmptyState("No archived equipment found."));
+            return;
+        }
+
+        int r = 0;
+        for (EquipmentDAO.EquipmentRecord eq : filtered) {
+            String bg = (r % 2 == 0) ? CARD_SURFACE : BG_ROW_ALT;
+            HBox row = new HBox();
+            row.setPadding(new Insets(10, 16, 10, 16));
+            row.setStyle("-fx-background-color: " + bg + ";");
+            row.setAlignment(Pos.CENTER_LEFT);
+            GridPane rg = makeGrid(colW);
+            rg.setMaxWidth(Double.MAX_VALUE);
+            HBox.setHgrow(rg, Priority.ALWAYS);
+            String next = eq.nextMaintenance() != null ? eq.nextMaintenance().toString() : "";
+            rg.add(makeCell("#" + eq.equipmentCode(), ACCENT, true), 0, 0);
+            rg.add(makeNameCell(eq.equipmentName()), 1, 0);
+            rg.add(makeTypeBadge(eq.category() != null ? eq.category() : "Other"), 2, 0);
+            rg.add(makeCell(String.valueOf(eq.quantity()), TEXT_WHITE, true), 3, 0);
+            rg.add(makeCondBadge(eq.condition() != null ? eq.condition() : "Good"), 4, 0);
+            rg.add(makeCell(next, TEXT_MUTED, false), 5, 0);
+
+            Button restore = makeActionBtn("Restore", SUCCESS_TEXT);
+            restore.setOnAction(e -> {
+                Alert c = new Alert(Alert.AlertType.CONFIRMATION);
+                c.setTitle("Restore Equipment");
+                c.setHeaderText("Restore " + eq.equipmentName() + "?");
+                c.setContentText("This returns the equipment to active equipment records.");
+                Optional<ButtonType> res = c.showAndWait();
+                if (res.isPresent() && res.get() == ButtonType.OK && dao.reactivate(eq.equipmentId())) {
+                    fullRefresh.run();
+                }
+            });
+            HBox actions = new HBox(6, restore);
+            actions.setAlignment(Pos.CENTER_LEFT);
+            rg.add(actions, 6, 0);
             row.getChildren().add(rg);
             String fBg = bg;
             row.setOnMouseEntered(e -> row.setStyle("-fx-background-color: rgba(26,19,99,0.06);"));
@@ -947,32 +1134,36 @@ public class AddEquipmentScreen extends Application {
         return value == null ? "" : value;
     }
 
+    private String readableAccent(String color) {
+        if (color == null || color.isBlank() || "#FDEE21".equalsIgnoreCase(color) || WARNING.equalsIgnoreCase(color)) {
+            return WARNING_TEXT;
+        }
+        return color;
+    }
+
     private HBox makeStatChipText(String label, Text valueNode, String color) {
         HBox chip = new HBox(12);
         chip.setAlignment(Pos.CENTER_LEFT);
         chip.setPadding(new Insets(14, 18, 14, 18));
+        String outline = readableAccent(color);
         chip.setStyle(
             "-fx-background-color: " + CARD_SURFACE + ";" +
             "-fx-background-radius: 16;" +
-            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-color: " + outline + ";" +
             "-fx-border-radius: 16;" +
-            "-fx-border-width: 1;"
+            "-fx-border-width: 1.5;"
         );
         HBox.setHgrow(chip, Priority.ALWAYS);
         DropShadow d = new DropShadow();
-        d.setColor(Color.web("#000000", 0.08));
-        d.setRadius(8);
+        d.setColor(Color.web(outline, 0.08));
+        d.setRadius(6);
         d.setOffsetY(2);
         chip.setEffect(d);
-        Rectangle accent = new Rectangle(4, 36);
-        accent.setArcWidth(4);
-        accent.setArcHeight(4);
-        accent.setFill(Color.web(color));
-        valueNode.setFill(Color.web(color));
+        valueNode.setFill(Color.web(outline));
         Text lbl = new Text(label);
         lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
         lbl.setFill(Color.web(TEXT_MUTED));
-        chip.getChildren().addAll(accent, new VBox(2, lbl, valueNode));
+        chip.getChildren().addAll(new VBox(2, lbl, valueNode));
         return chip;
     }
 
@@ -1081,11 +1272,36 @@ public class AddEquipmentScreen extends Application {
         return b;
     }
 
+    private Button outlineButton(String text) {
+        Button b = new Button(text);
+        b.setPrefHeight(38);
+        b.setPadding(new Insets(0, 18, 0, 18));
+        b.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        String base =
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-text-fill: " + ACCENT + ";" +
+            "-fx-border-color: " + ACCENT + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
+            "-fx-cursor: hand;";
+        String hover =
+            "-fx-background-color: rgba(26,19,99,0.08);" +
+            "-fx-text-fill: " + ACCENT + ";" +
+            "-fx-border-color: " + ACCENT + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
+            "-fx-cursor: hand;";
+        b.setStyle(base);
+        b.setOnMouseEntered(e -> b.setStyle(hover));
+        b.setOnMouseExited(e -> b.setStyle(base));
+        return b;
+    }
+
     private Button makeActionBtn(String icon, String color) {
         Button btn = new Button(icon);
         btn.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
-        btn.setMinWidth(38);
-        btn.setPadding(new Insets(4, 6, 4, 6));
+        btn.setMinWidth(58);
+        btn.setPadding(new Insets(5, 8, 5, 8));
         String readable = actionBtnColor(color);
         String base =
             "-fx-background-color: " + actionBtnWash(readable) + ";" +
@@ -1137,27 +1353,35 @@ public class AddEquipmentScreen extends Application {
         switch (cond) {
             case "Good":
                 c = SUCCESS_TEXT;
-                bg = "rgba(228,255,223,0.55)";
+                bg = "#DCFCE7";
                 break;
             case "Maintenance":
-                c = TEXT_WHITE;
-                bg = "rgba(26,19,99,0.12)";
+                c = WARNING_TEXT;
+                bg = "#FFF5C2";
                 break;
             case "Broken":
-                c = TEXT_WHITE;
-                bg = "rgba(26,19,99,0.18)";
+                c = ERROR_TEXT;
+                bg = "#FEE2E2";
                 break;
             case "Fair":
-                c = WARNING_TEXT;
-                bg = "rgba(253,238,33,0.35)";
+                c = "#1D4ED8";
+                bg = "#DBEAFE";
                 break;
             default:
                 c = TEXT_MUTED;
-                bg = "transparent";
+                bg = "#E5E7EB";
                 break;
         }
         b.setTextFill(Color.web(c));
-        b.setStyle("-fx-background-color: " + bg + "; -fx-background-radius: 18; -fx-padding: 3 10 3 10;");
+        b.setStyle(
+            "-fx-background-color: " + bg + ";" +
+            "-fx-text-fill: " + c + ";" +
+            "-fx-background-radius: 18;" +
+            "-fx-border-color: " + c + ";" +
+            "-fx-border-radius: 18;" +
+            "-fx-border-width: 1;" +
+            "-fx-padding: 3 10 3 10;"
+        );
         return b;
     }
 

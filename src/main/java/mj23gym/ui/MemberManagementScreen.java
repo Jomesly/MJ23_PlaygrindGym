@@ -233,6 +233,7 @@ public class MemberManagementScreen extends Application {
         body.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
         MemberDAO memberDAO = new MemberDAO();
+        PaymentDAO paymentDAO = new PaymentDAO();
 
         //  Stats row 
         Text statTotalVal = new Text();
@@ -245,14 +246,24 @@ public class MemberManagementScreen extends Application {
         styleStatValue(statRenewVal);
 
         Runnable refreshStats = () -> {
-            int total = memberDAO.countAll();
-            int active = memberDAO.countByStatus("Active");
-            int expired = memberDAO.countByStatus("Expired");
+            int total = 0;
+            int active = 0;
+            int expired = 0;
             LocalDate today = LocalDate.now();
             int renewals = 0;
             for (MemberDAO.MemberRecord m : memberDAO.findAll()) {
-                if (m.membershipEndDate() != null
-                    && m.membershipEndDate().toLocalDate().equals(today)) {
+                if (!"Cancelled".equalsIgnoreCase(m.status())) {
+                    total++;
+                }
+                String effectiveStatus = effectiveMemberStatus(m);
+                if ("Active".equalsIgnoreCase(effectiveStatus)) active++;
+                if ("Expired".equalsIgnoreCase(effectiveStatus)) expired++;
+            }
+            Date todaySql = Date.valueOf(today);
+            for (PaymentDAO.PaymentRecord payment : paymentDAO.findByDateRange(todaySql, todaySql)) {
+                if ("Membership".equalsIgnoreCase(payment.paymentType())
+                    && "Completed".equalsIgnoreCase(payment.status())
+                    && payment.amount() > 0) {
                     renewals++;
                 }
             }
@@ -264,12 +275,26 @@ public class MemberManagementScreen extends Application {
         refreshStats.run();
 
         HBox statsRow = new HBox(16);
+        Text statSummaryTitle = new Text();
+        VBox statSummaryRows = new VBox(0);
+        VBox statSummaryPanel = buildStatSummaryPanel(statSummaryTitle, statSummaryRows);
+
+        HBox totalChip = makeStatChipText("Total Members", statTotalVal, TEXT_WHITE);
+        HBox activeChip = makeStatChipText("Active", statActiveVal, SUCCESS_TEXT);
+        HBox expiredChip = makeStatChipText("Expired", statExpiredVal, ACCENT);
+        HBox renewChip = makeStatChipText("Renewals Today", statRenewVal, WARNING_TEXT);
         statsRow.getChildren().addAll(
-            makeStatChipText(" Total Members", statTotalVal, TEXT_WHITE),
-            makeStatChipText(" Active", statActiveVal, SUCCESS_TEXT),
-            makeStatChipText(" Expired", statExpiredVal, ACCENT),
-            makeStatChipText(" Renewals Today", statRenewVal, WARNING_TEXT)
+            totalChip,
+            activeChip,
+            expiredChip,
+            renewChip
         );
+        wireStatChip(totalChip, statsRow, () -> updateStatSummary(memberDAO, paymentDAO, "Total Members", statSummaryTitle, statSummaryRows));
+        wireStatChip(activeChip, statsRow, () -> updateStatSummary(memberDAO, paymentDAO, "Active Members", statSummaryTitle, statSummaryRows));
+        wireStatChip(expiredChip, statsRow, () -> updateStatSummary(memberDAO, paymentDAO, "Expired Members", statSummaryTitle, statSummaryRows));
+        wireStatChip(renewChip, statsRow, () -> updateStatSummary(memberDAO, paymentDAO, "Renewals Today", statSummaryTitle, statSummaryRows));
+        updateStatSummary(memberDAO, paymentDAO, "Total Members", statSummaryTitle, statSummaryRows);
+        applyStatChipStyle(totalChip, true);
 
         //  Controls row 
         HBox controls = new HBox(12);
@@ -298,12 +323,25 @@ public class MemberManagementScreen extends Application {
         styleCombo(filterPlan);
 
         ComboBox<String> filterStatus = new ComboBox<>();
-        filterStatus.getItems().addAll("All Status", "Active", "Expired", "Suspended", "Archived");
+        filterStatus.getItems().addAll("All Status", "Active", "Expired", "Suspended");
         filterStatus.setValue("All Status");
         styleCombo(filterStatus);
 
         Region ctrlSp = new Region();
         HBox.setHgrow(ctrlSp, Priority.ALWAYS);
+
+        Button archivedBtn = new Button("Archived Members");
+        archivedBtn.setPrefHeight(38);
+        archivedBtn.setPadding(new Insets(0, 18, 0, 18));
+        archivedBtn.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        archivedBtn.setStyle(
+            "-fx-background-color: transparent;" +
+            "-fx-text-fill: " + ACCENT + ";" +
+            "-fx-border-color: " + ACCENT + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
+            "-fx-cursor: hand;"
+        );
 
         Button addBtn = new Button("Add Member");
         addBtn.setPrefHeight(38);
@@ -328,7 +366,7 @@ public class MemberManagementScreen extends Application {
             "-fx-cursor: hand;"
         ));
 
-        controls.getChildren().addAll(search, filterPlan, filterStatus, ctrlSp, addBtn);
+        controls.getChildren().addAll(search, filterPlan, filterStatus, ctrlSp, archivedBtn, addBtn);
 
         //  Table card 
         VBox tableCard = new VBox(0);
@@ -407,6 +445,7 @@ public class MemberManagementScreen extends Application {
         search.setOnAction(e -> refreshHolder[0].run());
         filterPlan.setOnAction(e -> refreshHolder[0].run());
         filterStatus.setOnAction(e -> refreshHolder[0].run());
+        archivedBtn.setOnAction(e -> showArchivedMembersDialog(memberDAO, refreshHolder[0]));
         addBtn.setOnAction(e -> showAddMemberDialog(refreshHolder[0]));
 
         refreshHolder[0].run();
@@ -425,7 +464,7 @@ public class MemberManagementScreen extends Application {
         ScrollPane memberRowsScroll = tableRowsScroll(rows, 430);
         tableCard.getChildren().addAll(tableHeaderRow, memberRowsScroll, pagination);
 
-        body.getChildren().addAll(statsRow, controls, tableCard, attendanceCard);
+        body.getChildren().addAll(statsRow, statSummaryPanel, controls, tableCard, attendanceCard);
         scroll.setContent(body);
         content.getChildren().addAll(topBar, scroll);
         VBox.setVgrow(scroll, Priority.ALWAYS);
@@ -451,7 +490,7 @@ public class MemberManagementScreen extends Application {
         ds.setOffsetY(4);
         card.setEffect(ds);
 
-        String[] headers = {"Member ID", "Name", "Plan", "Check-in Time", "Notes"};
+        String[] headers = {"Member ID", "Name", "Session Type", "Check-in Time", "Notes"};
         double[] widths = {12, 24, 14, 22, 28};
         HBox tableHeaderRow = new HBox();
         tableHeaderRow.setPadding(new Insets(12, 16, 12, 16));
@@ -545,7 +584,7 @@ public class MemberManagementScreen extends Application {
 
             addAttendanceCell(row, 0, safeText(record.memberCode()), FontWeight.BOLD, TABLE_TEXT);
             addAttendanceCell(row, 1, safeText(record.memberName()), FontWeight.BOLD, TABLE_TEXT);
-            addAttendanceCell(row, 2, safeText(record.sessionType()), FontWeight.NORMAL, TABLE_SUBTEXT);
+            row.add(makeSessionTypeBadge(record.sessionType()), 2, 0);
             addAttendanceCell(row, 3, formatCheckInTime(record.timeIn()), FontWeight.NORMAL, TABLE_SUBTEXT);
             addAttendanceCell(row, 4, record.notes() == null || record.notes().isBlank() ? "-" : record.notes(), FontWeight.NORMAL, TABLE_SUBTEXT);
             String finalBg = bg;
@@ -576,6 +615,35 @@ public class MemberManagementScreen extends Application {
         row.add(label, column, 0);
     }
 
+    private Label makeSessionTypeBadge(String sessionType) {
+        String value = sessionType == null || sessionType.isBlank() ? "Member Session" : sessionType;
+        String color;
+        String bg;
+        if ("Per Session".equalsIgnoreCase(value)) {
+            color = WARNING_TEXT;
+            bg = "#FFF5C2";
+        } else if ("Daily".equalsIgnoreCase(value)) {
+            color = "#1D4ED8";
+            bg = "#DBEAFE";
+        } else {
+            color = SUCCESS_TEXT;
+            bg = "#DCFCE7";
+        }
+        Label badge = new Label(value);
+        badge.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        badge.setTextFill(Color.web(color));
+        badge.setStyle(
+            "-fx-background-color: " + bg + ";" +
+            "-fx-text-fill: " + color + ";" +
+            "-fx-background-radius: 16;" +
+            "-fx-border-color: " + color + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-border-width: 1;" +
+            "-fx-padding: 3 9 3 9;"
+        );
+        return badge;
+    }
+
     private String formatCheckInTime(java.sql.Timestamp timeIn) {
         if (timeIn == null) {
             return "-";
@@ -591,24 +659,219 @@ public class MemberManagementScreen extends Application {
         HBox chip = new HBox(10);
         chip.setAlignment(Pos.CENTER_LEFT);
         chip.setPadding(new Insets(14, 20, 14, 20));
-        chip.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
-            "-fx-background-radius: 18;" +
-            "-fx-border-color: " + readableAccent(color) + " " + BORDER + " " + BORDER + " " + readableAccent(color) + ";" +
-            "-fx-border-radius: 18;" +
-            "-fx-border-width: 1 1 1 4;"
-        );
+        chip.setCursor(javafx.scene.Cursor.HAND);
         HBox.setHgrow(chip, Priority.ALWAYS);
-        DropShadow ds = new DropShadow();
-        ds.setColor(Color.web(ACCENT, 0.09));
-        ds.setRadius(8); ds.setOffsetY(3);
-        chip.setEffect(ds);
-        valueNode.setFill(Color.web(readableAccent(color)));
+        chip.getProperties().put("statColor", readableAccent(color));
         Text lbl = new Text(label);
-        lbl.setFont(Font.font("Poppins", 11));
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
         lbl.setFill(Color.web(TEXT_DIM));
         chip.getChildren().addAll(new VBox(2, lbl, valueNode));
+        valueNode.setFill(Color.web(readableAccent(color)));
+        applyStatChipStyle(chip, false);
         return chip;
+    }
+
+    private VBox buildStatSummaryPanel(Text title, VBox rows) {
+        VBox panel = new VBox(10);
+        panel.setPadding(new Insets(16, 18, 16, 18));
+        panel.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-radius: 16;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-border-width: 1;"
+        );
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
+        title.setFill(Color.web(TEXT_WHITE));
+        rows.setSpacing(0);
+        panel.getChildren().addAll(title, rows);
+        return panel;
+    }
+
+    private void wireStatChip(HBox chip, HBox group, Runnable action) {
+        chip.setOnMouseClicked(e -> {
+            for (javafx.scene.Node node : group.getChildren()) {
+                if (node instanceof HBox other) {
+                    applyStatChipStyle(other, false);
+                }
+            }
+            applyStatChipStyle(chip, true);
+            action.run();
+        });
+    }
+
+    private void applyStatChipStyle(HBox chip, boolean selected) {
+        String color = String.valueOf(chip.getProperties().getOrDefault("statColor", ACCENT));
+        chip.setStyle(
+            "-fx-background-color: " + (selected ? "rgba(26,19,99,0.05)" : BG_CARD) + ";" +
+            "-fx-background-radius: 14;" +
+            "-fx-border-color: " + color + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-border-width: " + (selected ? "2" : "1.5") + ";"
+        );
+        DropShadow ds = new DropShadow();
+        ds.setColor(Color.web(color, selected ? 0.18 : 0.08));
+        ds.setRadius(selected ? 10 : 6);
+        ds.setOffsetY(selected ? 3 : 2);
+        chip.setEffect(ds);
+    }
+
+    private void updateStatSummary(
+        MemberDAO dao,
+        PaymentDAO paymentDAO,
+        String title,
+        Text titleNode,
+        VBox rowsNode
+    ) {
+        List<MemberDAO.MemberRecord> members = dao.findAll();
+        LocalDate today = LocalDate.now();
+        rowsNode.getChildren().clear();
+        List<MemberDAO.MemberRecord> visibleMembers = new ArrayList<>();
+        List<PaymentDAO.PaymentRecord> visiblePayments = new ArrayList<>();
+
+        int active = 0;
+        int expired = 0;
+        int archived = 0;
+        for (MemberDAO.MemberRecord member : members) {
+            String status = effectiveMemberStatus(member);
+            if ("Active".equalsIgnoreCase(status)) active++;
+            if ("Expired".equalsIgnoreCase(status)) expired++;
+            if ("Archived".equalsIgnoreCase(status)) archived++;
+        }
+
+        titleNode.setText(title);
+        switch (title) {
+            case "Active Members" -> {
+                for (MemberDAO.MemberRecord member : members) {
+                    if ("Active".equalsIgnoreCase(effectiveMemberStatus(member))) {
+                        visibleMembers.add(member);
+                    }
+                }
+                addSummaryCount(rowsNode, active + " active member(s)");
+                addMemberSummaryRows(rowsNode, visibleMembers);
+            }
+            case "Expired Members" -> {
+                for (MemberDAO.MemberRecord member : members) {
+                    if ("Expired".equalsIgnoreCase(effectiveMemberStatus(member))) {
+                        visibleMembers.add(member);
+                    }
+                }
+                addSummaryCount(rowsNode, expired + " expired member(s)");
+                addMemberSummaryRows(rowsNode, visibleMembers);
+            }
+            case "Renewals Today" -> {
+                Date todaySql = Date.valueOf(today);
+                for (PaymentDAO.PaymentRecord payment : paymentDAO.findByDateRange(todaySql, todaySql)) {
+                    if ("Membership".equalsIgnoreCase(payment.paymentType())
+                        && "Completed".equalsIgnoreCase(payment.status())
+                        && payment.amount() > 0) {
+                        visiblePayments.add(payment);
+                    }
+                }
+                addSummaryCount(rowsNode, visiblePayments.size() + " renewed member(s) today");
+                addPaymentSummaryRows(rowsNode, visiblePayments);
+            }
+            default -> {
+                for (MemberDAO.MemberRecord member : members) {
+                    if (!"Cancelled".equalsIgnoreCase(member.status())) {
+                        visibleMembers.add(member);
+                    }
+                }
+                addSummaryCount(
+                    rowsNode,
+                    visibleMembers.size() + " total member(s): " + active + " active, " + expired +
+                        " expired"
+                );
+                addMemberSummaryRows(rowsNode, visibleMembers);
+            }
+        }
+    }
+
+    private void addSummaryCount(VBox rowsNode, String text) {
+        Label count = new Label(text);
+        count.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
+        count.setTextFill(Color.web(TEXT_DIM));
+        count.setStyle("-fx-text-fill: " + TEXT_DIM + ";");
+        count.setPadding(new Insets(0, 0, 8, 0));
+        rowsNode.getChildren().add(count);
+    }
+
+    private void addMemberSummaryRows(VBox rowsNode, List<MemberDAO.MemberRecord> members) {
+        if (members.isEmpty()) {
+            rowsNode.getChildren().add(makeEmptyState("No members found for this box."));
+            return;
+        }
+        int limit = Math.min(members.size(), 8);
+        for (int i = 0; i < limit; i++) {
+            MemberDAO.MemberRecord member = members.get(i);
+            rowsNode.getChildren().add(makeMemberSummaryRow(
+                "#" + safeText(member.memberCode()),
+                member.fullName(),
+                effectiveMemberStatus(member) + " - " + safeText(member.membershipType()),
+                member.membershipEndDate() != null ? "Ends " + member.membershipEndDate() : ""
+            ));
+        }
+        addMoreSummaryRow(rowsNode, members.size() - limit);
+    }
+
+    private void addPaymentSummaryRows(VBox rowsNode, List<PaymentDAO.PaymentRecord> payments) {
+        if (payments.isEmpty()) {
+            rowsNode.getChildren().add(makeEmptyState("No renewed members today."));
+            return;
+        }
+        int limit = Math.min(payments.size(), 8);
+        for (int i = 0; i < limit; i++) {
+            PaymentDAO.PaymentRecord payment = payments.get(i);
+            rowsNode.getChildren().add(makeMemberSummaryRow(
+                "#" + safeText(payment.memberCode()),
+                safeText(payment.memberName()),
+                safeText(payment.planTypeSnapshot()) + " - " + safeText(payment.paymentMethod()),
+                "Paid " + String.format("PHP %.2f", payment.amount())
+            ));
+        }
+        addMoreSummaryRow(rowsNode, payments.size() - limit);
+    }
+
+    private void addMoreSummaryRow(VBox rowsNode, int remaining) {
+        if (remaining <= 0) {
+            return;
+        }
+        Label more = new Label("+" + remaining + " more");
+        more.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
+        more.setTextFill(Color.web(ACCENT));
+        more.setStyle("-fx-text-fill: " + ACCENT + ";");
+        more.setPadding(new Insets(8, 0, 0, 0));
+        rowsNode.getChildren().add(more);
+    }
+
+    private HBox makeMemberSummaryRow(String code, String name, String detail, String trailing) {
+        HBox row = new HBox(12);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(9, 0, 9, 0));
+        row.setStyle(
+            "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+            "-fx-border-width: 0 0 1 0;"
+        );
+
+        VBox textBox = new VBox(2);
+        Label nameLabel = new Label(safeText(name).isBlank() ? "Unnamed member" : name);
+        nameLabel.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        nameLabel.setTextFill(Color.web(TEXT_WHITE));
+        nameLabel.setStyle("-fx-text-fill: " + TEXT_WHITE + ";");
+        Label detailLabel = new Label(code + " - " + detail);
+        detailLabel.setFont(Font.font("Poppins", 10));
+        detailLabel.setTextFill(Color.web(TEXT_DIM));
+        detailLabel.setStyle("-fx-text-fill: " + TEXT_DIM + ";");
+        textBox.getChildren().addAll(nameLabel, detailLabel);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label trailingLabel = new Label(trailing);
+        trailingLabel.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        trailingLabel.setTextFill(Color.web(ACCENT));
+        trailingLabel.setStyle("-fx-text-fill: " + ACCENT + ";");
+        row.getChildren().addAll(textBox, spacer, trailingLabel);
+        return row;
     }
 
     private void refreshMemberRows(
@@ -626,6 +889,9 @@ public class MemberManagementScreen extends Application {
             keyword.isBlank() ? dao.findAll() : dao.search(keyword);
         List<MemberDAO.MemberRecord> filtered = new ArrayList<>();
         for (MemberDAO.MemberRecord m : source) {
+            if ("Cancelled".equalsIgnoreCase(m.status())) {
+                continue;
+            }
             if (!"All Plans".equals(planFilter)) {
                 String t = m.membershipType();
                 if (t == null || !t.equalsIgnoreCase(planFilter)) {
@@ -633,9 +899,8 @@ public class MemberManagementScreen extends Application {
                 }
             }
             if (!"All Status".equals(statusFilter)) {
-                String dbStatus = "Archived".equals(statusFilter) ? "Cancelled" : statusFilter;
-                String s = m.status();
-                if (s == null || !s.equalsIgnoreCase(dbStatus)) {
+                String s = effectiveMemberStatus(m);
+                if (s == null || !s.equalsIgnoreCase(statusFilter)) {
                     continue;
                 }
             }
@@ -681,26 +946,20 @@ public class MemberManagementScreen extends Application {
             rowGrid.add(makeCell(m.contactNumber(), TABLE_SUBTEXT, false), 3, 0);
             rowGrid.add(makePlanBadge(m.membershipType() != null ? m.membershipType() : "Monthly"), 4, 0);
             rowGrid.add(makeCell(start, TABLE_SUBTEXT, false), 5, 0);
-            rowGrid.add(makeStatusBadge(m.status() != null ? m.status() : "Active"), 6, 0);
+            HBox statusBox = new HBox(6);
+            statusBox.setAlignment(Pos.CENTER_LEFT);
+            statusBox.getChildren().add(makeStatusBadge(effectiveMemberStatus(m)));
+            Label expiryBadge = makeMembershipExpiryBadge(m);
+            if (expiryBadge != null) {
+                statusBox.getChildren().add(expiryBadge);
+            }
+            rowGrid.add(statusBox, 6, 0);
 
             HBox actions = new HBox(6);
             actions.setAlignment(Pos.CENTER_LEFT);
             actions.setMinWidth(245);
             Button viewBtn = makeActionBtn("", "#77749B");
-            viewBtn.setOnAction(e -> {
-                Alert a = new Alert(Alert.AlertType.INFORMATION);
-                a.setTitle("Member");
-                a.setHeaderText(m.fullName());
-                a.setContentText(
-                    "Code: " + m.memberCode() + "\nEmail: " + m.email() + "\nPhone: " + m.contactNumber()
-                        + "\nAddress: " + m.address() + "\nPlan: " + m.membershipType()
-                        + sessionCreditText(m)
-                        + "\nStart: " + start + "\nEnd: "
-                        + (m.membershipEndDate() != null ? m.membershipEndDate().toString() : "")
-                        + "\nStatus: " + m.status()
-                );
-                a.showAndWait();
-            });
+            viewBtn.setOnAction(e -> showMemberDetails(m));
             viewBtn.setText("View");
 
             Button editBtn = makeActionBtn("Edit", WARNING_TEXT);
@@ -722,10 +981,10 @@ public class MemberManagementScreen extends Application {
                 }
             });
             delBtn.setText("Delete");
-            boolean archived = "Cancelled".equalsIgnoreCase(m.status());
-            Button attendanceBtn = makeActionBtn(archived ? "Renew" : "Check", archived ? ACCENT : SUCCESS_TEXT);
+            boolean renewable = isMembershipExpired(m);
+            Button attendanceBtn = makeActionBtn(renewable ? "Renew" : "Check", renewable ? ACCENT : SUCCESS_TEXT);
             attendanceBtn.setOnAction(e -> {
-                if (archived) {
+                if (renewable) {
                     showRenewMemberDialog(m, fullRefresh);
                 } else {
                     recordMemberAttendance(dao, m, fullRefresh);
@@ -769,11 +1028,50 @@ public class MemberManagementScreen extends Application {
                 + sessionCreditText(m)
                 + "\nStart: " + textDate(m.membershipStartDate())
                 + "\nEnd: " + textDate(m.membershipEndDate())
-                + "\nStatus: " + statusText(m.status())
+                + "\nStatus: " + effectiveMemberStatus(m)
                 + "\nEmergency Contact: " + safeText(m.emergencyContact())
                 + "\nEmergency Phone: " + safeText(m.emergencyPhone())
+                + "\n\nPlan History"
+                + buildPlanHistoryText(m)
         );
+        a.setResizable(true);
         a.showAndWait();
+    }
+
+    private String buildPlanHistoryText(MemberDAO.MemberRecord member) {
+        StringBuilder history = new StringBuilder();
+        history.append("\n- Current: ")
+            .append(blankFallback(member.membershipType(), "No plan"))
+            .append(" | ")
+            .append(textDate(member.membershipStartDate()))
+            .append(" to ")
+            .append(textDate(member.membershipEndDate()))
+            .append(" | ")
+            .append(effectiveMemberStatus(member));
+
+        List<PaymentDAO.PaymentRecord> payments = new PaymentDAO().findByMember(member.memberId());
+        int rows = 0;
+        for (PaymentDAO.PaymentRecord payment : payments) {
+            if (!"Membership".equalsIgnoreCase(payment.paymentType())) {
+                continue;
+            }
+            history.append("\n- ")
+                .append(textDate(payment.paymentDate()))
+                .append(": ")
+                .append(blankFallback(payment.planTypeSnapshot(), blankFallback(member.membershipType(), "Membership")))
+                .append(" | ")
+                .append(formatPeso(payment.amount()))
+                .append(" | ")
+                .append(blankFallback(payment.paymentMethod(), "Payment"));
+            if (payment.notes() != null && !payment.notes().isBlank()) {
+                history.append(" | ").append(payment.notes());
+            }
+            rows++;
+        }
+        if (rows == 0) {
+            history.append("\n- No payment or plan-change records saved yet.");
+        }
+        return history.toString();
     }
 
     private void recordMemberAttendance(MemberDAO dao, MemberDAO.MemberRecord m, Runnable fullRefresh) {
@@ -787,11 +1085,12 @@ public class MemberManagementScreen extends Application {
         notesDialog.setContentText("Notes (optional):");
         Optional<String> notes = notesDialog.showAndWait();
         if (notes.isPresent()) {
-            if (dao.recordAttendance(m.memberId(), m.membershipType(), notes.get().trim())) {
+            String sessionType = derivedAttendanceSessionType(m.membershipType());
+            if (dao.recordAttendance(m.memberId(), sessionType, notes.get().trim())) {
                 Alert ok = new Alert(Alert.AlertType.INFORMATION);
                 ok.setTitle("Attendance");
                 ok.setHeaderText("Check-in recorded");
-                ok.setContentText(m.fullName() + " was checked in with the current timestamp.");
+                ok.setContentText(m.fullName() + " was checked in as " + sessionType + ".");
                 ok.showAndWait();
                 fullRefresh.run();
             } else {
@@ -804,6 +1103,16 @@ public class MemberManagementScreen extends Application {
         }
     }
 
+    private String derivedAttendanceSessionType(String membershipType) {
+        if ("Per Session".equalsIgnoreCase(membershipType)) {
+            return "Per Session";
+        }
+        if ("Daily".equalsIgnoreCase(membershipType)) {
+            return "Daily";
+        }
+        return "Member Session";
+    }
+
     private void archiveMember(MemberDAO dao, MemberDAO.MemberRecord m, Runnable fullRefresh) {
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Archive Member");
@@ -812,6 +1121,201 @@ public class MemberManagementScreen extends Application {
         Optional<ButtonType> res = confirm.showAndWait();
         if (res.isPresent() && res.get() == ButtonType.OK && dao.updateStatus(m.memberId(), "Cancelled")) {
             fullRefresh.run();
+        }
+    }
+
+    private void showArchivedMembersDialog(MemberDAO dao, Runnable fullRefresh) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Archived Members");
+        dialog.setResizable(true);
+
+        VBox root = new VBox(18);
+        root.setPadding(new Insets(24));
+        root.setPrefSize(840, 540);
+        root.setStyle("-fx-background-color: " + BG_MAIN + ";");
+
+        HBox titleRow = new HBox(12);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+        Rectangle accent = new Rectangle(5, 44);
+        accent.setArcWidth(5);
+        accent.setArcHeight(5);
+        accent.setFill(Color.web(ACCENT));
+
+        Text title = new Text("Archived Members");
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
+        title.setFill(Color.web(TEXT_WHITE));
+        outlineText(title, 0.24);
+
+        Text subtitle = new Text("Archived members are hidden from the main list. Use Unarchive to restore them.");
+        subtitle.setFont(Font.font("Poppins", 11));
+        subtitle.setFill(Color.web(TABLE_SUBTEXT));
+        outlineText(subtitle, 0.14);
+        titleRow.getChildren().addAll(accent, new VBox(2, title, subtitle));
+
+        VBox tableCard = new VBox(0);
+        tableCard.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-radius: 18;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 18;" +
+            "-fx-border-width: 1;"
+        );
+        DropShadow shadow = new DropShadow();
+        shadow.setColor(Color.web(ACCENT, 0.10));
+        shadow.setRadius(12);
+        shadow.setOffsetY(4);
+        tableCard.setEffect(shadow);
+
+        String[] headers = {"Member ID", "Full Name", "Plan", "Start Date", "End Date", "Actions"};
+        double[] widths = {14, 25, 16, 14, 14, 17};
+        HBox header = new HBox();
+        header.setPadding(new Insets(12, 16, 12, 16));
+        header.setStyle(
+            "-fx-background-color: " + HEADER_BG + ";" +
+            "-fx-background-radius: 18 18 0 0;" +
+            "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+            "-fx-border-width: 0 0 1 0;"
+        );
+        GridPane headerGrid = new GridPane();
+        headerGrid.setHgap(8);
+        for (double width : widths) {
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.setPercentWidth(width);
+            cc.setHgrow(Priority.ALWAYS);
+            headerGrid.getColumnConstraints().add(cc);
+        }
+        headerGrid.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(headerGrid, Priority.ALWAYS);
+        for (int i = 0; i < headers.length; i++) {
+            Label label = new Label(headers[i].toUpperCase());
+            label.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
+            label.setTextFill(Color.web(TABLE_TEXT));
+            label.setStyle("-fx-text-fill: " + TABLE_TEXT + ";");
+            headerGrid.add(label, i, 0);
+        }
+        header.getChildren().add(headerGrid);
+
+        VBox list = new VBox(0);
+        Runnable[] refreshArchived = new Runnable[1];
+        refreshArchived[0] = () -> {
+            list.getChildren().clear();
+            List<MemberDAO.MemberRecord> archived = dao.findByStatus("Cancelled");
+            if (archived.isEmpty()) {
+                list.getChildren().add(makeEmptyState("No archived members."));
+                return;
+            }
+
+            for (int i = 0; i < archived.size(); i++) {
+                MemberDAO.MemberRecord member = archived.get(i);
+                list.getChildren().add(buildArchivedMemberRow(dao, member, widths, i, refreshArchived[0], fullRefresh));
+            }
+        };
+
+        ScrollPane scroll = new ScrollPane(list);
+        scroll.setFitToWidth(true);
+        scroll.setMaxHeight(360);
+        scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
+        tableCard.getChildren().addAll(header, scroll);
+
+        Button close = new Button("Close");
+        close.setPrefHeight(38);
+        close.setPadding(new Insets(0, 18, 0, 18));
+        close.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        close.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-text-fill: " + ACCENT + ";" +
+            "-fx-border-color: " + ACCENT + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-background-radius: 14;" +
+            "-fx-cursor: hand;"
+        );
+        close.setOnAction(e -> dialog.close());
+
+        HBox footer = new HBox(close);
+        footer.setAlignment(Pos.CENTER_RIGHT);
+        root.getChildren().addAll(titleRow, tableCard, footer);
+        VBox.setVgrow(tableCard, Priority.ALWAYS);
+
+        refreshArchived[0].run();
+        dialog.setScene(new Scene(root));
+        dialog.showAndWait();
+    }
+
+    private HBox buildArchivedMemberRow(
+        MemberDAO dao,
+        MemberDAO.MemberRecord member,
+        double[] widths,
+        int index,
+        Runnable refreshArchived,
+        Runnable fullRefresh
+    ) {
+        HBox row = new HBox(14);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(12, 16, 12, 16));
+        row.setStyle(
+            "-fx-background-color: " + (index % 2 == 0 ? BG_CARD : BG_ROW_ALT) + ";" +
+            "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
+            "-fx-border-width: 0 0 1 0;"
+        );
+
+        GridPane grid = new GridPane();
+        grid.setHgap(8);
+        for (double width : widths) {
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.setPercentWidth(width);
+            cc.setHgrow(Priority.ALWAYS);
+            grid.getColumnConstraints().add(cc);
+        }
+        grid.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(grid, Priority.ALWAYS);
+
+        Button view = makeActionBtn("View", TEXT_MUTED);
+        view.setOnAction(e -> showMemberDetails(member));
+
+        Button unarchive = makeActionBtn("Unarchive", SUCCESS_TEXT);
+        unarchive.setOnAction(e -> {
+            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+            confirm.setTitle("Unarchive Member");
+            confirm.setHeaderText("Restore " + member.fullName() + "?");
+            confirm.setContentText("This returns the member to the main member list.");
+            Optional<ButtonType> res = confirm.showAndWait();
+            if (res.isPresent() && res.get() == ButtonType.OK && dao.updateStatus(member.memberId(), "Active")) {
+                refreshArchived.run();
+                fullRefresh.run();
+            }
+        });
+
+        HBox actions = new HBox(8, view, unarchive);
+        actions.setAlignment(Pos.CENTER_LEFT);
+
+        grid.add(archivedCell("#" + member.memberCode(), TABLE_TEXT, true), 0, 0);
+        grid.add(archivedCell(member.fullName(), TABLE_TEXT, true), 1, 0);
+        grid.add(makePlanBadge(safeText(member.membershipType()).isBlank() ? "No Plan" : member.membershipType()), 2, 0);
+        grid.add(archivedCell(textDate(member.membershipStartDate()), TABLE_SUBTEXT, false), 3, 0);
+        grid.add(archivedCell(textDate(member.membershipEndDate()), TABLE_SUBTEXT, false), 4, 0);
+        grid.add(actions, 5, 0);
+
+        row.getChildren().add(grid);
+        return row;
+    }
+
+    private Label archivedCell(String text, String color, boolean bold) {
+        Label label = new Label(safeText(text).isBlank() ? "-" : text);
+        label.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
+        label.setTextFill(Color.web(color));
+        label.setStyle("-fx-text-fill: " + color + ";");
+        label.setWrapText(true);
+        return label;
+    }
+
+    private void openPaymentScreenForRenewal(MemberDAO.MemberRecord member) {
+        try {
+            Stage stage = new Stage();
+            new PaymentScreen(member.memberCode()).start(stage);
+            stage.setTitle("Payment & Billing - Renew " + member.fullName() + " (" + member.memberCode() + ")");
+        } catch (Exception ex) {
+            alertErr("Could not open Payment & Billing. Open it from the sidebar to collect payment.");
         }
     }
 
@@ -831,7 +1335,8 @@ public class MemberManagementScreen extends Application {
         title.setFill(Color.web(TEXT_WHITE));
         outlineText(title, 0.28);
 
-        Text subtitle = new Text(m.fullName() + " will be reactivated using the selected plan.");
+        title.setText("Renew Member");
+        Text subtitle = new Text(m.fullName() + " keeps the same details. Select a plan, then process payment.");
         subtitle.setFont(Font.font("Poppins", 11));
         subtitle.setFill(Color.web(TEXT_DIM));
         outlineText(subtitle, 0.16);
@@ -870,7 +1375,7 @@ public class MemberManagementScreen extends Application {
         cancel.setPadding(new Insets(0, 20, 0, 20));
         cancel.setOnAction(e -> dialog.close());
 
-        Button renew = new Button("Renew Member");
+        Button renew = new Button("Proceed to Payment");
         renew.setPrefHeight(40);
         renew.setPadding(new Insets(0, 20, 0, 20));
         renew.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
@@ -910,13 +1415,20 @@ public class MemberManagementScreen extends Application {
             );
 
             if (new MemberDAO().update(renewed)) {
+                new PaymentDAO().ensureBillingForMember(
+                    m.memberId(),
+                    plan.getValue(),
+                    Date.valueOf(end),
+                    AppSession.currentUser().userId()
+                );
                 dialog.close();
                 onSaved.run();
                 Alert ok = new Alert(Alert.AlertType.INFORMATION);
                 ok.setTitle("Member Renewed");
-                ok.setHeaderText("Member reactivated");
-                ok.setContentText(m.fullName() + " is now Active and can check in.");
+                ok.setHeaderText("Plan selected");
+                ok.setContentText(m.fullName() + " was renewed with saved details. Payment & Billing will open with this member selected.");
                 ok.showAndWait();
+                openPaymentScreenForRenewal(m);
             } else {
                 alertErr("Could not renew member. Please check the database connection.");
             }
@@ -1101,6 +1613,14 @@ public class MemberManagementScreen extends Application {
         return text != null && !text.isBlank() ? text : "";
     }
 
+    private String blankFallback(String text, String fallback) {
+        return text != null && !text.isBlank() ? text : fallback;
+    }
+
+    private String formatPeso(double amount) {
+        return "PHP " + String.format("%,.2f", amount);
+    }
+
     private String sessionCreditText(MemberDAO.MemberRecord m) {
         if (!"Per Session".equalsIgnoreCase(m.membershipType())) {
             return "";
@@ -1111,6 +1631,30 @@ public class MemberManagementScreen extends Application {
 
     private String statusText(String status) {
         return "Cancelled".equalsIgnoreCase(status) ? "Archived" : safeText(status);
+    }
+
+    private String effectiveMemberStatus(MemberDAO.MemberRecord member) {
+        if (member == null) {
+            return "";
+        }
+        if ("Cancelled".equalsIgnoreCase(member.status())) {
+            return "Archived";
+        }
+        if (isMembershipExpired(member)) {
+            return "Expired";
+        }
+        return safeText(member.status()).isBlank() ? "Active" : safeText(member.status());
+    }
+
+    private boolean isMembershipExpired(MemberDAO.MemberRecord member) {
+        if (member == null || member.membershipEndDate() == null) {
+            return false;
+        }
+        if ("Cancelled".equalsIgnoreCase(member.status())) {
+            return false;
+        }
+        return "Expired".equalsIgnoreCase(member.status())
+            || member.membershipEndDate().toLocalDate().isBefore(LocalDate.now());
     }
 
     private Label makeCell(String text, String color, boolean bold) {
@@ -1149,6 +1693,34 @@ public class MemberManagementScreen extends Application {
         );
         b.setPadding(new Insets(0, 8, 0, 8));
         return b;
+    }
+
+    private Label makeMembershipExpiryBadge(MemberDAO.MemberRecord member) {
+        if (!"Active".equalsIgnoreCase(effectiveMemberStatus(member)) || member.membershipEndDate() == null) {
+            return null;
+        }
+        LocalDate expiry = member.membershipEndDate().toLocalDate();
+        LocalDate today = LocalDate.now();
+        if (!expiry.isAfter(today.plusDays(7))) {
+            return makeExpiryBadge("Expiring", WARNING_TEXT, "#FFF5C2");
+        }
+        return null;
+    }
+
+    private Label makeExpiryBadge(String text, String color, String bg) {
+        Label badge = new Label(text);
+        badge.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
+        badge.setTextFill(Color.web(color));
+        badge.setStyle(
+            "-fx-background-color: " + bg + ";" +
+            "-fx-text-fill: " + color + ";" +
+            "-fx-background-radius: 14;" +
+            "-fx-border-color: " + color + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-border-width: 1;" +
+            "-fx-padding: 2 8 2 8;"
+        );
+        return badge;
     }
 
     private Label makePlanBadge(String plan) {
@@ -1423,8 +1995,14 @@ public class MemberManagementScreen extends Application {
             );
             int newId = dao.insert(rec, uid);
             if (newId > 0) {
+                new PaymentDAO().ensureBillingForMember(newId, plan.getValue(), end, uid);
                 dialog.close();
                 onSaved.run();
+                Alert created = new Alert(Alert.AlertType.INFORMATION);
+                created.setTitle("Member Registered");
+                created.setHeaderText(fn + " " + ln + " is registered");
+                created.setContentText("Payment status: Pending. An unpaid invoice was created in Payment & Billing.");
+                created.showAndWait();
             } else {
                 alertErr("Could not save member. Check database connection or duplicate email/code.");
             }

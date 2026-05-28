@@ -58,6 +58,10 @@ public class EquipmentDAO {
         return query("SELECT * FROM equipment WHERE is_active=TRUE ORDER BY equipment_name", ps -> {});
     }
 
+    public List<EquipmentRecord> findArchived() {
+        return query("SELECT * FROM equipment WHERE is_active=FALSE ORDER BY equipment_name", ps -> {});
+    }
+
     public List<EquipmentRecord> findByCategory(String category) {
         return query("SELECT * FROM equipment WHERE category=? AND is_active=TRUE ORDER BY equipment_name",
                      ps -> ps.setString(1, category));
@@ -167,6 +171,18 @@ public class EquipmentDAO {
     }
 
     // ── MAINTENANCE LOGS ──────────────────────────────────────────
+
+    public boolean reactivate(int equipmentId) {
+        String sql = "UPDATE equipment SET is_active=TRUE, updated_at=NOW() WHERE equipment_id=?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, equipmentId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[EquipmentDAO] reactivate error: " + e.getMessage());
+            return false;
+        }
+    }
 
     public List<MaintenanceLog> getMaintenanceLogs(int equipmentId) {
         List<MaintenanceLog> list = new ArrayList<>();

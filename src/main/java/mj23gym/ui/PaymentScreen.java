@@ -1,10 +1,12 @@
 package mj23gym.ui;
 
 import java.sql.Date;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 import javafx.animation.FadeTransition;
+import javafx.application.Platform;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -70,6 +72,15 @@ public class PaymentScreen extends Application {
 
     // Selected payment method
     private String selectedMethod = "Cash";
+    private final String initialMemberCode;
+
+    public PaymentScreen() {
+        this("");
+    }
+
+    public PaymentScreen(String initialMemberCode) {
+        this.initialMemberCode = initialMemberCode != null ? initialMemberCode : "";
+    }
 
     @Override
     public void start(Stage stage) {
@@ -212,17 +223,37 @@ public class PaymentScreen extends Application {
         final int[] lastPaymentId = {0};
 
         //  Stats row 
-        double today = paymentDAO.todayRevenue();
-        int overdue = paymentDAO.countOverdueAccounts();
-        int pending = paymentDAO.countPendingInvoices();
-        int paidMonth = paymentDAO.countCompletedPaymentsThisMonth();
+        Text statToday = statValueText();
+        Text statOverdue = statValueText();
+        Text statPending = statValueText();
+        Text statPaidMonth = statValueText();
+        Runnable refreshStats = () -> {
+            statToday.setText(formatPeso(paymentDAO.todayRevenue()));
+            statOverdue.setText(String.valueOf(paymentDAO.countOverdueAccounts()));
+            statPending.setText(String.valueOf(paymentDAO.countPendingInvoices()));
+            statPaidMonth.setText(String.valueOf(paymentDAO.countCompletedPaymentsThisMonth()));
+        };
+        refreshStats.run();
         HBox statsRow = new HBox(16);
+        Text summaryTitle = new Text();
+        VBox summaryRows = new VBox(0);
+        VBox summaryPanel = buildPaymentSummaryPanel(summaryTitle, summaryRows);
+        HBox todayChip = makeStatChip("Total Collected Today", statToday, SUCCESS_TEXT);
+        HBox overdueChip = makeStatChip("Overdue Accounts", statOverdue, TEXT_TITLE);
+        HBox pendingChip = makeStatChip("Pending Invoices", statPending, WARNING_TEXT);
+        HBox paidChip = makeStatChip("Paid This Month", statPaidMonth, TEXT_SOFT);
         statsRow.getChildren().addAll(
-            makeStatChip("Total Collected Today", formatPeso(today), SUCCESS_TEXT),
-            makeStatChip("Overdue Accounts", String.valueOf(overdue), TEXT_TITLE),
-            makeStatChip("Pending Invoices", String.valueOf(pending), WARNING_TEXT),
-            makeStatChip("Paid This Month", String.valueOf(paidMonth), TEXT_SOFT)
+            todayChip,
+            overdueChip,
+            pendingChip,
+            paidChip
         );
+        wirePaymentStatChip(todayChip, statsRow, () -> updatePaymentSummary(paymentDAO, "Total Collected Today", summaryTitle, summaryRows));
+        wirePaymentStatChip(overdueChip, statsRow, () -> updatePaymentSummary(paymentDAO, "Overdue Accounts", summaryTitle, summaryRows));
+        wirePaymentStatChip(pendingChip, statsRow, () -> updatePaymentSummary(paymentDAO, "Pending Invoices", summaryTitle, summaryRows));
+        wirePaymentStatChip(paidChip, statsRow, () -> updatePaymentSummary(paymentDAO, "Paid This Month", summaryTitle, summaryRows));
+        updatePaymentSummary(paymentDAO, "Total Collected Today", summaryTitle, summaryRows);
+        applyPaymentStatStyle(todayChip, true);
 
         //  Two-column layout: Payment Form + Summary 
         HBox mainRow = new HBox(20);
@@ -443,6 +474,10 @@ public class PaymentScreen extends Application {
             penaltyTf.setText("0");
             recalcTotal.run();
         });
+        if (!initialMemberCode.isBlank()) {
+            memberSearch.setText(initialMemberCode);
+            Platform.runLater(findBtn::fire);
+        }
 
         // Notes
         VBox notesGroup = new VBox(6);
@@ -561,6 +596,8 @@ public class PaymentScreen extends Application {
             if (pid > 0) {
                 lastPaymentId[0] = pid;
                 refreshHist.run();
+                refreshStats.run();
+                updatePaymentSummary(paymentDAO, String.valueOf(summaryTitle.getText()), summaryTitle, summaryRows);
                 updateMemberInfo.run();
                 double balance = paymentDAO.balanceDueForMember(selectedMember[0].memberId());
                 infoVals[4].setText(formatPeso(balance));
@@ -609,7 +646,7 @@ public class PaymentScreen extends Application {
         );
 
         mainRow.getChildren().addAll(payCard, histCard);
-        body.getChildren().addAll(statsRow, mainRow);
+        body.getChildren().addAll(statsRow, summaryPanel, mainRow);
         scroll.setContent(body);
         content.getChildren().addAll(topBar, scroll);
         VBox.setVgrow(scroll, Priority.ALWAYS);
@@ -713,9 +750,9 @@ public class PaymentScreen extends Application {
             String name = pr.memberName() != null ? pr.memberName() : "Member";
             String planSnapshot = pr.planTypeSnapshot() != null ? pr.planTypeSnapshot() : "-";
             String amt = String.format("%.2f", pr.amount());
-            String method = pr.paymentMethod() != null ? pr.paymentMethod() : "Cash";
+            String method = displayPaymentMethod(pr);
             String dateStr = pr.paymentDate() != null ? pr.paymentDate().toString() : "";
-            String statusLbl = "Completed".equalsIgnoreCase(pr.status()) ? "Paid" : pr.status();
+            String statusLbl = displayPaymentHistoryStatus(pr);
             rg.add(makeCell(name, TEXT_TITLE, false), 0, 0);
             rg.add(makeCell(planSnapshot, TEXT_SOFT, false), 1, 0);
             rg.add(makeCell(amt, SUCCESS_TEXT, true), 2, 0);
@@ -857,6 +894,13 @@ public class PaymentScreen extends Application {
         return value == null || value.isBlank() ? "-" : value;
     }
 
+    private static String readableAccent(String color) {
+        if (color == null || color.isBlank() || "#FDEE21".equalsIgnoreCase(color) || WARNING.equalsIgnoreCase(color)) {
+            return WARNING_TEXT;
+        }
+        return color;
+    }
+
     private GridPane makePayGrid() {
         GridPane g = new GridPane();
         double[] widths = {24, 18, 12, 16, 16, 14};
@@ -974,35 +1018,231 @@ public class PaymentScreen extends Application {
         return b;
     }
 
-    private HBox makeStatChip(String label, String value, String color) {
+    private Text statValueText() {
+        Text value = new Text();
+        value.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
+        return value;
+    }
+
+    private HBox makeStatChip(String label, Text value, String color) {
         HBox chip = new HBox(12);
         chip.setAlignment(Pos.CENTER_LEFT);
         chip.setPadding(new Insets(14, 18, 14, 18));
-        chip.setStyle(
+        String outline = readableAccent(color);
+        chip.getProperties().put("statColor", outline);
+        chip.setCursor(javafx.scene.Cursor.HAND);
+        HBox.setHgrow(chip, Priority.ALWAYS);
+        value.setFill(Color.web(outline));
+        Text lbl = new Text(label);
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        lbl.setFill(Color.web(TEXT_SOFT));
+        chip.getChildren().addAll(new VBox(2, lbl, value));
+        applyPaymentStatStyle(chip, false);
+        return chip;
+    }
+
+    private VBox buildPaymentSummaryPanel(Text title, VBox rows) {
+        VBox panel = new VBox(10);
+        panel.setPadding(new Insets(16, 18, 16, 18));
+        panel.setStyle(
             "-fx-background-color: " + CARD_SURFACE + ";" +
             "-fx-background-radius: 16;" +
             "-fx-border-color: " + BORDER + ";" +
             "-fx-border-radius: 16;" +
             "-fx-border-width: 1;"
         );
-        HBox.setHgrow(chip, Priority.ALWAYS);
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
+        title.setFill(Color.web(TEXT_TITLE));
+        panel.getChildren().addAll(title, rows);
+        return panel;
+    }
+
+    private void wirePaymentStatChip(HBox chip, HBox group, Runnable action) {
+        chip.setOnMouseClicked(e -> {
+            for (javafx.scene.Node node : group.getChildren()) {
+                if (node instanceof HBox other) {
+                    applyPaymentStatStyle(other, false);
+                }
+            }
+            applyPaymentStatStyle(chip, true);
+            action.run();
+        });
+    }
+
+    private void applyPaymentStatStyle(HBox chip, boolean selected) {
+        String color = String.valueOf(chip.getProperties().getOrDefault("statColor", ACCENT));
+        chip.setStyle(
+            "-fx-background-color: " + (selected ? CARD_HOVER : CARD_SURFACE) + ";" +
+            "-fx-background-radius: 16;" +
+            "-fx-border-color: " + color + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-border-width: " + (selected ? "2" : "1.5") + ";"
+        );
         DropShadow ds = new DropShadow();
-        ds.setColor(Color.web("#000000", 0.08));
-        ds.setRadius(8);
-        ds.setOffsetY(2);
+        ds.setColor(Color.web(color, selected ? 0.14 : 0.08));
+        ds.setRadius(selected ? 10 : 6);
+        ds.setOffsetY(selected ? 3 : 2);
         chip.setEffect(ds);
-        Rectangle accent = new Rectangle(4, 36);
-        accent.setArcWidth(4);
-        accent.setArcHeight(4);
-        accent.setFill(Color.web(color));
-        Text val = new Text(value);
-        val.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
-        val.setFill(Color.web(color));
-        Text lbl = new Text(label);
-        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
-        lbl.setFill(Color.web(TEXT_SOFT));
-        chip.getChildren().addAll(accent, new VBox(2, lbl, val));
-        return chip;
+    }
+
+    private void updatePaymentSummary(PaymentDAO dao, String title, Text titleNode, VBox rows) {
+        titleNode.setText(title == null || title.isBlank() ? "Total Collected Today" : title);
+        rows.getChildren().clear();
+        String activeTitle = titleNode.getText();
+        if ("Overdue Accounts".equals(activeTitle)) {
+            List<PaymentDAO.BillingSummaryRow> overdue = dao.findOverdueInvoiceSummaries();
+            addPaymentSummaryCount(rows, overdue.size() + " overdue account(s)");
+            addBillingRows(rows, overdue, "Overdue");
+        } else if ("Pending Invoices".equals(activeTitle)) {
+            List<PaymentDAO.BillingSummaryRow> pending = dao.findPendingInvoiceSummaries();
+            addPaymentSummaryCount(rows, pending.size() + " pending invoice(s)");
+            addBillingRows(rows, pending, "Pending");
+        } else if ("Paid This Month".equals(activeTitle)) {
+            LocalDate today = LocalDate.now();
+            Date from = Date.valueOf(today.withDayOfMonth(1));
+            Date to = Date.valueOf(today);
+            List<PaymentDAO.PaymentRecord> payments = dao.findByDateRange(from, to);
+            addPaymentSummaryCount(rows, countCompleted(payments) + " completed payment(s) this month");
+            addPaymentRows(rows, payments, true);
+        } else {
+            Date today = new Date(System.currentTimeMillis());
+            List<PaymentDAO.PaymentRecord> payments = dao.findByDateRange(today, today);
+            addPaymentSummaryCount(rows, countCompleted(payments) + " completed payment(s) today");
+            addPaymentRows(rows, payments, true);
+        }
+    }
+
+    private int countCompleted(List<PaymentDAO.PaymentRecord> payments) {
+        int count = 0;
+        for (PaymentDAO.PaymentRecord payment : payments) {
+            if (isRealCompletedPayment(payment)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private void addPaymentSummaryCount(VBox rows, String text) {
+        Label count = new Label(text);
+        count.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
+        count.setTextFill(Color.web(TEXT_SOFT));
+        count.setPadding(new Insets(0, 0, 8, 0));
+        rows.getChildren().add(count);
+    }
+
+    private void addBillingRows(VBox rows, List<PaymentDAO.BillingSummaryRow> invoices, String label) {
+        if (invoices.isEmpty()) {
+            rows.getChildren().add(emptyPaymentSummary("No " + label.toLowerCase() + " invoices found."));
+            return;
+        }
+        int limit = Math.min(invoices.size(), 8);
+        for (int i = 0; i < limit; i++) {
+            PaymentDAO.BillingSummaryRow invoice = invoices.get(i);
+            double balance = Math.max(0, invoice.amountDue() - invoice.amountPaid());
+            rows.getChildren().add(summaryLine(
+                "#" + safe(invoice.memberCode()) + " - " + safe(invoice.memberName()),
+                label + " | Due " + (invoice.dueDate() != null ? invoice.dueDate() : "-"),
+                formatPeso(balance)
+            ));
+        }
+        addMoreRows(rows, invoices.size() - limit);
+    }
+
+    private void addPaymentRows(VBox rows, List<PaymentDAO.PaymentRecord> payments, boolean completedOnly) {
+        int shown = 0;
+        for (PaymentDAO.PaymentRecord payment : payments) {
+            if (completedOnly && !isRealCompletedPayment(payment)) {
+                continue;
+            }
+            if (shown >= 8) {
+                break;
+            }
+            rows.getChildren().add(summaryLine(
+                "#" + safe(payment.memberCode()) + " - " + safe(payment.memberName()),
+                displayPaymentMethod(payment) + " | " + (payment.paymentDate() != null ? payment.paymentDate() : "-"),
+                formatPeso(payment.amount())
+            ));
+            shown++;
+        }
+        int remaining = Math.max(0, countCompleted(payments) - shown);
+        if (shown == 0) {
+            rows.getChildren().add(emptyPaymentSummary("No completed payments found."));
+        } else {
+            addMoreRows(rows, remaining);
+        }
+    }
+
+    private boolean isRealCompletedPayment(PaymentDAO.PaymentRecord payment) {
+        return payment != null
+            && "Completed".equalsIgnoreCase(payment.status())
+            && payment.amount() > 0;
+    }
+
+    private String displayPaymentMethod(PaymentDAO.PaymentRecord payment) {
+        if (payment == null) {
+            return "Cash";
+        }
+        if (payment.amount() == 0
+            && "Other".equalsIgnoreCase(payment.paymentMethod())
+            && payment.notes() != null
+            && payment.notes().toLowerCase().contains("plan upgrade")) {
+            return "Plan Change";
+        }
+        return payment.paymentMethod() != null && !payment.paymentMethod().isBlank()
+            ? payment.paymentMethod()
+            : "Cash";
+    }
+
+    private String displayPaymentHistoryStatus(PaymentDAO.PaymentRecord payment) {
+        if (payment == null) {
+            return "";
+        }
+        if (payment.amount() == 0
+            && payment.notes() != null
+            && payment.notes().toLowerCase().contains("plan upgrade")) {
+            return "Plan Change";
+        }
+        return "Completed".equalsIgnoreCase(payment.status()) ? "Paid" : payment.status();
+    }
+
+    private HBox summaryLine(String title, String detail, String trailing) {
+        HBox row = new HBox(12);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(9, 0, 9, 0));
+        row.setStyle("-fx-border-color: transparent transparent " + BORDER + " transparent; -fx-border-width: 0 0 1 0;");
+        VBox text = new VBox(2);
+        Label titleLabel = new Label(title);
+        titleLabel.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        titleLabel.setTextFill(Color.web(TEXT_TITLE));
+        Label detailLabel = new Label(detail);
+        detailLabel.setFont(Font.font("Poppins", 10));
+        detailLabel.setTextFill(Color.web(TEXT_SOFT));
+        text.getChildren().addAll(titleLabel, detailLabel);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label amount = new Label(trailing);
+        amount.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        amount.setTextFill(Color.web(ACCENT));
+        row.getChildren().addAll(text, spacer, amount);
+        return row;
+    }
+
+    private Label emptyPaymentSummary(String text) {
+        Label empty = new Label(text);
+        empty.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        empty.setTextFill(Color.web(TEXT_SOFT));
+        empty.setPadding(new Insets(14, 0, 14, 0));
+        return empty;
+    }
+
+    private void addMoreRows(VBox rows, int remaining) {
+        if (remaining <= 0) {
+            return;
+        }
+        Label more = new Label("+" + remaining + " more");
+        more.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
+        more.setTextFill(Color.web(ACCENT));
+        rows.getChildren().add(more);
     }
 
     public static void main(String[] args) { launch(args); }
