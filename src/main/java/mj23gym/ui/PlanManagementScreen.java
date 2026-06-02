@@ -146,14 +146,12 @@ public class PlanManagementScreen {
             actions.setAlignment(Pos.CENTER_LEFT);
             Button edit = smallButton("Edit", WARNING_TEXT);
             Button toggle = smallButton(plan.active() ? "Disable" : "Enable", plan.active() ? TEXT_DIM : SUCCESS_TEXT);
-            Button remove = smallButton("Remove", ACCENT);
             edit.setOnAction(e -> showPlanDialog(plan, refresh));
             toggle.setOnAction(e -> {
                 dao.setActive(plan.planId(), !plan.active());
                 refresh.run();
             });
-            remove.setOnAction(e -> confirmRemove(plan, refresh));
-            actions.getChildren().addAll(edit, toggle, remove);
+            actions.getChildren().addAll(edit, toggle);
             grid.add(actions, 5, 0);
 
             row.getChildren().add(grid);
@@ -269,21 +267,6 @@ public class PlanManagementScreen {
         scene.setFill(Color.web(BG_CARD));
         dialog.setScene(scene);
         dialog.showAndWait();
-    }
-
-    private void confirmRemove(PlanDAO.PlanRecord plan, Runnable refresh) {
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Remove Plan");
-        confirm.setHeaderText(null);
-        confirm.setContentText("Remove " + plan.planName() + " from membership plans?");
-        Optional<ButtonType> answer = confirm.showAndWait();
-        if (answer.isPresent() && answer.get() == ButtonType.OK) {
-            if (dao.delete(plan.planId())) {
-                refresh.run();
-            } else {
-                alertErr("Could not remove plan. Try disabling it instead.");
-            }
-        }
     }
 
     private HBox headerRow(String[] headers, double[] widths) {

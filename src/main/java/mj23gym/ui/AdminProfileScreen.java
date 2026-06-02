@@ -212,32 +212,26 @@ public class AdminProfileScreen extends Application {
         VBox profileHeaderCard = new VBox(0);
         profileHeaderCard.setStyle(
             "-fx-background-color: " + CARD_SURFACE + ";" +
-            "-fx-background-radius: 20;" +
-            "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 20;" +
-            "-fx-border-width: 1;"
+            "-fx-background-radius: 18;" +
+            "-fx-border-color: rgba(26,19,99,0.14);" +
+            "-fx-border-radius: 18;" +
+            "-fx-border-width: 1.2;"
         );
         DropShadow ds1 = new DropShadow();
-        ds1.setColor(Color.web(ACCENT, 0.12));
-        ds1.setRadius(14);
-        ds1.setOffsetY(4);
+        ds1.setColor(Color.web(ACCENT, 0.08));
+        ds1.setRadius(10);
+        ds1.setOffsetY(3);
         profileHeaderCard.setEffect(ds1);
 
-        VBox bannerWrap = new VBox(0);
-        Region yellowStripe = new Region();
-        yellowStripe.setPrefHeight(4);
-        yellowStripe.setMaxHeight(4);
-        yellowStripe.setMaxWidth(Double.MAX_VALUE);
-        yellowStripe.setStyle("-fx-background-color: " + BRAND_YELLOW + "; -fx-background-radius: 20 20 0 0;");
         Region banner = new Region();
-        banner.setPrefHeight(72);
-        banner.setMinHeight(72);
-        banner.setMaxHeight(72);
+        banner.setPrefHeight(52);
+        banner.setMinHeight(52);
+        banner.setMaxHeight(52);
         banner.setMaxWidth(Double.MAX_VALUE);
         banner.setStyle(
-            "-fx-background-color: linear-gradient(to right, " + ACCENT + ", " + ACCENT_DARK + ");"
+            "-fx-background-color: linear-gradient(to right, rgba(26,19,99,0.10), rgba(228,255,223,0.55));" +
+            "-fx-background-radius: 18 18 0 0;"
         );
-        bannerWrap.getChildren().addAll(yellowStripe, banner);
 
         HBox profileInfo = new HBox(22);
         profileInfo.setPadding(new Insets(0, 28, 24, 28));
@@ -246,11 +240,11 @@ public class AdminProfileScreen extends Application {
         StackPane bigAvatar = new StackPane();
         bigAvatar.setPrefSize(84, 84);
         bigAvatar.setMaxSize(84, 84);
-        bigAvatar.setTranslateY(-32);
+        bigAvatar.setTranslateY(-24);
         Circle ring = new Circle(42);
-        ring.setFill(Color.TRANSPARENT);
+        ring.setFill(Color.web(CARD_SURFACE));
         ring.setStroke(Color.web(CARD_SURFACE));
-        ring.setStrokeWidth(4);
+        ring.setStrokeWidth(3);
         Circle bigCircle = new Circle(38);
         bigCircle.setFill(Color.web(ACCENT));
         Text bigInitial = new Text(user.initial());
@@ -279,7 +273,7 @@ public class AdminProfileScreen extends Application {
         editProfileBtn.setTranslateY(-8);
 
         profileInfo.getChildren().addAll(bigAvatar, nameInfo, nameSp, editProfileBtn);
-        profileHeaderCard.getChildren().addAll(bannerWrap, profileInfo);
+        profileHeaderCard.getChildren().addAll(banner, profileInfo);
 
         //  Two-column layout 
         HBox twoCol = new HBox(22);
@@ -455,27 +449,23 @@ public class AdminProfileScreen extends Application {
         card.setPadding(new Insets(22, 24, 24, 24));
         card.setStyle(
             "-fx-background-color: " + CARD_SURFACE + ";" +
-            "-fx-background-radius: 20;" +
-            "-fx-border-color: " + BORDER + ";" +
-            "-fx-border-radius: 20;" +
-            "-fx-border-width: 1;"
+            "-fx-background-radius: 18;" +
+            "-fx-border-color: rgba(26,19,99,0.14);" +
+            "-fx-border-radius: 18;" +
+            "-fx-border-width: 1.2;"
         );
         DropShadow ds = new DropShadow();
-        ds.setColor(Color.web(ACCENT, 0.10));
-        ds.setRadius(12);
-        ds.setOffsetY(4);
+        ds.setColor(Color.web(ACCENT, 0.07));
+        ds.setRadius(9);
+        ds.setOffsetY(2);
         card.setEffect(ds);
-        Rectangle accentBar = new Rectangle(42, 3);
-        accentBar.setArcWidth(3);
-        accentBar.setArcHeight(3);
-        accentBar.setFill(Color.web(ACCENT));
         Text t = new Text(title);
         t.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
         t.setFill(Color.web(TEXT_TITLE));
         Text s = new Text(sub);
         s.setFont(Font.font("Poppins", 11));
         s.setFill(Color.web(TEXT_SOFT));
-        VBox hdr = new VBox(6, accentBar, t, s);
+        VBox hdr = new VBox(5, t, s);
         card.getChildren().add(hdr);
         return card;
     }
@@ -643,29 +633,28 @@ public class AdminProfileScreen extends Application {
 
     private VBox makeMiniStat(String label, String value, String color) {
         VBox wrap = new VBox();
-        HBox chip = new HBox(10);
+        VBox chip = new VBox(6);
         chip.setAlignment(Pos.CENTER_LEFT);
-        chip.setPadding(new Insets(14, 16, 14, 16));
+        chip.setPadding(new Insets(16, 18, 16, 18));
+        String outline = Color.web(color, 0.75).toString().replace("0x", "#");
+        String wash = Color.web(color, 0.08).toString().replace("0x", "#");
         chip.setStyle(
-            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-color: linear-gradient(to bottom right, " + CARD_SURFACE + ", " + wash + ");" +
             "-fx-background-radius: 16;" +
-            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-color: " + outline + ";" +
             "-fx-border-radius: 16;" +
-            "-fx-border-width: 1;"
+            "-fx-border-width: 1.8;" +
+            "-fx-effect: dropshadow(gaussian, rgba(26,19,99,0.06), 7, 0.0, 0, 2);"
         );
         HBox.setHgrow(chip, Priority.ALWAYS);
-        Rectangle accent = new Rectangle(4, 44);
-        accent.setArcWidth(4);
-        accent.setArcHeight(4);
-        accent.setFill(Color.web(color));
         Text val = new Text(value);
         val.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
         val.setFill(Color.web(color));
         Text lbl = new Text(label);
         lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
         lbl.setFill(Color.web(TEXT_SOFT));
-        lbl.setWrappingWidth(100);
-        chip.getChildren().addAll(accent, new VBox(4, val, lbl));
+        lbl.setWrappingWidth(140);
+        chip.getChildren().addAll(val, lbl);
         wrap.getChildren().add(chip);
         HBox.setHgrow(wrap, Priority.ALWAYS);
         return wrap;

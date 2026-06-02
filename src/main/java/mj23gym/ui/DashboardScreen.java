@@ -2,6 +2,7 @@ package mj23gym.ui;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.sql.Date;
 
@@ -418,7 +419,9 @@ public class DashboardScreen extends Application {
         PosDAO posDAO = new PosDAO();
         ActivityLogDAO activityLogDAO = new ActivityLogDAO();
 
-        int totalMembers = memberDAO.countAll();
+        List<MemberDAO.MemberRecord> allMembers = memberDAO.findAll();
+        MemberDashboardStats memberStats = buildMemberDashboardStats(allMembers, paymentDAO);
+        int totalMembers = memberStats.total();
         double revenueToday = paymentDAO.todayRevenue() + posDAO.todayPosTotal();
         LocalDate today = LocalDate.now();
         LocalDate monthStart = today.withDayOfMonth(1);
@@ -442,7 +445,7 @@ public class DashboardScreen extends Application {
         searchField.setOnAction(e -> showDashboardSearch(searchField.getText()));
         notifBtn.setOnAction(e -> showDashboardNotifications(lowStockCount, maintDue));
 
-        List<MemberDAO.MemberRecord> recentMembers = memberDAO.findRecent(5);
+        List<MemberDAO.MemberRecord> recentMembers = recentVisibleMembers(memberDAO.findRecent(12), 5);
         List<MemberDAO.AttendanceRecord> recentCheckIns = memberDAO.findRecentAttendance(6);
         
         List<PaymentDAO.PaymentRecord> recentPayments = paymentDAO.findRecentPayments(5);
@@ -465,12 +468,12 @@ public class DashboardScreen extends Application {
 
         VBox dashboardDetails = new VBox(0);
         dashboardDetails.getChildren().setAll(
-            buildMembersDetail(memberDAO, totalMembers, recentMembers)
+            buildMembersDetail(memberDAO, paymentDAO, totalMembers, recentMembers)
         );
 
         makeSummaryCardsClickable(
             summaryCards,
-            () -> dashboardDetails.getChildren().setAll(buildMembersDetail(memberDAO, totalMembers, recentMembers)),
+            () -> dashboardDetails.getChildren().setAll(buildMembersDetail(memberDAO, paymentDAO, totalMembers, recentMembers)),
             () -> dashboardDetails.getChildren().setAll(buildRevenueDetail(paymentDAO, posDAO, revenueToday)),
             () -> dashboardDetails.getChildren().setAll(buildLowStockDetail(inventoryDAO)),
             () -> dashboardDetails.getChildren().setAll(buildExpiringBatchDetail(inventoryDAO)),
@@ -486,8 +489,9 @@ public class DashboardScreen extends Application {
         int brokenCount = equipmentDAO.countByCondition("Broken");
         int equipOk = Math.max(0, totalEq - maintCount - brokenCount);
 
-        int activeMembers = memberDAO.countByStatus("Active");
-        int expiredMembers = memberDAO.countByStatus("Expired");
+        int activeMembers = memberStats.active();
+        int pendingMembers = memberStats.paymentPending();
+        int expiredMembers = memberStats.expired();
 
         // Convert member records to table data
         String[][] memberTableData = new String[recentMembers.size()][4];
@@ -496,7 +500,7 @@ public class DashboardScreen extends Application {
             memberTableData[i][0] = "#" + m.memberCode();
             memberTableData[i][1] = m.fullName();
             memberTableData[i][2] = m.membershipType() != null ? m.membershipType() : "Monthly";
-            memberTableData[i][3] = formatStatusDisplay(m.status() != null ? m.status() : "Active");
+            memberTableData[i][3] = effectiveMemberStatus(m, paymentDAO);
         }
 
         // Recent Members table
@@ -512,6 +516,7 @@ public class DashboardScreen extends Application {
         // Quick stats panel
         VBox quickStats = buildQuickStats(
             activeMembers,
+            pendingMembers,
             expiredMembers,
             posDAO.todayPosTotal(),
             Math.max(0, equipOk),
@@ -1039,11 +1044,14 @@ public class DashboardScreen extends Application {
             );
 
             if (new MemberDAO().update(renewed)) {
-                new PaymentDAO().ensureBillingForMember(
+                PaymentDAO paymentDAO = new PaymentDAO();
+                int uid = AppSession.currentUser().userId();
+                paymentDAO.closeBillingOnUpgrade(member.memberId(), uid);
+                paymentDAO.ensureBillingForMember(
                     member.memberId(),
                     selectedPlan,
                     Date.valueOf(end),
-                    AppSession.currentUser().userId()
+                    uid
                 );
                 dialog.close();
                 openPaymentScreenForRenewal(member);
@@ -1371,7 +1379,7 @@ public class DashboardScreen extends Application {
                 color = SUCCESS_TEXT; bg = "rgba(228,255,223,0.85)"; break;
             case "expired": case "overdue":
                 color = ACCENT; bg = "rgba(26,19,99,0.15)"; break;
-            case "pending":
+            case "pending": case "payment pending":
                 color = WARNING_TEXT; bg = "rgba(253,238,33,0.35)"; break;
             case "cancelled": case "archived":
                 color = TEXT_MUTED; bg = "rgba(119,116,155,0.15)"; break;
@@ -1390,6 +1398,7 @@ public class DashboardScreen extends Application {
     //  Quick stats side panel 
     private VBox buildQuickStats(
         int activeMembers,
+        int pendingMembers,
         int expiredMembers,
         double posToday,
         int equipmentOk,
@@ -1424,6 +1433,7 @@ public class DashboardScreen extends Application {
         VBox stats = new VBox(0);
         String[][] statItems = {
             {"Active Members",    String.valueOf(activeMembers),   ACCENT},
+            {"Pending Payments",  String.valueOf(pendingMembers),  WARNING_TEXT},
             {"Expired Members",   String.valueOf(expiredMembers),  WARNING_TEXT},
             {"POS Sales Today",   String.format("%.0f", posToday), SUCCESS_TEXT},
             {"Equipment OK",      String.valueOf(equipmentOk),     SUCCESS_TEXT},
@@ -1455,7 +1465,13 @@ public class DashboardScreen extends Application {
         return card;
     }
 
-    private VBox buildMembersDetail(MemberDAO memberDAO, int totalMembers, List<MemberDAO.MemberRecord> recentMembers) {
+    private VBox buildMembersDetail(
+        MemberDAO memberDAO,
+        PaymentDAO paymentDAO,
+        int totalMembers,
+        List<MemberDAO.MemberRecord> recentMembers
+    ) {
+        MemberDashboardStats stats = buildMemberDashboardStats(memberDAO.findAll(), paymentDAO);
         String[][] rows = new String[Math.min(8, recentMembers.size())][5];
         for (int i = 0; i < rows.length; i++) {
             MemberDAO.MemberRecord m = recentMembers.get(i);
@@ -1463,7 +1479,7 @@ public class DashboardScreen extends Application {
             rows[i][1] = m.fullName();
             rows[i][2] = m.membershipType() != null ? m.membershipType() : "No plan";
             rows[i][3] = m.membershipEndDate() != null ? m.membershipEndDate().toString() : "No end date";
-            rows[i][4] = formatStatusDisplay(m.status());
+            rows[i][4] = effectiveMemberStatus(m, paymentDAO);
         }
 
         return buildDashboardDetailSection(
@@ -1471,9 +1487,10 @@ public class DashboardScreen extends Application {
             "Member count breakdown and newest registrations",
             new String[][]{
                 {"All Members", String.valueOf(totalMembers), ACCENT},
-                {"Active", String.valueOf(memberDAO.countByStatus("Active")), SUCCESS_TEXT},
-                {"Expired", String.valueOf(memberDAO.countByStatus("Expired")), WARNING_TEXT},
-                {"Archived", String.valueOf(memberDAO.countByStatus("Cancelled")), TEXT_MUTED}
+                {"Active", String.valueOf(stats.active()), SUCCESS_TEXT},
+                {"Payment Pending", String.valueOf(stats.paymentPending()), WARNING_TEXT},
+                {"Expired", String.valueOf(stats.expired()), WARNING_TEXT},
+                {"Archived", String.valueOf(stats.archived()), TEXT_MUTED}
             },
             "Member Details",
             new String[]{"Member ID", "Name", "Plan", "End Date", "Status"},
@@ -1774,6 +1791,77 @@ public class DashboardScreen extends Application {
             message.append("No low-stock or maintenance alerts right now.");
         }
         new Alert(Alert.AlertType.INFORMATION, message.toString()).showAndWait();
+    }
+
+    private record MemberDashboardStats(int total, int active, int paymentPending, int expired, int archived) {}
+
+    private MemberDashboardStats buildMemberDashboardStats(List<MemberDAO.MemberRecord> members, PaymentDAO paymentDAO) {
+        int total = 0;
+        int active = 0;
+        int pending = 0;
+        int expired = 0;
+        int archived = 0;
+        for (MemberDAO.MemberRecord member : members) {
+            String status = effectiveMemberStatus(member, paymentDAO);
+            if ("Archived".equalsIgnoreCase(status)) {
+                archived++;
+                continue;
+            }
+            total++;
+            if ("Expired".equalsIgnoreCase(status)) {
+                expired++;
+            } else if ("Payment Pending".equalsIgnoreCase(status)) {
+                pending++;
+            } else if ("Active".equalsIgnoreCase(status)) {
+                active++;
+            }
+        }
+        return new MemberDashboardStats(total, active, pending, expired, archived);
+    }
+
+    private List<MemberDAO.MemberRecord> recentVisibleMembers(List<MemberDAO.MemberRecord> source, int limit) {
+        List<MemberDAO.MemberRecord> visible = new ArrayList<>();
+        for (MemberDAO.MemberRecord member : source) {
+            if (!"Cancelled".equalsIgnoreCase(member.status())) {
+                visible.add(member);
+            }
+            if (visible.size() >= limit) {
+                break;
+            }
+        }
+        return visible;
+    }
+
+    private String effectiveMemberStatus(MemberDAO.MemberRecord member, PaymentDAO paymentDAO) {
+        if (member == null) {
+            return "Unknown";
+        }
+        if ("Cancelled".equalsIgnoreCase(member.status())) {
+            return "Archived";
+        }
+        if (isMembershipExpired(member)) {
+            return "Expired";
+        }
+        if (hasPendingMembershipPayment(member, paymentDAO)) {
+            return "Payment Pending";
+        }
+        return formatStatusDisplay(member.status() != null ? member.status() : "Active");
+    }
+
+    private boolean isMembershipExpired(MemberDAO.MemberRecord member) {
+        if (member == null || member.membershipEndDate() == null) {
+            return false;
+        }
+        return "Expired".equalsIgnoreCase(member.status())
+            || member.membershipEndDate().toLocalDate().isBefore(LocalDate.now());
+    }
+
+    private boolean hasPendingMembershipPayment(MemberDAO.MemberRecord member, PaymentDAO paymentDAO) {
+        try {
+            return paymentDAO.balanceDueForMember(member.memberId()) > 0.009;
+        } catch (RuntimeException ex) {
+            return false;
+        }
     }
 
     // Helper method to format status display - convert Cancelled to Archived for consistency

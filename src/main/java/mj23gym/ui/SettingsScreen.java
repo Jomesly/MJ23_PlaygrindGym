@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 import mj23gym.dao.UserDAO;
 import mj23gym.util.DatabaseConnection;
 
@@ -501,8 +502,66 @@ public class SettingsScreen extends Application {
                 }
             });
 
-            uRow.getChildren().addAll(identity, uRole, uPerm, uSp, uStatus, actionBtn);
+            Button resetBtn = makeSmallAccessButton("Reset Password", TEXT_MUTED);
+            resetBtn.setDisable(!canManage || !isStaff || user.userId() == AppSession.currentUser().userId());
+            resetBtn.setOnAction(e -> showAdminPasswordResetDialog(user, userDAO));
+
+            HBox actions = new HBox(8, resetBtn, actionBtn);
+            actions.setAlignment(Pos.CENTER_LEFT);
+
+            uRow.getChildren().addAll(identity, uRole, uPerm, uSp, uStatus, actions);
             userList.getChildren().add(uRow);
+        }
+    }
+
+    private void showAdminPasswordResetDialog(UserDAO.UserRecord user, UserDAO userDAO) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Reset Staff Password");
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
+
+        VBox box = new VBox(12);
+        box.setPadding(new Insets(22));
+        box.setPrefWidth(380);
+        box.setStyle("-fx-background-color: " + BG_CARD + ";");
+
+        Label title = new Label("Reset password for " + user.username());
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 15));
+        title.setTextFill(Color.web(TEXT_WHITE));
+
+        PasswordField newPassword = passwordField("New password");
+        PasswordField confirmPassword = passwordField("Confirm new password");
+        Label msg = new Label();
+        msg.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        msg.setTextFill(Color.web(ACCENT));
+        msg.setWrapText(true);
+
+        box.getChildren().addAll(title, newPassword, confirmPassword, msg);
+        dialog.getDialogPane().setContent(box);
+        dialog.getDialogPane().setStyle("-fx-background-color: " + BG_CARD + ";");
+
+        Button ok = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+        ok.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            String password = newPassword.getText();
+            String confirm = confirmPassword.getText();
+            if (password == null || password.length() < 6) {
+                msg.setText("Password must be at least 6 characters.");
+                event.consume();
+                return;
+            }
+            if (!password.equals(confirm)) {
+                msg.setText("Password and confirmation do not match.");
+                event.consume();
+                return;
+            }
+            if (!userDAO.resetStaffPassword(user.userId(), password)) {
+                msg.setText("Could not reset password. Only staff accounts can be reset here.");
+                event.consume();
+            }
+        });
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            info("Staff password reset.");
         }
     }
 

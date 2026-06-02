@@ -10,6 +10,10 @@ set "COMMONS=%M2%\commons-io"
 
 cd /d "%PROJECT_DIR%"
 
+rem Local database settings. These can still be overridden from your terminal.
+if not defined MJ23_DB_USER set "MJ23_DB_USER=root"
+if not defined MJ23_DB_PASSWORD set "MJ23_DB_PASSWORD=HNLwFxBd@PQ2AzJ"
+
 java --enable-native-access=javafx.graphics ^
   --module-path "%FX%\javafx-base\21.0.3\javafx-base-21.0.3-win.jar;%FX%\javafx-controls\21.0.3\javafx-controls-21.0.3-win.jar;%FX%\javafx-fxml\21.0.3\javafx-fxml-21.0.3-win.jar;%FX%\javafx-graphics\21.0.3\javafx-graphics-21.0.3-win.jar;%FX%\javafx-swing\21.0.3\javafx-swing-21.0.3-win.jar" ^
   --add-modules javafx.controls,javafx.fxml,javafx.swing ^

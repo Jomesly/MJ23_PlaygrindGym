@@ -9,6 +9,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.ScrollPane;
@@ -211,10 +212,13 @@ public class AccountManagementScreen extends Application {
         Button holdBtn = pillButton("Mark Unverified", WARNING_TEXT);
         holdBtn.setOnAction(e -> updateSelectedVerification(false));
 
+        Button recoveryBtn = pillButton("Recovery Setup", TEXT_TITLE);
+        recoveryBtn.setOnAction(e -> showRecoverySetupDialog());
+
         Button addBtn = accentButton("+ Register Staff");
         addBtn.setOnAction(e -> showCreateAccountDialog());
 
-        topBar.getChildren().addAll(titleBox, spacer, verifyBtn, holdBtn, addBtn);
+        topBar.getChildren().addAll(titleBox, spacer, verifyBtn, holdBtn, recoveryBtn, addBtn);
 
         statusLabel = new Label();
         statusLabel.setFont(Font.font("Poppins", 11));
@@ -544,6 +548,125 @@ public class AccountManagementScreen extends Application {
         }).start();
     }
 
+    private void showRecoverySetupDialog() {
+        UserRowData selected = usersTable == null ? null : usersTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            showStatus("Select an account first before setting recovery information.", false);
+            return;
+        }
+
+        int userId;
+        try {
+            userId = Integer.parseInt(selected.userId);
+        } catch (NumberFormatException ex) {
+            showStatus("Selected account has an invalid user ID.", false);
+            return;
+        }
+
+        Stage dialog = new Stage();
+        dialog.setTitle("Recovery Setup");
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setResizable(false);
+
+        VBox form = new VBox(14);
+        form.setPadding(new Insets(24, 28, 28, 28));
+        form.setStyle("-fx-background-color: " + CARD_SURFACE + ";");
+        form.setPrefWidth(500);
+
+        Text titleText = new Text("Set Recovery Details");
+        titleText.setFont(Font.font("Poppins", FontWeight.BOLD, 18));
+        titleText.setFill(Color.web(TEXT_TITLE));
+        Text subText = new Text(selected.username + " - " + selected.fullName);
+        subText.setFont(Font.font("Poppins", 11));
+        subText.setFill(Color.web(TEXT_SOFT));
+
+        ComboBox<String> recoveryQuestionField = buildRecoveryQuestionBox();
+        VBox recoveryQuestionBox = comboField("Security Question", recoveryQuestionField);
+
+        VBox recoveryAnswerBox = formField("Security Answer", "");
+        PasswordField recoveryAnswerField = new PasswordField();
+        applyFieldStyle(recoveryAnswerField);
+        recoveryAnswerField.setPromptText("Enter answer");
+        recoveryAnswerBox.getChildren().set(1, recoveryAnswerField);
+
+        VBox confirmAnswerBox = formField("Confirm Answer", "");
+        PasswordField confirmAnswerField = new PasswordField();
+        applyFieldStyle(confirmAnswerField);
+        confirmAnswerField.setPromptText("Re-enter answer");
+        confirmAnswerBox.getChildren().set(1, confirmAnswerField);
+
+        Label msgLabel = new Label();
+        msgLabel.setFont(Font.font("Poppins", 10));
+        msgLabel.setWrapText(true);
+        msgLabel.setVisible(false);
+        msgLabel.setManaged(false);
+
+        HBox buttonBox = new HBox(10);
+        buttonBox.setAlignment(Pos.CENTER_RIGHT);
+        Button cancelBtn = outlineButton("Cancel");
+        cancelBtn.setOnAction(e -> dialog.close());
+        Button saveBtn = accentButton("Save Recovery Info");
+        buttonBox.getChildren().addAll(cancelBtn, saveBtn);
+
+        saveBtn.setOnAction(e -> {
+            String question = recoveryQuestionField.getValue();
+            String answer = recoveryAnswerField.getText();
+            String confirm = confirmAnswerField.getText();
+
+            if (question == null || question.isBlank() || answer == null || answer.trim().isEmpty()) {
+                showInlineDialogMessage(msgLabel, "Security question and answer are required.", false);
+                return;
+            }
+            if (answer.trim().length() < 3) {
+                showInlineDialogMessage(msgLabel, "Security answer must be at least 3 characters.", false);
+                return;
+            }
+            if (!answer.equals(confirm)) {
+                showInlineDialogMessage(msgLabel, "Security answer and confirmation do not match.", false);
+                return;
+            }
+
+            saveBtn.setDisable(true);
+            showInlineDialogMessage(msgLabel, "Saving recovery information...", true);
+            new Thread(() -> {
+                boolean success = userDAO.updateRecoveryChallenge(userId, question, answer);
+                javafx.application.Platform.runLater(() -> {
+                    if (success) {
+                        showStatus("Recovery information saved for " + selected.username + ".", true);
+                        showInlineDialogMessage(msgLabel, "Recovery information saved.", true);
+                        new Thread(() -> {
+                            try {
+                                Thread.sleep(900);
+                            } catch (InterruptedException ignored) {
+                            }
+                            javafx.application.Platform.runLater(dialog::close);
+                        }).start();
+                    } else {
+                        showInlineDialogMessage(msgLabel, "Could not save recovery information.", false);
+                        saveBtn.setDisable(false);
+                    }
+                });
+            }).start();
+        });
+
+        form.getChildren().addAll(
+            titleText, subText,
+            recoveryQuestionBox, recoveryAnswerBox, confirmAnswerBox,
+            msgLabel, buttonBox
+        );
+
+        ScrollPane scroll = new ScrollPane(form);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scroll.setStyle("-fx-background-color: " + CARD_SURFACE + "; -fx-background: " + CARD_SURFACE + ";");
+
+        Scene dialogScene = new Scene(scroll, 520, 540);
+        dialogScene.setFill(Color.web(CARD_SURFACE));
+        dialog.setScene(dialogScene);
+        dialog.showAndWait();
+    }
+
     private void showCreateAccountDialog() {
         Stage dialog = new Stage();
         dialog.setTitle("Register Staff for Verification");
@@ -601,6 +724,15 @@ public class AccountManagementScreen extends Application {
         confirmPassField.setPromptText("Re-enter password");
         confirmPassBox.getChildren().set(1, confirmPassField);
 
+        ComboBox<String> recoveryQuestionField = buildRecoveryQuestionBox();
+        VBox recoveryQuestionBox = comboField("Security Question", recoveryQuestionField);
+
+        VBox recoveryAnswerBox = formField("Security Answer", "");
+        PasswordField recoveryAnswerField = new PasswordField();
+        applyFieldStyle(recoveryAnswerField);
+        recoveryAnswerField.setPromptText("Answer for account recovery");
+        recoveryAnswerBox.getChildren().set(1, recoveryAnswerField);
+
         Label msgLabel = new Label();
         msgLabel.setFont(Font.font("Poppins", 10));
         msgLabel.setWrapText(true);
@@ -621,8 +753,12 @@ public class AccountManagementScreen extends Application {
             String phone = phoneField.getText().trim();
             String password = passwordField.getText();
             String confirmPass = confirmPassField.getText();
+            String recoveryQuestion = recoveryQuestionField.getValue();
+            String recoveryAnswer = recoveryAnswerField.getText();
 
-            String validationError = validateStaffRegistration(username, fullName, email, phone, password, confirmPass);
+            String validationError = validateStaffRegistration(
+                username, fullName, email, phone, password, confirmPass, recoveryQuestion, recoveryAnswer
+            );
             if (validationError != null) {
                 msgLabel.setText(validationError);
                 msgLabel.setTextFill(Color.web(WARNING_TEXT));
@@ -639,7 +775,9 @@ public class AccountManagementScreen extends Application {
 
             new Thread(() -> {
                 try {
-                    boolean success = userDAO.registerStaffForVerification(username, fullName, email, phone, password);
+                    boolean success = userDAO.registerStaffForVerification(
+                        username, fullName, email, phone, password, recoveryQuestion, recoveryAnswer
+                    );
                     javafx.application.Platform.runLater(() -> {
                         if (success) {
                             msgLabel.setText("Staff registered. Select the row and click Verify Staff to activate login.");
@@ -673,10 +811,17 @@ public class AccountManagementScreen extends Application {
             accentBar, titleText, subText,
             usernameBox, fullNameBox, emailBox, phoneBox,
             roleInfo, passwordBox, confirmPassBox,
+            recoveryQuestionBox, recoveryAnswerBox,
             msgLabel, buttonBox
         );
 
-        Scene dialogScene = new Scene(form, 480, 620);
+        ScrollPane scroll = new ScrollPane(form);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scroll.setStyle("-fx-background-color: " + CARD_SURFACE + "; -fx-background: " + CARD_SURFACE + ";");
+
+        Scene dialogScene = new Scene(scroll, 520, 640);
         dialogScene.setFill(Color.web(CARD_SURFACE));
         dialog.setScene(dialogScene);
         dialog.showAndWait();
@@ -691,6 +836,37 @@ public class AccountManagementScreen extends Application {
         field.setPromptText(placeholder);
         applyFieldStyle(field);
         box.getChildren().addAll(lbl, field);
+        return box;
+    }
+
+    private VBox comboField(String label, ComboBox<String> combo) {
+        VBox box = new VBox(6);
+        Label lbl = new Label(label);
+        lbl.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        lbl.setTextFill(Color.web(TEXT_SOFT));
+        box.getChildren().addAll(lbl, combo);
+        return box;
+    }
+
+    private ComboBox<String> buildRecoveryQuestionBox() {
+        ComboBox<String> box = new ComboBox<>();
+        box.getItems().addAll(
+            UserDAO.DEFAULT_RECOVERY_QUESTION,
+            "What is your mother's maiden name?",
+            "What city were you born in?",
+            "What was the name of your first school?"
+        );
+        box.setValue(UserDAO.DEFAULT_RECOVERY_QUESTION);
+        box.setPrefHeight(42);
+        box.setMaxWidth(Double.MAX_VALUE);
+        box.setStyle(
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 12;" +
+            "-fx-background-radius: 12;" +
+            "-fx-font-family: Poppins;" +
+            "-fx-font-size: 12;"
+        );
         return box;
     }
 
@@ -712,9 +888,13 @@ public class AccountManagementScreen extends Application {
     }
 
     private String validateStaffRegistration(String username, String fullName, String email,
-                                             String phone, String password, String confirmPass) {
+                                             String phone, String password, String confirmPass,
+                                             String recoveryQuestion, String recoveryAnswer) {
         if (username.isEmpty() || fullName.isEmpty() || email.isEmpty() || phone.isEmpty() || password.isEmpty()) {
             return "Username, full name, email, phone, and password are required";
+        }
+        if (recoveryQuestion == null || recoveryQuestion.isBlank() || recoveryAnswer == null || recoveryAnswer.trim().isEmpty()) {
+            return "Security question and answer are required for account recovery";
         }
         if (!username.matches("^[A-Za-z0-9._-]{4,30}$")) {
             return "Username must be 4-30 characters using letters, numbers, dot, dash, or underscore";
@@ -730,6 +910,9 @@ public class AccountManagementScreen extends Application {
         }
         if (password.length() < 6) {
             return "Password must be at least 6 characters";
+        }
+        if (recoveryAnswer.trim().length() < 3) {
+            return "Security answer must be at least 3 characters";
         }
         return null;
     }
@@ -838,5 +1021,20 @@ public class AccountManagementScreen extends Application {
         );
         statusLabel.setVisible(true);
         statusLabel.setManaged(true);
+    }
+
+    private void showInlineDialogMessage(Label label, String message, boolean isSuccess) {
+        label.setText(message);
+        label.setTextFill(Color.web(isSuccess ? SUCCESS_TEXT : WARNING_TEXT));
+        label.setStyle(
+            "-fx-background-color: " + (isSuccess ? "rgba(228,255,223,0.75)" : "rgba(253,238,33,0.28)") + ";" +
+            "-fx-background-radius: 12;" +
+            "-fx-padding: 8 12;" +
+            "-fx-border-color: " + (isSuccess ? "rgba(35,122,54,0.25)" : "rgba(110,100,0,0.25)") + ";" +
+            "-fx-border-radius: 12;" +
+            "-fx-border-width: 1;"
+        );
+        label.setVisible(true);
+        label.setManaged(true);
     }
 }

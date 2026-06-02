@@ -17,6 +17,7 @@ import mj23gym.util.PasswordUtil;
  * Data-access object for the `users` table.
  */
 public class UserDAO {
+    public static final String DEFAULT_RECOVERY_QUESTION = "What is your registered phone number?";
 
     // ── DTOs ──────────────────────────────────────────────────────
 
@@ -78,35 +79,86 @@ public class UserDAO {
         return Optional.empty();
     }
 
-    public Optional<UserRecord> findUsernameByRecoveryIdentity(String emailOrPhone) {
-        String sql = "SELECT user_id, username, full_name, email, phone, role, status, last_login " +
-                     "FROM users WHERE status = 'active' AND is_active = TRUE " +
-                     "AND (LOWER(email) = LOWER(?) OR phone = ?) ORDER BY user_id LIMIT 1";
-        String identity = emailOrPhone == null ? "" : emailOrPhone.trim();
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, identity);
-            ps.setString(2, identity);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) return Optional.of(mapRow(rs));
+    public Optional<UserRecord> recoverUsername(String email, String phone, String question, String answer) {
+        String sql = "SELECT user_id, username, password, full_name, email, phone, role, status, last_login, " +
+                     "recovery_question, recovery_answer_hash " +
+                     "FROM users WHERE LOWER(email)=LOWER(?) AND phone=? AND status='active' AND is_active=TRUE";
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            ensureRecoveryColumns(conn);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, clean(email));
+                ps.setString(2, clean(phone));
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        if (verifyRecoveryAnswer(rs, question, answer)) {
+                            saveRecoveryChallenge(conn, rs.getInt("user_id"), question, answer);
+                            return Optional.of(mapRow(rs));
+                        }
+                    }
+                }
             }
         } catch (SQLException e) {
-            System.err.println("[UserDAO] findUsernameByRecoveryIdentity error: " + e.getMessage());
+            System.err.println("[UserDAO] recoverUsername error: " + e.getMessage());
         }
         return Optional.empty();
     }
 
-    public boolean resetPasswordAfterRecovery(int userId, String newPlainPassword) {
-        String sql = "UPDATE users SET password=?, updated_at=NOW() WHERE user_id=? AND status='active'";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, PasswordUtil.hash(newPlainPassword));
-            ps.setInt(2, userId);
-            return ps.executeUpdate() > 0;
+    public boolean resetPasswordWithRecovery(String username, String email, String phone,
+                                             String question, String answer, String newPlainPassword) {
+        String sql = "SELECT user_id, username, password, full_name, email, phone, role, status, last_login, " +
+                     "recovery_question, recovery_answer_hash " +
+                     "FROM users WHERE username=? AND LOWER(email)=LOWER(?) AND phone=? " +
+                     "AND status='active' AND is_active=TRUE";
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            ensureRecoveryColumns(conn);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, clean(username));
+                ps.setString(2, clean(email));
+                ps.setString(3, clean(phone));
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next() || !verifyRecoveryAnswer(rs, question, answer)) {
+                        return false;
+                    }
+                    int userId = rs.getInt("user_id");
+                    try (PreparedStatement upd = conn.prepareStatement(
+                            "UPDATE users SET password=?, recovery_question=?, recovery_answer_hash=?, updated_at=NOW() WHERE user_id=?")) {
+                        upd.setString(1, PasswordUtil.hash(newPlainPassword));
+                        upd.setString(2, clean(question));
+                        upd.setString(3, PasswordUtil.hash(clean(answer)));
+                        upd.setInt(4, userId);
+                        return upd.executeUpdate() > 0;
+                    }
+                }
+            }
         } catch (SQLException e) {
-            System.err.println("[UserDAO] resetPasswordAfterRecovery error: " + e.getMessage());
+            System.err.println("[UserDAO] resetPasswordWithRecovery error: " + e.getMessage());
             return false;
         }
+    }
+
+    public Optional<UserRecord> verifyPasswordRecoveryIdentity(String username, String email, String phone,
+                                                               String question, String answer) {
+        String sql = "SELECT user_id, username, password, full_name, email, phone, role, status, last_login, " +
+                     "recovery_question, recovery_answer_hash " +
+                     "FROM users WHERE username=? AND LOWER(email)=LOWER(?) AND phone=? " +
+                     "AND status='active' AND is_active=TRUE";
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            ensureRecoveryColumns(conn);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, clean(username));
+                ps.setString(2, clean(email));
+                ps.setString(3, clean(phone));
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next() && verifyRecoveryAnswer(rs, question, answer)) {
+                        saveRecoveryChallenge(conn, rs.getInt("user_id"), question, answer);
+                        return Optional.of(mapRow(rs));
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] verifyPasswordRecoveryIdentity error: " + e.getMessage());
+        }
+        return Optional.empty();
     }
 
     // ── CRUD ──────────────────────────────────────────────────────
@@ -161,18 +213,48 @@ public class UserDAO {
 
     public boolean registerStaffForVerification(String username, String fullName, String email,
                                                 String phone, String plainPassword) {
-        String sql = "INSERT INTO users (username, password, full_name, email, phone, role, status, is_active) " +
-                     "VALUES (?, ?, ?, ?, ?, 'staff', 'inactive', FALSE)";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, username);
-            ps.setString(2, PasswordUtil.hash(plainPassword));
-            ps.setString(3, fullName);
-            ps.setString(4, email);
-            ps.setString(5, phone);
-            return ps.executeUpdate() > 0;
+        return registerStaffForVerification(username, fullName, email, phone, plainPassword,
+            DEFAULT_RECOVERY_QUESTION, phone);
+    }
+
+    public boolean registerStaffForVerification(String username, String fullName, String email,
+                                                String phone, String plainPassword,
+                                                String recoveryQuestion, String recoveryAnswer) {
+        String sql = "INSERT INTO users (username, password, full_name, email, phone, role, status, is_active, " +
+                     "recovery_question, recovery_answer_hash) VALUES (?, ?, ?, ?, ?, 'staff', 'inactive', FALSE, ?, ?)";
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            ensureRecoveryColumns(conn);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, username);
+                ps.setString(2, PasswordUtil.hash(plainPassword));
+                ps.setString(3, fullName);
+                ps.setString(4, email);
+                ps.setString(5, phone);
+                ps.setString(6, clean(recoveryQuestion));
+                ps.setString(7, PasswordUtil.hash(clean(recoveryAnswer)));
+                return ps.executeUpdate() > 0;
+            }
         } catch (SQLException e) {
             System.err.println("[UserDAO] registerStaffForVerification error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean updateRecoveryChallenge(int userId, String recoveryQuestion, String recoveryAnswer) {
+        if (userId <= 0 || clean(recoveryQuestion).isEmpty() || clean(recoveryAnswer).isEmpty()) {
+            return false;
+        }
+        String sql = "UPDATE users SET recovery_question=?, recovery_answer_hash=?, updated_at=NOW() WHERE user_id=?";
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            ensureRecoveryColumns(conn);
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, clean(recoveryQuestion));
+                ps.setString(2, PasswordUtil.hash(clean(recoveryAnswer)));
+                ps.setInt(3, userId);
+                return ps.executeUpdate() > 0;
+            }
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] updateRecoveryChallenge error: " + e.getMessage());
             return false;
         }
     }
@@ -235,6 +317,19 @@ public class UserDAO {
         }
     }
 
+    public boolean resetStaffPassword(int userId, String newPlainPassword) {
+        String sql = "UPDATE users SET password=?, updated_at=NOW() WHERE user_id=? AND role='staff'";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, PasswordUtil.hash(newPlainPassword));
+            ps.setInt(2, userId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[UserDAO] resetStaffPassword error: " + e.getMessage());
+            return false;
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────
 
     private void updateLastLogin(Connection conn, int userId) {
@@ -243,6 +338,57 @@ public class UserDAO {
             ps.setInt(1, userId);
             ps.executeUpdate();
         } catch (SQLException ignored) {}
+    }
+
+    private void ensureRecoveryColumns(Connection conn) throws SQLException {
+        ensureColumn(conn, "recovery_question", "VARCHAR(255)");
+        ensureColumn(conn, "recovery_answer_hash", "VARCHAR(255)");
+    }
+
+    private void ensureColumn(Connection conn, String column, String definition) throws SQLException {
+        try (ResultSet rs = conn.getMetaData().getColumns(null, null, "users", column)) {
+            if (!rs.next()) {
+                try (Statement st = conn.createStatement()) {
+                    st.executeUpdate("ALTER TABLE users ADD COLUMN " + column + " " + definition);
+                }
+            }
+        }
+    }
+
+    private boolean verifyRecoveryAnswer(ResultSet rs, String question, String answer) throws SQLException {
+        String selectedQuestion = clean(question);
+        String typedAnswer = clean(answer);
+        if (selectedQuestion.isEmpty() || typedAnswer.isEmpty()) {
+            return false;
+        }
+
+        String storedQuestion = clean(rs.getString("recovery_question"));
+        String storedHash = rs.getString("recovery_answer_hash");
+        if (!storedQuestion.isEmpty() && storedHash != null && !storedHash.isBlank()) {
+            return storedQuestion.equalsIgnoreCase(selectedQuestion)
+                && PasswordUtil.verify(typedAnswer, storedHash);
+        }
+
+        return DEFAULT_RECOVERY_QUESTION.equalsIgnoreCase(selectedQuestion)
+            && typedAnswer.equals(clean(rs.getString("phone")));
+    }
+
+    private void saveRecoveryChallenge(Connection conn, int userId, String question, String answer) throws SQLException {
+        if (clean(question).isEmpty() || clean(answer).isEmpty()) {
+            return;
+        }
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE users SET recovery_question=?, recovery_answer_hash=?, updated_at=NOW() " +
+                "WHERE user_id=? AND (recovery_answer_hash IS NULL OR recovery_answer_hash='')")) {
+            ps.setString(1, clean(question));
+            ps.setString(2, PasswordUtil.hash(clean(answer)));
+            ps.setInt(3, userId);
+            ps.executeUpdate();
+        }
+    }
+
+    private String clean(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private UserRecord mapRow(ResultSet rs) throws SQLException {

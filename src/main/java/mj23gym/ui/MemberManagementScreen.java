@@ -12,6 +12,7 @@ import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.Node;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
@@ -59,6 +60,9 @@ public class MemberManagementScreen extends Application {
     static final String TEXT_DIM     = "#4B5563";
     static final String TABLE_TEXT   = "#111827";
     static final String TABLE_SUBTEXT = "#2F3545";
+    static final String DETAIL_TITLE  = "#111827";
+    static final String DETAIL_TEXT   = "#1F2937";
+    static final String DETAIL_MUTED  = "#374151";
     static final String BORDER       = "#DDD8EA";
     static final String HEADER_BG    = "#F0EDF8";
     static final String HOVER_BG     = "#F1EEFA";
@@ -323,7 +327,7 @@ public class MemberManagementScreen extends Application {
         styleCombo(filterPlan);
 
         ComboBox<String> filterStatus = new ComboBox<>();
-        filterStatus.getItems().addAll("All Status", "Active", "Expired", "Suspended");
+        filterStatus.getItems().addAll("All Status", "Active", "Payment Pending", "Expired");
         filterStatus.setValue("All Status");
         styleCombo(filterStatus);
 
@@ -967,20 +971,6 @@ public class MemberManagementScreen extends Application {
 
             Button archiveBtn = makeActionBtn("Archive", TEXT_MUTED);
             archiveBtn.setOnAction(e -> archiveMember(dao, m, fullRefresh));
-            Button delBtn = makeActionBtn("", ACCENT);
-            delBtn.setOnAction(e -> {
-                Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-                confirm.setTitle("Delete Member");
-                confirm.setHeaderText("Remove " + m.fullName() + "?");
-                confirm.setContentText("This permanently deletes the member record. Use Archive if you need to keep history.");
-                Optional<ButtonType> res = confirm.showAndWait();
-                if (res.isPresent() && res.get() == ButtonType.OK
-                    && dao.findById(m.memberId()).isPresent()
-                    && dao.delete(m.memberId())) {
-                    fullRefresh.run();
-                }
-            });
-            delBtn.setText("Delete");
             boolean renewable = isMembershipExpired(m);
             Button attendanceBtn = makeActionBtn(renewable ? "Renew" : "Check", renewable ? ACCENT : SUCCESS_TEXT);
             attendanceBtn.setOnAction(e -> {
@@ -991,7 +981,7 @@ public class MemberManagementScreen extends Application {
                 }
             });
 
-            actions.getChildren().addAll(viewBtn, editBtn, archiveBtn, delBtn, attendanceBtn);
+            actions.getChildren().addAll(viewBtn, editBtn, archiveBtn, attendanceBtn);
             rowGrid.add(actions, 7, 0);
 
             dataRow.getChildren().add(rowGrid);
@@ -1014,69 +1004,295 @@ public class MemberManagementScreen extends Application {
 
     //  Helper builders 
     private void showMemberDetails(MemberDAO.MemberRecord m) {
-        Alert a = new Alert(Alert.AlertType.INFORMATION);
-        a.setTitle("Member Details");
-        a.setHeaderText(m.fullName());
-        a.setContentText(
-            "Member ID: " + m.memberCode()
-                + "\nEmail: " + m.email()
-                + "\nPhone: " + m.contactNumber()
-                + "\nAddress: " + m.address()
-                + "\nGender: " + m.gender()
-                + "\nDate of Birth: " + textDate(m.dateOfBirth())
-                + "\nPlan: " + m.membershipType()
-                + sessionCreditText(m)
-                + "\nStart: " + textDate(m.membershipStartDate())
-                + "\nEnd: " + textDate(m.membershipEndDate())
-                + "\nStatus: " + effectiveMemberStatus(m)
-                + "\nEmergency Contact: " + safeText(m.emergencyContact())
-                + "\nEmergency Phone: " + safeText(m.emergencyPhone())
-                + "\n\nPlan History"
-                + buildPlanHistoryText(m)
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle("Member Details");
+        dialog.setResizable(true);
+
+        VBox root = new VBox(18);
+        root.setPadding(new Insets(26));
+        root.setStyle("-fx-background-color: " + BG_MAIN + ";");
+
+        HBox header = new HBox(16);
+        header.setAlignment(Pos.CENTER_LEFT);
+        StackPane avatar = new StackPane();
+        avatar.setPrefSize(58, 58);
+        avatar.setMinSize(58, 58);
+        avatar.setMaxSize(58, 58);
+        Rectangle avatarBg = new Rectangle(58, 58);
+        avatarBg.setArcWidth(18);
+        avatarBg.setArcHeight(18);
+        avatarBg.setFill(Color.web(ACCENT));
+        Text initials = new Text(memberInitials(m));
+        initials.setFont(Font.font("Poppins", FontWeight.BOLD, 18));
+        initials.setFill(Color.WHITE);
+        avatar.getChildren().addAll(avatarBg, initials);
+
+        VBox titleBox = new VBox(5);
+        Text name = new Text(m.fullName());
+        name.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
+        name.setFill(Color.web(DETAIL_TITLE));
+        outlineText(name, 0.22);
+        HBox badges = new HBox(8);
+        badges.setAlignment(Pos.CENTER_LEFT);
+        badges.getChildren().addAll(
+            makeStatusBadge(effectiveMemberStatus(m)),
+            makePlanBadge(blankFallback(m.membershipType(), "No Plan"))
         );
-        a.setResizable(true);
-        a.showAndWait();
+        Label code = new Label("#" + safeText(m.memberCode()));
+        code.setFont(Font.font("Poppins", FontWeight.BOLD, 11));
+        code.setTextFill(Color.web(DETAIL_MUTED));
+        code.setStyle("-fx-text-fill: " + DETAIL_MUTED + ";");
+        titleBox.getChildren().addAll(name, code, badges);
+
+        Region headerSpacer = new Region();
+        HBox.setHgrow(headerSpacer, Priority.ALWAYS);
+        Button close = makeActionBtn("Close", TEXT_MUTED);
+        close.setPrefWidth(72);
+        close.setOnAction(e -> dialog.close());
+        header.getChildren().addAll(avatar, titleBox, headerSpacer, close);
+
+        GridPane summary = new GridPane();
+        summary.setHgap(12);
+        summary.setVgap(12);
+        for (int i = 0; i < 4; i++) {
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.setPercentWidth(25);
+            cc.setHgrow(Priority.ALWAYS);
+            summary.getColumnConstraints().add(cc);
+        }
+        summary.add(detailMetric("Status", effectiveMemberStatus(m)), 0, 0);
+        summary.add(detailMetric("Plan", blankFallback(m.membershipType(), "No Plan")), 1, 0);
+        summary.add(detailMetric("End Date", blankFallback(textDate(m.membershipEndDate()), "Not set")), 2, 0);
+        summary.add(detailMetric("Balance", memberBalanceText(m)), 3, 0);
+
+        GridPane contactGrid = detailGrid();
+        addDetailField(contactGrid, 0, "Phone", m.contactNumber());
+        addDetailField(contactGrid, 1, "Email", m.email());
+        addDetailField(contactGrid, 2, "Address", m.address());
+        addDetailField(contactGrid, 3, "Gender", m.gender());
+        addDetailField(contactGrid, 4, "Date of Birth", textDate(m.dateOfBirth()));
+
+        GridPane membershipGrid = detailGrid();
+        addDetailField(membershipGrid, 0, "Membership Type", m.membershipType());
+        addDetailField(membershipGrid, 1, "Start Date", textDate(m.membershipStartDate()));
+        addDetailField(membershipGrid, 2, "End Date", textDate(m.membershipEndDate()));
+        addDetailField(membershipGrid, 3, "Payment State", hasPendingMembershipPayment(m) ? "Payment Pending" : "No pending balance");
+        if ("Per Session".equalsIgnoreCase(m.membershipType())) {
+            addDetailField(membershipGrid, 4, "Sessions Paid", String.valueOf(m.sessionsPaid()));
+            addDetailField(membershipGrid, 5, "Sessions Remaining", String.valueOf(m.sessionsRemaining()));
+        }
+
+        GridPane emergencyGrid = detailGrid();
+        addDetailField(emergencyGrid, 0, "Emergency Contact", m.emergencyContact());
+        addDetailField(emergencyGrid, 1, "Emergency Phone", m.emergencyPhone());
+
+        VBox content = new VBox(14);
+        content.getChildren().addAll(
+            detailCard("Contact Information", contactGrid),
+            detailCard("Membership Information", membershipGrid),
+            detailCard("Emergency Contact", emergencyGrid),
+            detailCard("Member Plan History", buildPlanHistoryList(m))
+        );
+
+        ScrollPane scroll = new ScrollPane(content);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+
+        root.getChildren().addAll(header, summary, scroll);
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+
+        Scene scene = new Scene(root, 780, 660);
+        dialog.setScene(scene);
+        dialog.setMinWidth(700);
+        dialog.setMinHeight(560);
+        dialog.showAndWait();
     }
 
-    private String buildPlanHistoryText(MemberDAO.MemberRecord member) {
-        StringBuilder history = new StringBuilder();
-        history.append("\n- Current: ")
-            .append(blankFallback(member.membershipType(), "No plan"))
-            .append(" | ")
-            .append(textDate(member.membershipStartDate()))
-            .append(" to ")
-            .append(textDate(member.membershipEndDate()))
-            .append(" | ")
-            .append(effectiveMemberStatus(member));
+    private String memberInitials(MemberDAO.MemberRecord member) {
+        String first = safeText(member.firstName());
+        String last = safeText(member.lastName());
+        String a = first.isBlank() ? "" : first.substring(0, 1);
+        String b = last.isBlank() ? "" : last.substring(0, 1);
+        String initials = (a + b).trim();
+        return initials.isBlank() ? "M" : initials.toUpperCase();
+    }
+
+    private String memberBalanceText(MemberDAO.MemberRecord member) {
+        if ("Cancelled".equalsIgnoreCase(member.status())) {
+            return "Archived";
+        }
+        try {
+            double balance = new PaymentDAO().balanceDueForMember(member.memberId());
+            return balance > 0.009 ? formatPeso(balance) : "Paid";
+        } catch (RuntimeException ex) {
+            return "Unavailable";
+        }
+    }
+
+    private VBox detailMetric(String label, String value) {
+        VBox box = new VBox(4);
+        box.setPadding(new Insets(13, 14, 13, 14));
+        box.setMinHeight(76);
+        box.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-radius: 12;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 12;" +
+            "-fx-border-width: 1;"
+        );
+        Label labelNode = new Label(label);
+        labelNode.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
+        labelNode.setTextFill(Color.web(DETAIL_MUTED));
+        labelNode.setStyle("-fx-text-fill: " + DETAIL_MUTED + ";");
+        Label valueNode = new Label(blankFallback(value, "-"));
+        valueNode.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
+        valueNode.setTextFill(Color.web(DETAIL_TITLE));
+        valueNode.setStyle("-fx-text-fill: " + DETAIL_TITLE + ";");
+        valueNode.setWrapText(true);
+        box.getChildren().addAll(labelNode, valueNode);
+        return box;
+    }
+
+    private VBox detailCard(String title, Node body) {
+        VBox card = new VBox(12);
+        card.setPadding(new Insets(16));
+        card.setStyle(
+            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-radius: 14;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-border-width: 1;"
+        );
+        Text heading = new Text(title);
+        heading.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
+        heading.setFill(Color.web(DETAIL_TITLE));
+        Rectangle line = new Rectangle(42, 3);
+        line.setArcWidth(3);
+        line.setArcHeight(3);
+        line.setFill(Color.web(ModernDesignSystem.ACCENT_YELLOW));
+        card.getChildren().addAll(new VBox(4, heading, line), body);
+        return card;
+    }
+
+    private GridPane detailGrid() {
+        GridPane grid = new GridPane();
+        grid.setHgap(14);
+        grid.setVgap(12);
+        for (int i = 0; i < 2; i++) {
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.setPercentWidth(50);
+            cc.setHgrow(Priority.ALWAYS);
+            grid.getColumnConstraints().add(cc);
+        }
+        return grid;
+    }
+
+    private void addDetailField(GridPane grid, int index, String label, String value) {
+        grid.add(detailField(label, value), index % 2, index / 2);
+    }
+
+    private VBox detailField(String label, String value) {
+        VBox box = new VBox(4);
+        box.setMinWidth(0);
+        Label labelNode = new Label(label);
+        labelNode.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
+        labelNode.setTextFill(Color.web(ACCENT));
+        labelNode.setStyle("-fx-text-fill: " + ACCENT + ";");
+        Label valueNode = new Label(blankFallback(value, "-"));
+        valueNode.setFont(Font.font("Poppins", 12));
+        valueNode.setTextFill(Color.web(DETAIL_TEXT));
+        valueNode.setStyle("-fx-text-fill: " + DETAIL_TEXT + ";");
+        valueNode.setWrapText(true);
+        valueNode.setMaxWidth(Double.MAX_VALUE);
+        box.getChildren().addAll(labelNode, valueNode);
+        return box;
+    }
+
+    private VBox buildPlanHistoryList(MemberDAO.MemberRecord member) {
+        VBox rows = new VBox(8);
+        rows.getChildren().add(historyRow(
+            "Current Plan",
+            blankFallback(member.membershipType(), "No plan"),
+            blankFallback(textDate(member.membershipStartDate()), "Not set")
+                + " to "
+                + blankFallback(textDate(member.membershipEndDate()), "Not set"),
+            effectiveMemberStatus(member)
+        ));
 
         List<PaymentDAO.PaymentRecord> payments = new PaymentDAO().findByMember(member.memberId());
-        int rows = 0;
+        int shown = 0;
         for (PaymentDAO.PaymentRecord payment : payments) {
             if (!"Membership".equalsIgnoreCase(payment.paymentType())) {
                 continue;
             }
-            history.append("\n- ")
-                .append(textDate(payment.paymentDate()))
-                .append(": ")
-                .append(blankFallback(payment.planTypeSnapshot(), blankFallback(member.membershipType(), "Membership")))
-                .append(" | ")
-                .append(formatPeso(payment.amount()))
-                .append(" | ")
-                .append(blankFallback(payment.paymentMethod(), "Payment"));
+            rows.getChildren().add(historyRow(
+                textDate(payment.paymentDate()),
+                blankFallback(payment.planTypeSnapshot(), blankFallback(member.membershipType(), "Membership")),
+                formatPeso(payment.amount()) + " - " + blankFallback(payment.paymentMethod(), "Payment"),
+                blankFallback(payment.status(), "Recorded")
+            ));
             if (payment.notes() != null && !payment.notes().isBlank()) {
-                history.append(" | ").append(payment.notes());
+                Label notes = new Label(payment.notes());
+                notes.setFont(Font.font("Poppins", 10));
+                notes.setTextFill(Color.web(DETAIL_MUTED));
+                notes.setStyle("-fx-text-fill: " + DETAIL_MUTED + ";");
+                notes.setWrapText(true);
+                notes.setPadding(new Insets(-4, 12, 4, 14));
+                rows.getChildren().add(notes);
             }
-            rows++;
+            shown++;
         }
-        if (rows == 0) {
-            history.append("\n- No payment or plan-change records saved yet.");
+        if (shown == 0) {
+            Label empty = new Label("No payment or plan-change records saved yet.");
+            empty.setFont(Font.font("Poppins", 11));
+            empty.setTextFill(Color.web(DETAIL_MUTED));
+            empty.setStyle("-fx-text-fill: " + DETAIL_MUTED + ";");
+            empty.setPadding(new Insets(8, 0, 4, 0));
+            rows.getChildren().add(empty);
         }
-        return history.toString();
+        return rows;
+    }
+
+    private HBox historyRow(String date, String title, String detail, String status) {
+        HBox row = new HBox(12);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(10, 12, 10, 12));
+        row.setStyle(
+            "-fx-background-color: #FFFFFF;" +
+            "-fx-background-radius: 10;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 10;" +
+            "-fx-border-width: 1;"
+        );
+        VBox main = new VBox(3);
+        Label titleNode = new Label(blankFallback(title, "-"));
+        titleNode.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        titleNode.setTextFill(Color.web(DETAIL_TITLE));
+        titleNode.setStyle("-fx-text-fill: " + DETAIL_TITLE + ";");
+        Label detailNode = new Label(blankFallback(date, "-") + " | " + blankFallback(detail, "-"));
+        detailNode.setFont(Font.font("Poppins", 10));
+        detailNode.setTextFill(Color.web(DETAIL_MUTED));
+        detailNode.setStyle("-fx-text-fill: " + DETAIL_MUTED + ";");
+        detailNode.setWrapText(true);
+        main.getChildren().addAll(titleNode, detailNode);
+        HBox.setHgrow(main, Priority.ALWAYS);
+        row.getChildren().addAll(main, makeStatusBadge(status));
+        return row;
     }
 
     private void recordMemberAttendance(MemberDAO dao, MemberDAO.MemberRecord m, Runnable fullRefresh) {
         if ("Cancelled".equalsIgnoreCase(m.status())) {
             alertErr("Archived members cannot be checked in.");
+            return;
+        }
+        if (isMembershipExpired(m)) {
+            alertErr("This membership is expired. Renew the member before checking them in.");
+            return;
+        }
+        if (hasPendingMembershipPayment(m)) {
+            alertErr("This member still has a pending membership payment. Complete payment before check-in.");
             return;
         }
         TextInputDialog notesDialog = new TextInputDialog("");
@@ -1097,7 +1313,7 @@ public class MemberManagementScreen extends Application {
                 if ("Per Session".equalsIgnoreCase(m.membershipType())) {
                     alertErr("No remaining sessions. Record a Per Session payment before checking this member in.");
                 } else {
-                    alertErr("Could not record attendance. Please check the database connection.");
+                    alertErr("Could not record attendance. Check membership status and payment balance.");
                 }
             }
         }
@@ -1132,7 +1348,7 @@ public class MemberManagementScreen extends Application {
 
         VBox root = new VBox(18);
         root.setPadding(new Insets(24));
-        root.setPrefSize(840, 540);
+        root.setPrefSize(900, 540);
         root.setStyle("-fx-background-color: " + BG_MAIN + ";");
 
         HBox titleRow = new HBox(12);
@@ -1147,7 +1363,7 @@ public class MemberManagementScreen extends Application {
         title.setFill(Color.web(TEXT_WHITE));
         outlineText(title, 0.24);
 
-        Text subtitle = new Text("Archived members are hidden from the main list. Use Unarchive to restore them.");
+        Text subtitle = new Text("Archived members are hidden from the main list. Admins may permanently delete archived records.");
         subtitle.setFont(Font.font("Poppins", 11));
         subtitle.setFill(Color.web(TABLE_SUBTEXT));
         outlineText(subtitle, 0.14);
@@ -1168,7 +1384,7 @@ public class MemberManagementScreen extends Application {
         tableCard.setEffect(shadow);
 
         String[] headers = {"Member ID", "Full Name", "Plan", "Start Date", "End Date", "Actions"};
-        double[] widths = {14, 25, 16, 14, 14, 17};
+        double[] widths = {12, 22, 14, 13, 13, 26};
         HBox header = new HBox();
         header.setPadding(new Insets(12, 16, 12, 16));
         header.setStyle(
@@ -1178,7 +1394,7 @@ public class MemberManagementScreen extends Application {
             "-fx-border-width: 0 0 1 0;"
         );
         GridPane headerGrid = new GridPane();
-        headerGrid.setHgap(8);
+        headerGrid.setHgap(4);
         for (double width : widths) {
             ColumnConstraints cc = new ColumnConstraints();
             cc.setPercentWidth(width);
@@ -1214,6 +1430,7 @@ public class MemberManagementScreen extends Application {
 
         ScrollPane scroll = new ScrollPane(list);
         scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         scroll.setMaxHeight(360);
         scroll.setStyle("-fx-background-color: transparent; -fx-background: transparent;");
         tableCard.getChildren().addAll(header, scroll);
@@ -1250,9 +1467,9 @@ public class MemberManagementScreen extends Application {
         Runnable refreshArchived,
         Runnable fullRefresh
     ) {
-        HBox row = new HBox(14);
+        HBox row = new HBox(0);
         row.setAlignment(Pos.CENTER_LEFT);
-        row.setPadding(new Insets(12, 16, 12, 16));
+        row.setPadding(new Insets(12, 14, 12, 14));
         row.setStyle(
             "-fx-background-color: " + (index % 2 == 0 ? BG_CARD : BG_ROW_ALT) + ";" +
             "-fx-border-color: transparent transparent " + BORDER + " transparent;" +
@@ -1260,7 +1477,7 @@ public class MemberManagementScreen extends Application {
         );
 
         GridPane grid = new GridPane();
-        grid.setHgap(8);
+        grid.setHgap(4);
         for (double width : widths) {
             ColumnConstraints cc = new ColumnConstraints();
             cc.setPercentWidth(width);
@@ -1270,10 +1487,10 @@ public class MemberManagementScreen extends Application {
         grid.setMaxWidth(Double.MAX_VALUE);
         HBox.setHgrow(grid, Priority.ALWAYS);
 
-        Button view = makeActionBtn("View", TEXT_MUTED);
+        Button view = makeArchivedActionBtn("View", TEXT_MUTED, 44);
         view.setOnAction(e -> showMemberDetails(member));
 
-        Button unarchive = makeActionBtn("Unarchive", SUCCESS_TEXT);
+        Button unarchive = makeArchivedActionBtn("Unarchive", SUCCESS_TEXT, 82);
         unarchive.setOnAction(e -> {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
             confirm.setTitle("Unarchive Member");
@@ -1286,8 +1503,13 @@ public class MemberManagementScreen extends Application {
             }
         });
 
-        HBox actions = new HBox(8, view, unarchive);
+        HBox actions = new HBox(6, view, unarchive);
         actions.setAlignment(Pos.CENTER_LEFT);
+        if (AppSession.currentUser().isAdmin()) {
+            Button delete = makeArchivedActionBtn("Delete", ACCENT, 58);
+            delete.setOnAction(e -> permanentlyDeleteArchivedMember(dao, member, refreshArchived, fullRefresh));
+            actions.getChildren().add(delete);
+        }
 
         grid.add(archivedCell("#" + member.memberCode(), TABLE_TEXT, true), 0, 0);
         grid.add(archivedCell(member.fullName(), TABLE_TEXT, true), 1, 0);
@@ -1300,6 +1522,28 @@ public class MemberManagementScreen extends Application {
         return row;
     }
 
+    private void permanentlyDeleteArchivedMember(
+        MemberDAO dao,
+        MemberDAO.MemberRecord member,
+        Runnable refreshArchived,
+        Runnable fullRefresh
+    ) {
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Delete Archived Member");
+        confirm.setHeaderText("Permanently delete " + member.fullName() + "?");
+        confirm.setContentText("This cannot be undone. Keep archived instead if you still need payment, attendance, or report history.");
+        Optional<ButtonType> res = confirm.showAndWait();
+        if (res.isEmpty() || res.get() != ButtonType.OK) {
+            return;
+        }
+        if (dao.delete(member.memberId())) {
+            refreshArchived.run();
+            fullRefresh.run();
+        } else {
+            alertErr("Could not delete this member. Existing payments or attendance may still depend on this record.");
+        }
+    }
+
     private Label archivedCell(String text, String color, boolean bold) {
         Label label = new Label(safeText(text).isBlank() ? "-" : text);
         label.setFont(Font.font("Poppins", bold ? FontWeight.BOLD : FontWeight.NORMAL, 11));
@@ -1307,6 +1551,41 @@ public class MemberManagementScreen extends Application {
         label.setStyle("-fx-text-fill: " + color + ";");
         label.setWrapText(true);
         return label;
+    }
+
+    private Button makeArchivedActionBtn(String text, String color, double width) {
+        Button btn = makeActionBtn(text, color);
+        btn.setMinWidth(width);
+        btn.setPrefWidth(width);
+        btn.setMaxWidth(width);
+        btn.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        String readableColor = readableAccent(color);
+        String baseStyle =
+            "-fx-background-color: rgba(26,19,99,0.045);" +
+            "-fx-text-fill: " + readableColor + ";" +
+            "-fx-font-size: 10;" +
+            "-fx-font-weight: bold;" +
+            "-fx-cursor: hand;" +
+            "-fx-padding: 3 4 3 4;" +
+            "-fx-background-radius: 8;" +
+            "-fx-border-color: rgba(26,19,99,0.08);" +
+            "-fx-border-radius: 8;" +
+            "-fx-border-width: 1;";
+        String hoverStyle =
+            "-fx-background-color: rgba(26,19,99,0.10);" +
+            "-fx-text-fill: " + readableColor + ";" +
+            "-fx-font-size: 10;" +
+            "-fx-font-weight: bold;" +
+            "-fx-cursor: hand;" +
+            "-fx-padding: 3 4 3 4;" +
+            "-fx-background-radius: 8;" +
+            "-fx-border-color: rgba(26,19,99,0.12);" +
+            "-fx-border-radius: 8;" +
+            "-fx-border-width: 1;";
+        btn.setStyle(baseStyle);
+        btn.setOnMouseEntered(e -> btn.setStyle(hoverStyle));
+        btn.setOnMouseExited(e -> btn.setStyle(baseStyle));
+        return btn;
     }
 
     private void openPaymentScreenForRenewal(MemberDAO.MemberRecord member) {
@@ -1415,11 +1694,14 @@ public class MemberManagementScreen extends Application {
             );
 
             if (new MemberDAO().update(renewed)) {
-                new PaymentDAO().ensureBillingForMember(
+                PaymentDAO paymentDAO = new PaymentDAO();
+                int uid = AppSession.currentUser().userId();
+                paymentDAO.closeBillingOnUpgrade(m.memberId(), uid);
+                paymentDAO.ensureBillingForMember(
                     m.memberId(),
                     plan.getValue(),
                     Date.valueOf(end),
-                    AppSession.currentUser().userId()
+                    uid
                 );
                 dialog.close();
                 onSaved.run();
@@ -1643,7 +1925,21 @@ public class MemberManagementScreen extends Application {
         if (isMembershipExpired(member)) {
             return "Expired";
         }
+        if (hasPendingMembershipPayment(member)) {
+            return "Payment Pending";
+        }
         return safeText(member.status()).isBlank() ? "Active" : safeText(member.status());
+    }
+
+    private boolean hasPendingMembershipPayment(MemberDAO.MemberRecord member) {
+        if (member == null || "Cancelled".equalsIgnoreCase(member.status())) {
+            return false;
+        }
+        try {
+            return new PaymentDAO().balanceDueForMember(member.memberId()) > 0.009;
+        } catch (RuntimeException ex) {
+            return false;
+        }
     }
 
     private boolean isMembershipExpired(MemberDAO.MemberRecord member) {
@@ -1676,6 +1972,7 @@ public class MemberManagementScreen extends Application {
         String c, bg;
         switch (display.toLowerCase()) {
             case "active": c = "#14532D"; bg = "#DCFCE7"; break;
+            case "payment pending": c = "#92400E"; bg = "#FEF3C7"; break;
             case "expired": c = "#312E81"; bg = "#E0E7FF"; break;
             case "archived": case "cancelled": c = "#374151"; bg = "#E5E7EB"; break;
             case "suspended": c = "#713F12"; bg = "#FEF3C7"; break;

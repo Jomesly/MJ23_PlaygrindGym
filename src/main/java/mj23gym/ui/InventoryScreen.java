@@ -11,6 +11,7 @@ import javafx.animation.FadeTransition;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -68,6 +69,9 @@ public class InventoryScreen extends Application {
     static final String TEXT_SOFT    = ModernDesignSystem.TEXT_MUTED;
     static final String TEXT_DARK    = ModernDesignSystem.PRIMARY_DARK;
     static final String CARD_SURFACE = ModernDesignSystem.WHITE;
+    static final String DETAIL_TITLE = "#111827";
+    static final String DETAIL_TEXT  = "#1F2937";
+    static final String DETAIL_MUTED = "#374151";
 
     @Override
     public void start(Stage stage) {
@@ -1078,24 +1082,12 @@ public class InventoryScreen extends Application {
     }
 
     private void showRestockDetails(InventoryDAO.InventoryRecord item) {
-        StringBuilder details = new StringBuilder();
-        details.append("Item: ").append(item.itemName()).append("\n");
-        details.append("Item ID: ").append(item.itemCode()).append("\n");
-        details.append("Current stock: ").append(item.currentStock()).append("\n");
-        details.append("Reorder level: ").append(item.reorderLevel()).append("\n");
-        details.append("Minimum stock: ").append(item.minimumStock()).append("\n");
-        details.append("Recommended restock: ").append(Math.max(0, item.reorderLevel() - item.currentStock() + 1)).append("\n");
-        details.append("Supplier: ").append(blankFallback(item.supplier(), "No supplier saved")).append("\n");
-        details.append("Last restock: ").append(item.lastRestock() != null ? item.lastRestock() : "No date saved").append("\n");
-        details.append("Expiration: ").append(expiryDetailText(item.expirationDate())).append("\n");
-        details.append("Status: ").append(blankFallback(item.status(), "No status")).append("\n");
-        details.append("Notes: ").append(blankFallback(item.notes(), "No notes"));
-
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Restock Attention");
-        alert.setHeaderText(attentionHeader(item));
-        alert.setContentText(details.toString());
-        alert.showAndWait();
+        showInventoryAttentionDialog(
+            "Restock Attention",
+            attentionHeader(item),
+            List.of(item),
+            List.of()
+        );
     }
 
     private String attentionHeader(InventoryDAO.InventoryRecord item) {
@@ -1167,35 +1159,198 @@ public class InventoryScreen extends Application {
         List<InventoryDAO.InventoryRecord> lowStock,
         List<InventoryDAO.InventoryRecord> expiring
     ) {
-        StringBuilder message = new StringBuilder();
+        showInventoryAttentionDialog(
+            "Inventory Restock Reminder",
+            "Restock and expiration details",
+            lowStock,
+            expiring
+        );
+    }
+
+    private void showInventoryAttentionDialog(
+        String titleText,
+        String subtitleText,
+        List<InventoryDAO.InventoryRecord> lowStock,
+        List<InventoryDAO.InventoryRecord> expiring
+    ) {
+        Stage dialog = new Stage();
+        dialog.initModality(Modality.APPLICATION_MODAL);
+        dialog.setTitle(titleText);
+        dialog.setResizable(true);
+
+        VBox root = new VBox(18);
+        root.setPadding(new Insets(26));
+        root.setStyle("-fx-background-color: " + BG_MAIN + ";");
+
+        HBox header = new HBox(14);
+        header.setAlignment(Pos.CENTER_LEFT);
+        Rectangle accent = new Rectangle(5, 52);
+        accent.setArcWidth(5);
+        accent.setArcHeight(5);
+        accent.setFill(Color.web(WARNING));
+
+        VBox headerText = new VBox(4);
+        Text title = new Text(titleText);
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 21));
+        title.setFill(Color.web(DETAIL_TITLE));
+        Text subtitle = new Text(subtitleText);
+        subtitle.setFont(Font.font("Poppins", 11));
+        subtitle.setFill(Color.web(DETAIL_MUTED));
+        headerText.getChildren().addAll(title, subtitle);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Button close = outlineButton("Close");
+        close.setOnAction(e -> dialog.close());
+        header.getChildren().addAll(accent, headerText, spacer, close);
+
+        GridPane summary = new GridPane();
+        summary.setHgap(12);
+        for (int i = 0; i < 3; i++) {
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.setPercentWidth(33.33);
+            cc.setHgrow(Priority.ALWAYS);
+            summary.getColumnConstraints().add(cc);
+        }
+        summary.add(inventoryMetric("Low Stock", String.valueOf(lowStock.size()), WARNING_TEXT), 0, 0);
+        summary.add(inventoryMetric("Expiry Watch", String.valueOf(expiring.size()), TEXT_TITLE), 1, 0);
+        summary.add(inventoryMetric("Needs Action", String.valueOf(lowStock.size() + expiring.size()), ERROR_TEXT), 2, 0);
+
+        VBox content = new VBox(14);
         if (!lowStock.isEmpty()) {
-            message.append("RESTOCK LIST\n");
-            for (InventoryDAO.InventoryRecord item : lowStock) {
-                message.append("- ")
-                    .append(item.itemName())
-                    .append(" | Stock: ").append(item.currentStock())
-                    .append(" | Reorder: ").append(item.reorderLevel())
-                    .append(" | Supplier: ").append(blankFallback(item.supplier(), "No supplier saved"))
-                    .append("\n");
-            }
-            message.append("\n");
+            content.getChildren().add(inventorySection("Low Stock Items", buildInventoryAttentionRows(lowStock, true)));
         }
         if (!expiring.isEmpty()) {
-            message.append("EXPIRATION WATCH\n");
-            for (InventoryDAO.InventoryRecord item : expiring) {
-                message.append("- ")
-                    .append(item.itemName())
-                    .append(" | ").append(expiryDetailText(item.expirationDate()))
-                    .append(" | Supplier: ").append(blankFallback(item.supplier(), "No supplier saved"))
-                    .append("\n");
-            }
+            content.getChildren().add(inventorySection("Expired or Expiring Items", buildInventoryAttentionRows(expiring, false)));
+        }
+        if (lowStock.isEmpty() && expiring.isEmpty()) {
+            Label empty = new Label("No inventory items need attention right now.");
+            empty.setFont(Font.font("Poppins", 12));
+            empty.setTextFill(Color.web(DETAIL_MUTED));
+            empty.setStyle("-fx-text-fill: " + DETAIL_MUTED + ";");
+            content.getChildren().add(inventorySection("Inventory Status", empty));
         }
 
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Inventory Restock Reminder");
-        alert.setHeaderText("Restock and expiration details");
-        alert.setContentText(message.toString());
-        alert.showAndWait();
+        ScrollPane scroll = new ScrollPane(content);
+        scroll.setFitToWidth(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
+
+        root.getChildren().addAll(header, summary, scroll);
+        VBox.setVgrow(scroll, Priority.ALWAYS);
+
+        dialog.setScene(new Scene(root, 760, 620));
+        dialog.setMinWidth(680);
+        dialog.setMinHeight(520);
+        dialog.showAndWait();
+    }
+
+    private VBox inventoryMetric(String label, String value, String color) {
+        VBox box = new VBox(4);
+        box.setPadding(new Insets(13, 14, 13, 14));
+        box.setMinHeight(72);
+        box.setStyle(
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 12;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 12;" +
+            "-fx-border-width: 1;"
+        );
+        Label labelNode = new Label(label);
+        labelNode.setFont(Font.font("Poppins", FontWeight.BOLD, 9));
+        labelNode.setTextFill(Color.web(DETAIL_MUTED));
+        labelNode.setStyle("-fx-text-fill: " + DETAIL_MUTED + ";");
+        Label valueNode = new Label(value);
+        valueNode.setFont(Font.font("Poppins", FontWeight.BOLD, 18));
+        valueNode.setTextFill(Color.web(readableAccent(color)));
+        valueNode.setStyle("-fx-text-fill: " + readableAccent(color) + ";");
+        box.getChildren().addAll(labelNode, valueNode);
+        return box;
+    }
+
+    private VBox inventorySection(String title, Node body) {
+        VBox section = new VBox(12);
+        section.setPadding(new Insets(16));
+        section.setStyle(
+            "-fx-background-color: " + CARD_SURFACE + ";" +
+            "-fx-background-radius: 14;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 14;" +
+            "-fx-border-width: 1;"
+        );
+        Text heading = new Text(title);
+        heading.setFont(Font.font("Poppins", FontWeight.BOLD, 14));
+        heading.setFill(Color.web(DETAIL_TITLE));
+        Rectangle line = new Rectangle(42, 3);
+        line.setArcWidth(3);
+        line.setArcHeight(3);
+        line.setFill(Color.web(WARNING));
+        section.getChildren().addAll(new VBox(4, heading, line), body);
+        return section;
+    }
+
+    private VBox buildInventoryAttentionRows(List<InventoryDAO.InventoryRecord> items, boolean restockMode) {
+        VBox rows = new VBox(8);
+        for (InventoryDAO.InventoryRecord item : items) {
+            rows.getChildren().add(inventoryAttentionRow(item, restockMode));
+        }
+        return rows;
+    }
+
+    private HBox inventoryAttentionRow(InventoryDAO.InventoryRecord item, boolean restockMode) {
+        HBox row = new HBox(12);
+        row.setAlignment(Pos.CENTER_LEFT);
+        row.setPadding(new Insets(12));
+        row.setStyle(
+            "-fx-background-color: #FFFFFF;" +
+            "-fx-background-radius: 10;" +
+            "-fx-border-color: " + BORDER + ";" +
+            "-fx-border-radius: 10;" +
+            "-fx-border-width: 1;"
+        );
+
+        VBox main = new VBox(4);
+        Label name = new Label(blankFallback(item.itemName(), "Unnamed item") + "  #" + blankFallback(item.itemCode(), "-"));
+        name.setFont(Font.font("Poppins", FontWeight.BOLD, 12));
+        name.setTextFill(Color.web(DETAIL_TITLE));
+        name.setStyle("-fx-text-fill: " + DETAIL_TITLE + ";");
+
+        String detail = restockMode
+            ? "Stock: " + item.currentStock()
+                + " | Reorder: " + item.reorderLevel()
+                + " | Recommended restock: " + Math.max(0, item.reorderLevel() - item.currentStock() + 1)
+            : expiryDetailText(item.expirationDate());
+        Label line1 = new Label(detail);
+        line1.setFont(Font.font("Poppins", 10));
+        line1.setTextFill(Color.web(DETAIL_TEXT));
+        line1.setStyle("-fx-text-fill: " + DETAIL_TEXT + ";");
+        line1.setWrapText(true);
+
+        Label line2 = new Label(
+            "Supplier: " + blankFallback(item.supplier(), "No supplier saved")
+                + " | Last restock: " + (item.lastRestock() != null ? item.lastRestock().toString() : "No date saved")
+        );
+        line2.setFont(Font.font("Poppins", 10));
+        line2.setTextFill(Color.web(DETAIL_MUTED));
+        line2.setStyle("-fx-text-fill: " + DETAIL_MUTED + ";");
+        line2.setWrapText(true);
+
+        Label notes = new Label("Notes: " + blankFallback(item.notes(), "No notes"));
+        notes.setFont(Font.font("Poppins", 10));
+        notes.setTextFill(Color.web(DETAIL_MUTED));
+        notes.setStyle("-fx-text-fill: " + DETAIL_MUTED + ";");
+        notes.setWrapText(true);
+        main.getChildren().addAll(name, line1, line2, notes);
+        HBox.setHgrow(main, Priority.ALWAYS);
+
+        VBox badges = new VBox(6);
+        badges.setAlignment(Pos.CENTER_RIGHT);
+        badges.getChildren().addAll(
+            makeStockBadge(blankFallback(item.status(), "No Status")),
+            makeExpiryBadge(item.expirationDate())
+        );
+        row.getChildren().addAll(main, badges);
+        return row;
     }
 
     private Label formLabel(String text) {

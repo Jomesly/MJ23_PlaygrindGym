@@ -214,20 +214,13 @@ public final class PosDAO {
             "VALUES (?,?,?,?,?,?,?)";
         try (Connection conn = DatabaseConnection.getConnection()) {
             ensurePaymentColumns(conn);
-            for (SaleLine l : lines) {
-                try (PreparedStatement chk = conn.prepareStatement(
-                        "SELECT current_stock FROM inventory WHERE item_id=? AND is_active=TRUE")) {
-                    chk.setInt(1, l.itemId());
-                    try (ResultSet rs = chk.executeQuery()) {
-                        if (!rs.next() || rs.getInt(1) < l.quantity()) {
-                            return -1;
-                        }
-                    }
-                }
-            }
-
             conn.setAutoCommit(false);
             try {
+                if (!lockAndValidateStock(conn, lines)) {
+                    conn.rollback();
+                    return -1;
+                }
+
                 int txId;
                 try (PreparedStatement ps = conn.prepareStatement(insertTx, Statement.RETURN_GENERATED_KEYS)) {
                     if (memberId != null) {
@@ -263,7 +256,8 @@ public final class PosDAO {
                     "status = CASE " +
                     "WHEN current_stock - ? <= 0 THEN 'Out of Stock' " +
                     "WHEN current_stock - ? <= reorder_level THEN 'Low Stock' " +
-                    "ELSE 'In Stock' END, updated_at = NOW() WHERE item_id = ?";
+                    "ELSE 'In Stock' END, updated_at = NOW() " +
+                    "WHERE item_id = ? AND is_active=TRUE AND current_stock >= ?";
 
                 try (PreparedStatement linePs = conn.prepareStatement(insertLine);
                      PreparedStatement stockPs = conn.prepareStatement(updStock)) {
@@ -282,10 +276,17 @@ public final class PosDAO {
                         stockPs.setInt(3, l.quantity());
                         stockPs.setInt(4, l.quantity());
                         stockPs.setInt(5, l.itemId());
+                        stockPs.setInt(6, l.quantity());
                         stockPs.addBatch();
                     }
                     linePs.executeBatch();
-                    stockPs.executeBatch();
+                    int[] stockUpdates = stockPs.executeBatch();
+                    for (int updated : stockUpdates) {
+                        if (updated <= 0) {
+                            conn.rollback();
+                            return -1;
+                        }
+                    }
                 }
 
                 conn.commit();
@@ -301,6 +302,24 @@ public final class PosDAO {
             System.err.println("[PosDAO] completeSale connection error: " + e.getMessage());
             return -1;
         }
+    }
+
+    private boolean lockAndValidateStock(Connection conn, List<SaleLine> lines) throws SQLException {
+        String sql = "SELECT current_stock FROM inventory WHERE item_id=? AND is_active=TRUE FOR UPDATE";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (SaleLine line : lines) {
+                if (line.quantity() <= 0) {
+                    return false;
+                }
+                ps.setInt(1, line.itemId());
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next() || rs.getInt("current_stock") < line.quantity()) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
     }
 
     private void ensurePaymentColumns() {

@@ -406,11 +406,13 @@ public class InventoryDAO {
     }
 
     private String generateNextCode() {
-        String sql = "SELECT COUNT(*) FROM inventory";
+        String sql =
+            "SELECT COALESCE(MAX(CAST(SUBSTRING(item_code, 5) AS UNSIGNED)), 0) + 1 " +
+            "FROM inventory WHERE item_code REGEXP '^INV-[0-9]+$'";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
-            int n = rs.next() ? rs.getInt(1) + 1 : 1;
+            int n = rs.next() ? rs.getInt(1) : 1;
             return String.format("INV-%03d", n);
         } catch (SQLException e) {
             return "INV-" + System.currentTimeMillis();

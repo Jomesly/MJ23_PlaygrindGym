@@ -109,7 +109,16 @@ public final class ReportDAO {
     public ReportMetrics buildMetrics(Date from, Date to) {
         return new ReportMetrics(
             scalarInt("SELECT COUNT(*) FROM members WHERE status <> 'Cancelled' AND created_at BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)", from, to),
-            scalarInt("SELECT COUNT(*) FROM members WHERE status='Active'", from, to),
+            scalarInt(
+                "SELECT COUNT(*) FROM members m WHERE m.status='Active' " +
+                "AND (m.membership_end_date IS NULL OR m.membership_end_date >= CURDATE()) " +
+                "AND NOT EXISTS (" +
+                "SELECT 1 FROM billing b WHERE b.member_id=m.member_id AND b.status <> 'Cancelled' " +
+                "AND b.payment_status <> 'Paid' AND b.amount_due > b.amount_paid" +
+                ")",
+                from,
+                to
+            ),
             scalarInt("SELECT COUNT(*) FROM attendance a JOIN members m ON a.member_id=m.member_id WHERE m.status <> 'Cancelled' AND a.attendance_date BETWEEN ? AND ?", from, to),
             scalarInt("SELECT COUNT(*) FROM inventory WHERE is_active=TRUE", from, to),
             scalarInt("SELECT COUNT(*) FROM inventory WHERE is_active=TRUE AND current_stock <= reorder_level", from, to),

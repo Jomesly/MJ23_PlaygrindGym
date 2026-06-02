@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -248,7 +249,7 @@ public class MemberDAO {
     }
 
     public boolean recordAttendance(int memberId, String sessionType, String notes) {
-        String memberSql = "SELECT membership_type, sessions_remaining FROM members WHERE member_id=? FOR UPDATE";
+        String memberSql = "SELECT membership_type, sessions_remaining, membership_end_date, status FROM members WHERE member_id=? FOR UPDATE";
         String insertSql = "INSERT INTO attendance (member_id, time_in, attendance_date, session_type, notes) " +
                            "VALUES (?, NOW(), CURDATE(), ?, ?)";
         String creditSql = "UPDATE members SET sessions_remaining=sessions_remaining-1, updated_at=NOW() WHERE member_id=?";
@@ -258,6 +259,8 @@ public class MemberDAO {
             conn.setAutoCommit(false);
             String currentPlan;
             int remaining;
+            Date membershipEndDate;
+            String status;
             try (PreparedStatement ps = conn.prepareStatement(memberSql)) {
                 ps.setInt(1, memberId);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -267,7 +270,13 @@ public class MemberDAO {
                     }
                     currentPlan = rs.getString("membership_type");
                     remaining = rs.getInt("sessions_remaining");
+                    membershipEndDate = rs.getDate("membership_end_date");
+                    status = rs.getString("status");
                 }
+            }
+            if (!canRecordAttendance(conn, memberId, status, membershipEndDate)) {
+                conn.rollback();
+                return false;
             }
             boolean perSession = "Per Session".equalsIgnoreCase(currentPlan);
             String derivedSessionType = attendanceSessionType(currentPlan);
@@ -298,6 +307,29 @@ public class MemberDAO {
         }
     }
 
+    private boolean canRecordAttendance(Connection conn, int memberId, String status, Date membershipEndDate)
+            throws SQLException {
+        if (!"Active".equalsIgnoreCase(status)) {
+            return false;
+        }
+        if (membershipEndDate != null && membershipEndDate.toLocalDate().isBefore(LocalDate.now())) {
+            return false;
+        }
+        return !hasOpenMembershipBalance(conn, memberId);
+    }
+
+    private boolean hasOpenMembershipBalance(Connection conn, int memberId) throws SQLException {
+        String sql =
+            "SELECT 1 FROM billing WHERE member_id=? AND status <> 'Cancelled' " +
+            "AND payment_status <> 'Paid' AND amount_due > amount_paid LIMIT 1";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, memberId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     // ── DELETE ────────────────────────────────────────────────────
 
     public List<AttendanceRecord> findRecentAttendance(int limit) {
@@ -306,6 +338,7 @@ public class MemberDAO {
             "CONCAT(m.first_name, ' ', m.last_name) AS member_name, " +
             "a.time_in, a.attendance_date, a.session_type, a.notes " +
             "FROM attendance a JOIN members m ON a.member_id = m.member_id " +
+            "WHERE m.status <> 'Cancelled' " +
             "ORDER BY a.time_in DESC, a.attendance_id DESC LIMIT ?";
         List<AttendanceRecord> list = new ArrayList<>();
         try (Connection conn = DatabaseConnection.getConnection();
@@ -463,11 +496,13 @@ public class MemberDAO {
     }
 
     private String generateNextCode() {
-        String sql = "SELECT COUNT(*) FROM members";
+        String sql =
+            "SELECT COALESCE(MAX(CAST(SUBSTRING(unique_member_code, 3) AS UNSIGNED)), 0) + 1 " +
+            "FROM members WHERE unique_member_code REGEXP '^M-[0-9]+$'";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
-            int n = rs.next() ? rs.getInt(1) + 1 : 1;
+            int n = rs.next() ? rs.getInt(1) : 1;
             return String.format("M-%03d", n);
         } catch (SQLException e) {
             return "M-" + System.currentTimeMillis();

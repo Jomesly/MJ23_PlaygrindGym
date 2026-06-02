@@ -457,17 +457,20 @@ public class PaymentScreen extends Application {
                 return;
             }
             selectedMember[0] = hit.get();
-            selectedBillingId[0] = paymentDAO.ensureBillingForMember(
-                selectedMember[0].memberId(),
-                selectedMember[0].membershipType(),
-                selectedMember[0].membershipEndDate(),
-                AppSession.currentUser().userId()
-            );
+            if ("Cancelled".equalsIgnoreCase(selectedMember[0].status())) {
+                selectedMember[0] = null;
+                selectedBillingId[0] = 0;
+                updateMemberInfo.run();
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setTitle("Archived Member");
+                a.setContentText("Archived members cannot receive new payments. Unarchive the member first if payment is needed.");
+                a.showAndWait();
+                return;
+            }
+            Optional<PaymentDAO.BillingRecord> openBilling = paymentDAO.findOpenBillingByMember(selectedMember[0].memberId());
+            selectedBillingId[0] = openBilling.map(PaymentDAO.BillingRecord::billingId).orElse(0);
             updateMemberInfo.run();
             double balance = paymentDAO.balanceDueForMember(selectedMember[0].memberId());
-            if (balance <= 0) {
-                balance = paymentDAO.planPriceForMembership(selectedMember[0].membershipType());
-            }
             infoVals[4].setText(formatPeso(balance));
             dueTf.setText(String.format("%.2f", balance));
             discountTf.setText("0");

@@ -124,10 +124,6 @@ public class GymManagementApp extends Application {
         );
         sidebar.setSpacing(0);
 
-        // Top accent bar with modern styling
-        Rectangle topAccent = new Rectangle(230, 6);
-        topAccent.setFill(Color.web(ModernDesignSystem.ACCENT_YELLOW));
-
         // Logo section
         VBox logo = createLogoSection();
 
@@ -141,7 +137,7 @@ public class GymManagementApp extends Application {
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
-        sidebar.getChildren().addAll(topAccent, logo, new Separator(), navMenu,
+        sidebar.getChildren().addAll(logo, new Separator(), navMenu,
                                      new Separator(), sysMenu, spacer, createUserFooter());
         return sidebar;
     }
@@ -221,7 +217,6 @@ public class GymManagementApp extends Application {
             }
             : new String[][] {
             {"PR", "Profile", "profile"},
-            {"MT", "Maintenance", "maintenance"},
             {"ST", "Settings", "settings"},
             {"?", "Help", "help"},
             {"i", "About", "about"}
@@ -402,7 +397,9 @@ public class GymManagementApp extends Application {
             case "reports" -> AppSession.currentUser().isAdmin()
                 ? new ReportsScreen().buildContent()
                 : createAccessDeniedScreen();
-            case "maintenance" -> new MaintenanceScreen().buildContent();
+            case "maintenance" -> AppSession.currentUser().isAdmin()
+                ? new MaintenanceScreen().buildContent()
+                : createAccessDeniedScreen();
             case "accounts", "registration" -> AppSession.currentUser().isAdmin()
                 ? new AccountManagementScreen().buildContent()
                 : createAccessDeniedScreen();

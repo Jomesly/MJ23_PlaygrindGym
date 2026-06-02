@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS users (
     full_name   VARCHAR(200) NOT NULL,
     email       VARCHAR(150),
     phone       VARCHAR(20),
+    recovery_question    VARCHAR(255),
+    recovery_answer_hash VARCHAR(255),
     role        ENUM('admin', 'staff', 'trainer') DEFAULT 'staff',
     status      ENUM('active', 'inactive')       DEFAULT 'active',
     is_active   BOOLEAN DEFAULT TRUE,

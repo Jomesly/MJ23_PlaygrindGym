@@ -290,11 +290,13 @@ public class EquipmentDAO {
     }
 
     private String generateNextCode() {
-        String sql = "SELECT COUNT(*) FROM equipment";
+        String sql =
+            "SELECT COALESCE(MAX(CAST(SUBSTRING(equipment_code, 4) AS UNSIGNED)), 0) + 1 " +
+            "FROM equipment WHERE equipment_code REGEXP '^EQ-[0-9]+$'";
         try (Connection conn = DatabaseConnection.getConnection();
              Statement st = conn.createStatement();
              ResultSet rs = st.executeQuery(sql)) {
-            int n = rs.next() ? rs.getInt(1) + 1 : 1;
+            int n = rs.next() ? rs.getInt(1) : 1;
             return String.format("EQ-%03d", n);
         } catch (SQLException e) {
             return "EQ-" + System.currentTimeMillis();

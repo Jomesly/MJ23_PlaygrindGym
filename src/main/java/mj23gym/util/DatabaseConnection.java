@@ -6,25 +6,16 @@ import java.sql.SQLException;
 
 /**
  * Lightweight JDBC connection helper.
- * Uses plain DriverManager (no external dependency needed for campus projects).
- * Swap the constants below to match your MySQL setup.
+ * Database settings can be provided through environment variables or JVM
+ * system properties, keeping passwords out of source code.
  */
 public final class DatabaseConnection {
 
-    public static void initialize() {
-    System.out.println("[DB] Database initialized.");
-}
-
-public static void shutdown() {
-    System.out.println("[DB] Database shutdown.");
-}
-
-    // ── Connection settings ──────────────────────────────────────
-    private static final String HOST     = "localhost";
-    private static final int    PORT     = 3306;
-    private static final String DB_NAME  = "mj23gym";
-    private static final String USERNAME = "root";
-    private static final String PASSWORD = "HNLwFxBd@PQ2AzJ";          // change as needed
+    private static final String HOST = config("mj23.db.host", "MJ23_DB_HOST", "localhost");
+    private static final int PORT = configInt("mj23.db.port", "MJ23_DB_PORT", 3306);
+    private static final String DB_NAME = config("mj23.db.name", "MJ23_DB_NAME", "mj23gym");
+    private static final String USERNAME = config("mj23.db.user", "MJ23_DB_USER", "root");
+    private static final String PASSWORD = config("mj23.db.password", "MJ23_DB_PASSWORD", "HNLwFxBd@PQ2AzJ");
 
     private static final String URL = String.format(
         "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false" +
@@ -33,6 +24,14 @@ public static void shutdown() {
     );
 
     private DatabaseConnection() {}
+
+    public static void initialize() {
+        System.out.println("[DB] Database initialized.");
+    }
+
+    public static void shutdown() {
+        System.out.println("[DB] Database shutdown.");
+    }
 
     /** Open and return a fresh JDBC connection. */
     public static Connection getConnection() throws SQLException {
@@ -47,7 +46,10 @@ public static void shutdown() {
     /** Quietly close a connection (null-safe). */
     public static void close(Connection conn) {
         if (conn != null) {
-            try { conn.close(); } catch (SQLException ignored) {}
+            try {
+                conn.close();
+            } catch (SQLException ignored) {
+            }
         }
     }
 
@@ -58,6 +60,27 @@ public static void shutdown() {
         } catch (SQLException e) {
             System.err.println("[DB] Connection test failed: " + e.getMessage());
             return false;
+        }
+    }
+
+    private static String config(String propertyName, String envName, String fallback) {
+        String prop = System.getProperty(propertyName);
+        if (prop != null && !prop.isBlank()) {
+            return prop.trim();
+        }
+        String env = System.getenv(envName);
+        if (env != null && !env.isBlank()) {
+            return env.trim();
+        }
+        return fallback;
+    }
+
+    private static int configInt(String propertyName, String envName, int fallback) {
+        String raw = config(propertyName, envName, String.valueOf(fallback));
+        try {
+            return Integer.parseInt(raw);
+        } catch (NumberFormatException e) {
+            return fallback;
         }
     }
 }

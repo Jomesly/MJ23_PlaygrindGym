@@ -9,6 +9,7 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
@@ -36,6 +37,7 @@ import javafx.stage.Stage;
 import javafx.util.Duration;
 import mj23gym.dao.ActivityLogDAO;
 import mj23gym.dao.UserDAO;
+import mj23gym.util.DatabaseConnection;
 
 /**
  * MJ23 Playgrind Gym  Login Screen
@@ -80,27 +82,35 @@ public class LoginScreen extends Application {
         // 
         // LEFT PANEL  dark branding side
         // 
-        VBox left = new VBox();
+        StackPane left = new StackPane();
         left.setPrefWidth(390);
         left.setMinWidth(390);
         left.setMaxWidth(390);
-        left.setAlignment(Pos.CENTER);
-        left.setSpacing(0);
         left.setStyle("-fx-background-color: " + BG_DARKER + ";");
 
-        // Top accent bar
-        Rectangle topBar = new Rectangle(390, 5);
-        topBar.setFill(Color.web("#FDEE21"));
+        ImageView sidePhoto = new ImageView(loadImage(GYM_PHOTO_PATH));
+        sidePhoto.setPreserveRatio(false);
+        sidePhoto.setFitWidth(390);
+        sidePhoto.fitHeightProperty().bind(left.heightProperty());
+        sidePhoto.setOpacity(0.11);
+        sidePhoto.setEffect(new GaussianBlur(3));
+        sidePhoto.setMouseTransparent(true);
+
+        Rectangle sideWash = new Rectangle();
+        sideWash.setWidth(390);
+        sideWash.heightProperty().bind(left.heightProperty());
+        sideWash.setFill(Color.web("#F7F6FC", 0.91));
+        sideWash.setMouseTransparent(true);
 
         // Spacer so content is vertically centered
         Region topSpacer = new Region();
-        VBox.setVgrow(topSpacer, Priority.ALWAYS);
+        topSpacer.setPrefHeight(82);
 
         // Logo badge
         StackPane badge = new StackPane();
-        badge.setPrefSize(150, 150);
-        badge.setMaxSize(150, 150);
-        Rectangle badgeBg = new Rectangle(150, 150);
+        badge.setPrefSize(148, 148);
+        badge.setMaxSize(148, 148);
+        Rectangle badgeBg = new Rectangle(148, 148);
         badgeBg.setArcWidth(ModernDesignSystem.RADIUS_LARGE);
         badgeBg.setArcHeight(ModernDesignSystem.RADIUS_LARGE);
         badgeBg.setFill(Color.web(ModernDesignSystem.WHITE));
@@ -126,8 +136,7 @@ public class LoginScreen extends Application {
         VBox gymTitle = new VBox(0, line1, line2);
         gymTitle.setAlignment(Pos.CENTER);
 
-        // Red underline
-        Rectangle redLine = new Rectangle(110, 3);
+        Rectangle redLine = new Rectangle(112, 3);
         redLine.setFill(Color.web(ACCENT));
         redLine.setArcWidth(3);
         redLine.setArcHeight(3);
@@ -148,15 +157,24 @@ public class LoginScreen extends Application {
         Region botSpacer = new Region();
         VBox.setVgrow(botSpacer, Priority.ALWAYS);
 
+        Text footer = new Text("Secure staff access for MJ23 operations");
+        footer.setFont(Font.font("Poppins", FontWeight.BOLD, 10));
+        footer.setFill(Color.web(TEXT_MUTED));
+        footer.setTextAlignment(TextAlignment.CENTER);
+
         // Assemble left panel with spacing
         VBox leftContent = new VBox(22,
             badge, gymTitle, redLine, tagline, pillBox
         );
         leftContent.setAlignment(Pos.CENTER);
+        leftContent.setPadding(new Insets(0, 28, 0, 28));
 
-        left.getChildren().addAll(
-            topBar, topSpacer, leftContent, botSpacer
-        );
+        VBox leftShell = new VBox(0, topSpacer, leftContent, botSpacer, footer);
+        leftShell.setAlignment(Pos.CENTER);
+        leftShell.setPadding(new Insets(42, 0, 28, 0));
+        StackPane.setAlignment(leftShell, Pos.CENTER);
+
+        left.getChildren().addAll(sidePhoto, sideWash, leftShell);
 
         // 
         // RIGHT PANEL  login form
@@ -210,11 +228,6 @@ public class LoginScreen extends Application {
         subtitle.setFont(Font.font(ModernDesignSystem.FONT_FAMILY, 11));
         subtitle.setFill(Color.web("#4B4B4B"));
         VBox cardHeader = new VBox(4, title, subtitle);
-
-        Rectangle accentUnderline = new Rectangle(48, 3);
-        accentUnderline.setFill(Color.web(ModernDesignSystem.ACCENT_YELLOW));
-        accentUnderline.setArcWidth(3);
-        accentUnderline.setArcHeight(3);
 
         // Fields
         VBox userGroup = buildFieldGroup("USERNAME", "Enter your username", false);
@@ -270,6 +283,13 @@ public class LoginScreen extends Application {
             // Try to authenticate with database
             new Thread(() -> {
                 try {
+                    if (!DatabaseConnection.isConnected()) {
+                        javafx.application.Platform.runLater(() -> {
+                            showMsg(msgLbl, "Cannot connect to database. Set MJ23_DB_USER and MJ23_DB_PASSWORD, then restart the app.", false);
+                            loginBtn.setDisable(false);
+                        });
+                        return;
+                    }
                     UserDAO userDAO = new UserDAO();
                     // Supports both bcrypt and plain text passwords
                     Optional<UserDAO.UserRecord> user = userDAO.authenticate(u, p);
@@ -317,7 +337,6 @@ public class LoginScreen extends Application {
 
         card.getChildren().addAll(
             cardHeader,
-            accentUnderline,
             userGroup,
             passGroup,
             forgotRow,
@@ -389,7 +408,28 @@ public class LoginScreen extends Application {
     }
 
     private void styleBtn(Button b, boolean hovered) {
-        // Method removed - use ModernDesignSystem.createPrimaryButton instead
+        boolean disabled = b.isDisabled();
+        String bg = disabled
+            ? "#E6E6EA"
+            : (hovered ? ModernDesignSystem.PRIMARY_DARK : ModernDesignSystem.PRIMARY);
+        String border = disabled ? "#D5D4DD" : ModernDesignSystem.PRIMARY;
+        String text = disabled ? ModernDesignSystem.TEXT_MUTED : ModernDesignSystem.WHITE;
+        String shadow = disabled
+            ? "dropshadow(gaussian, rgba(26,19,99,0.04), 3, 0.0, 0, 1)"
+            : "dropshadow(gaussian, rgba(26,19,99,0.18), 8, 0.0, 0, 2)";
+        b.setOpacity(1.0);
+        b.setStyle(
+            "-fx-background-color: " + bg + ";" +
+            "-fx-border-color: " + border + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
+            "-fx-text-fill: " + text + ";" +
+            "-fx-font-family: '" + ModernDesignSystem.FONT_FAMILY + "';" +
+            "-fx-font-size: 12;" +
+            "-fx-font-weight: bold;" +
+            "-fx-cursor: " + (disabled ? "default" : "hand") + ";" +
+            "-fx-effect: " + shadow + ";"
+        );
     }
 
     private void showMsg(Label l, String msg, boolean success) {
@@ -423,13 +463,16 @@ public class LoginScreen extends Application {
     private HBox makePill(String text) {
         HBox pill = new HBox();
         pill.setAlignment(Pos.CENTER);
-        pill.setPadding(new Insets(6, 16, 6, 16));
+        pill.setPrefWidth(260);
+        pill.setMaxWidth(260);
+        pill.setPadding(new Insets(8, 18, 8, 18));
         pill.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-color: rgba(255,255,255,0.86);" +
             "-fx-background-radius: 20;" +
-            "-fx-border-color: " + FIELD_BORDER + ";" +
+            "-fx-border-color: rgba(26,19,99,0.13);" +
             "-fx-border-radius: 20;" +
-            "-fx-border-width: 1;"
+            "-fx-border-width: 1;" +
+            "-fx-effect: dropshadow(gaussian, rgba(26,19,99,0.05), 5, 0.0, 0, 1);"
         );
         Label lbl = new Label(text);
         lbl.setFont(Font.font("Poppins", 10));
@@ -445,15 +488,19 @@ public class LoginScreen extends Application {
         dialog.initModality(Modality.APPLICATION_MODAL);
         dialog.setResizable(false);
 
-        VBox root = new VBox(16);
-        root.setPadding(new Insets(24));
-        root.setStyle("-fx-background-color: " + BG_CARD + ";");
+        VBox root = new VBox(18);
+        root.setPadding(new Insets(26));
+        root.setStyle(
+            "-fx-background-color: linear-gradient(to bottom, #FFFFFF, #F5F4FA);" +
+            "-fx-border-color: " + ModernDesignSystem.BORDER_COLOR + ";" +
+            "-fx-border-width: 1;"
+        );
 
-        Text title = new Text("Forgot Username or Password");
-        title.setFont(Font.font("Poppins", FontWeight.BOLD, 20));
+        Text title = new Text("Account Recovery");
+        title.setFont(Font.font("Poppins", FontWeight.BOLD, 22));
         title.setFill(Color.web(TEXT_WHITE));
 
-        Text subtitle = new Text("Verify your identity using your registered email or phone number.");
+        Text subtitle = new Text("Verify your identity before recovering your username or changing your password.");
         subtitle.setFont(Font.font("Poppins", 11));
         subtitle.setFill(Color.web(TEXT_MUTED));
 
@@ -464,9 +511,10 @@ public class LoginScreen extends Application {
             new Tab("Password Recovery", buildPasswordRecoveryPane())
         );
         tabs.setStyle(
-            "-fx-background-color: " + BG_CARD + ";" +
+            "-fx-background-color: transparent;" +
             "-fx-control-inner-background: " + BG_MAIN + ";"
         );
+        tabs.getStyleClass().add("recovery-tabs");
 
         Button close = new Button("CLOSE");
         close.setPrefHeight(38);
@@ -476,43 +524,107 @@ public class LoginScreen extends Application {
         close.setOnMouseExited(e -> styleSecondaryButton(close, false));
         close.setOnAction(e -> dialog.close());
 
-        root.getChildren().addAll(title, subtitle, tabs, close);
-        Scene scene = new Scene(root, 520, 440);
+        root.getChildren().addAll(new VBox(4, title, subtitle), tabs, close);
+        Scene scene = new Scene(root, 620, 620);
+        scene.getStylesheets().add("data:text/css," + recoveryDialogCss().replace("\n", ""));
         dialog.setScene(scene);
         dialog.showAndWait();
     }
 
+    private String recoveryDialogCss() {
+        return """
+            .recovery-tabs {
+                -fx-tab-min-height: 42px;
+                -fx-tab-max-height: 42px;
+                -fx-background-color: transparent;
+            }
+            .recovery-tabs .tab-header-area {
+                -fx-padding: 0 0 12 0;
+            }
+            .recovery-tabs .tab-header-background {
+                -fx-background-color: rgba(26,19,99,0.07);
+                -fx-background-radius: 16;
+                -fx-border-color: rgba(26,19,99,0.12);
+                -fx-border-radius: 16;
+            }
+            .recovery-tabs .headers-region {
+                -fx-padding: 4;
+            }
+            .recovery-tabs .tab {
+                -fx-background-color: transparent;
+                -fx-background-radius: 12;
+                -fx-border-color: transparent;
+                -fx-padding: 0 18 0 18;
+                -fx-focus-color: transparent;
+                -fx-faint-focus-color: transparent;
+            }
+            .recovery-tabs .tab:selected {
+                -fx-background-color: #1A1363;
+                -fx-effect: dropshadow(gaussian, rgba(26,19,99,0.20), 8, 0, 0, 2);
+            }
+            .recovery-tabs .tab-label {
+                -fx-font-family: Poppins;
+                -fx-font-size: 12px;
+                -fx-font-weight: bold;
+                -fx-text-fill: #77749B;
+            }
+            .recovery-tabs .tab:selected .tab-label {
+                -fx-text-fill: white;
+            }
+            .recovery-tabs .tab-content-area {
+                -fx-background-color: transparent;
+                -fx-padding: 0;
+            }
+            .recovery-tabs:focused .tab:selected .focus-indicator {
+                -fx-border-color: transparent;
+            }
+            """;
+    }
+
     private VBox buildUsernameRecoveryPane() {
         VBox pane = recoveryPane();
-        TextField identityField = buildRecoveryField("Registered email or phone");
+        TextField emailField = buildRecoveryField("Registered email");
+        TextField phoneField = buildRecoveryField("Registered phone number");
+        ComboBox<String> questionBox = buildRecoveryQuestionBox();
+        PasswordField answerField = buildRecoveryPasswordField("Security answer");
         Label message = buildRecoveryMessage();
 
         Button recover = buildRecoveryButton("RECOVER USERNAME");
+        wireRecoveryButtonState(recover, questionBox, emailField, phoneField, answerField);
         recover.setOnAction(e -> {
-            String identity = identityField.getText().trim();
-            if (identity.isEmpty()) {
-                setRecoveryMessage(message, "Enter your registered email or phone number.", false);
+            String email = emailField.getText().trim();
+            String phone = phoneField.getText().trim();
+            String question = questionBox.getValue();
+            String answer = answerField.getText().trim();
+            if (email.isEmpty() || phone.isEmpty() || question == null || answer.isEmpty()) {
+                setRecoveryMessage(message, "Email, phone, security question, and answer are required.", false);
                 return;
             }
 
             recover.setDisable(true);
-            setRecoveryMessage(message, "Verifying identity...", true);
+            styleBtn(recover, false);
+            setRecoveryMessage(message, "Checking account recovery details...", true);
             new Thread(() -> {
-                Optional<UserDAO.UserRecord> user = new UserDAO().findUsernameByRecoveryIdentity(identity);
+                UserDAO userDAO = new UserDAO();
+                Optional<UserDAO.UserRecord> user = userDAO.recoverUsername(email, phone, question, answer);
                 javafx.application.Platform.runLater(() -> {
                     if (user.isPresent()) {
-                        setRecoveryMessage(message, "Your username is: " + user.get().username(), true);
+                        setRecoveryMessage(message, "Username found: " + user.get().username(), true);
                     } else {
-                        setRecoveryMessage(message, "No active account matched that email or phone.", false);
+                        setRecoveryMessage(message, "Recovery details did not match an active account.", false);
                     }
                     recover.setDisable(false);
+                    styleBtn(recover, false);
                 });
             }).start();
         });
 
         pane.getChildren().addAll(
-            recoveryHint("Submodule 1.1 - confirms identity before showing the account username."),
-            identityField,
+            recoveryHint("Use your registered email, phone, and recovery answer."),
+            emailField,
+            phoneField,
+            questionBox,
+            answerField,
             message,
             recover
         );
@@ -522,31 +634,86 @@ public class LoginScreen extends Application {
     private VBox buildPasswordRecoveryPane() {
         VBox pane = recoveryPane();
         TextField usernameField = buildRecoveryField("Username");
-        TextField identityField = buildRecoveryField("Registered email or phone");
-        PasswordField newPasswordField = new PasswordField();
-        newPasswordField.setPromptText("New password");
-        fieldStyle(newPasswordField, false);
-        newPasswordField.focusedProperty().addListener((o, old, focused) -> fieldStyle(newPasswordField, focused));
-
-        PasswordField confirmPasswordField = new PasswordField();
-        confirmPasswordField.setPromptText("Confirm new password");
-        fieldStyle(confirmPasswordField, false);
-        confirmPasswordField.focusedProperty().addListener((o, old, focused) -> fieldStyle(confirmPasswordField, focused));
+        TextField emailField = buildRecoveryField("Registered email");
+        TextField phoneField = buildRecoveryField("Registered phone number");
+        ComboBox<String> questionBox = buildRecoveryQuestionBox();
+        PasswordField answerField = buildRecoveryPasswordField("Security answer");
+        PasswordField newPasswordField = buildRecoveryPasswordField("New password");
+        PasswordField confirmPasswordField = buildRecoveryPasswordField("Confirm new password");
+        setRecoveryPasswordStepVisible(false, newPasswordField, confirmPasswordField);
 
         Label message = buildRecoveryMessage();
-        Button reset = buildRecoveryButton("RESET PASSWORD");
-        reset.setOnAction(e -> {
+        Button verify = buildRecoveryButton("VERIFY RECOVERY DETAILS");
+        wireRecoveryButtonState(verify, questionBox, usernameField, emailField, phoneField, answerField);
+        Button reset = buildRecoveryButton("SAVE NEW PASSWORD");
+        reset.setVisible(false);
+        reset.setManaged(false);
+
+        final String[] verifiedUsername = {""};
+        final String[] verifiedEmail = {""};
+        final String[] verifiedPhone = {""};
+        final String[] verifiedQuestion = {""};
+        final String[] verifiedAnswer = {""};
+
+        verify.setOnAction(e -> {
             String username = usernameField.getText().trim();
-            String identity = identityField.getText().trim();
+            String email = emailField.getText().trim();
+            String phone = phoneField.getText().trim();
+            String question = questionBox.getValue();
+            String answer = answerField.getText().trim();
+
+            if (username.isEmpty() || email.isEmpty() || phone.isEmpty() || question == null || answer.isEmpty()) {
+                setRecoveryMessage(message, "Complete username, email, phone, security question, and answer.", false);
+                return;
+            }
+
+            verify.setDisable(true);
+            styleBtn(verify, false);
+            setRecoveryMessage(message, "Verifying recovery details...", true);
+            new Thread(() -> {
+                UserDAO userDAO = new UserDAO();
+                Optional<UserDAO.UserRecord> user = userDAO.verifyPasswordRecoveryIdentity(
+                    username, email, phone, question, answer
+                );
+
+                javafx.application.Platform.runLater(() -> {
+                    if (user.isPresent()) {
+                        verifiedUsername[0] = username;
+                        verifiedEmail[0] = email;
+                        verifiedPhone[0] = phone;
+                        verifiedQuestion[0] = question;
+                        verifiedAnswer[0] = answer;
+
+                        usernameField.setDisable(true);
+                        emailField.setDisable(true);
+                        phoneField.setDisable(true);
+                        questionBox.setDisable(true);
+                        answerField.setDisable(true);
+                        verify.setVisible(false);
+                        verify.setManaged(false);
+                        setRecoveryPasswordStepVisible(true, newPasswordField, confirmPasswordField);
+                        reset.setVisible(true);
+                        reset.setManaged(true);
+                        setRecoveryMessage(message, "Identity confirmed. Enter and confirm your new password.", true);
+                    } else {
+                        setRecoveryMessage(message, "Recovery details did not match an active account.", false);
+                        verify.setDisable(false);
+                        styleBtn(verify, false);
+                    }
+                });
+            }).start();
+        });
+
+        reset.setOnAction(e -> {
             String newPassword = newPasswordField.getText();
             String confirmPassword = confirmPasswordField.getText();
 
-            if (username.isEmpty() || identity.isEmpty() || newPassword.isEmpty()) {
-                setRecoveryMessage(message, "Username, identity, and new password are required.", false);
+            if (verifiedUsername[0].isEmpty()) {
+                setRecoveryMessage(message, "Verify recovery details before setting a new password.", false);
                 return;
             }
-            if (newPassword.length() < 6) {
-                setRecoveryMessage(message, "Password must be at least 6 characters.", false);
+            if (newPassword == null || newPassword.length() < 6) {
+                setRecoveryMessage(message, "New password must be at least 6 characters.", false);
                 return;
             }
             if (!newPassword.equals(confirmPassword)) {
@@ -555,30 +722,43 @@ public class LoginScreen extends Application {
             }
 
             reset.setDisable(true);
-            setRecoveryMessage(message, "Verifying identity and resetting password...", true);
+            styleBtn(reset, false);
+            setRecoveryMessage(message, "Verifying identity and saving new password...", true);
             new Thread(() -> {
                 UserDAO userDAO = new UserDAO();
-                Optional<UserDAO.UserRecord> user = userDAO.findActiveByRecoveryIdentity(username, identity);
-                boolean changed = user.isPresent()
-                    && userDAO.resetPasswordAfterRecovery(user.get().userId(), newPassword);
+                boolean saved = userDAO.resetPasswordWithRecovery(
+                    verifiedUsername[0],
+                    verifiedEmail[0],
+                    verifiedPhone[0],
+                    verifiedQuestion[0],
+                    verifiedAnswer[0],
+                    newPassword
+                );
 
                 javafx.application.Platform.runLater(() -> {
-                    if (changed) {
+                    if (saved) {
+                        setRecoveryMessage(message, "Password updated. You can now sign in with the new password.", true);
                         newPasswordField.clear();
                         confirmPasswordField.clear();
-                        setRecoveryMessage(message, "Password reset successful. You can now sign in.", true);
+                        reset.setDisable(true);
+                        styleBtn(reset, false);
                     } else {
-                        setRecoveryMessage(message, "Could not verify that username with the given email or phone.", false);
+                        setRecoveryMessage(message, "Could not save the new password. Verify details again.", false);
+                        reset.setDisable(false);
+                        styleBtn(reset, false);
                     }
-                    reset.setDisable(false);
                 });
             }).start();
         });
 
         pane.getChildren().addAll(
-            recoveryHint("Submodule 1.2 - verifies identity before allowing a password reset."),
+            recoveryHint("Step 1: verify account details. Step 2: set the new password."),
             usernameField,
-            identityField,
+            emailField,
+            phoneField,
+            questionBox,
+            answerField,
+            verify,
             newPasswordField,
             confirmPasswordField,
             message,
@@ -588,9 +768,9 @@ public class LoginScreen extends Application {
     }
 
     private VBox recoveryPane() {
-        VBox pane = new VBox(12);
-        pane.setPadding(new Insets(18, 0, 0, 0));
-        pane.setStyle("-fx-background-color: " + BG_CARD + ";");
+        VBox pane = new VBox(10);
+        pane.setPadding(new Insets(18, 4, 6, 4));
+        pane.setStyle("-fx-background-color: transparent;");
         return pane;
     }
 
@@ -608,6 +788,44 @@ public class LoginScreen extends Application {
         fieldStyle(field, false);
         field.focusedProperty().addListener((o, old, focused) -> fieldStyle(field, focused));
         return field;
+    }
+
+    private PasswordField buildRecoveryPasswordField(String prompt) {
+        PasswordField field = new PasswordField();
+        field.setPromptText(prompt);
+        field.setPrefHeight(42);
+        fieldStyle(field, false);
+        field.focusedProperty().addListener((o, old, focused) -> fieldStyle(field, focused));
+        return field;
+    }
+
+    private void setRecoveryPasswordStepVisible(boolean visible, PasswordField... fields) {
+        for (PasswordField field : fields) {
+            field.setVisible(visible);
+            field.setManaged(visible);
+        }
+    }
+
+    private ComboBox<String> buildRecoveryQuestionBox() {
+        ComboBox<String> box = new ComboBox<>();
+        box.getItems().addAll(
+            UserDAO.DEFAULT_RECOVERY_QUESTION,
+            "What is your mother's maiden name?",
+            "What city were you born in?",
+            "What was the name of your first school?"
+        );
+        box.setValue(UserDAO.DEFAULT_RECOVERY_QUESTION);
+        box.setPrefHeight(42);
+        box.setMaxWidth(Double.MAX_VALUE);
+        box.setStyle(
+            "-fx-background-color: " + FIELD_BG + ";" +
+            "-fx-border-color: " + ModernDesignSystem.BORDER_COLOR + ";" +
+            "-fx-border-radius: 16;" +
+            "-fx-background-radius: 16;" +
+            "-fx-font-family: Poppins;" +
+            "-fx-font-size: 12;"
+        );
+        return box;
     }
 
     private Label buildRecoveryMessage() {
@@ -630,16 +848,39 @@ public class LoginScreen extends Application {
         return button;
     }
 
+    private void wireRecoveryButtonState(Button button, ComboBox<String> questionBox, TextField... fields) {
+        Runnable refresh = () -> {
+            boolean complete = questionBox.getValue() != null && !questionBox.getValue().isBlank();
+            for (TextField field : fields) {
+                complete = complete && field.getText() != null && !field.getText().trim().isEmpty();
+            }
+            button.setDisable(!complete);
+            styleBtn(button, false);
+        };
+
+        for (TextField field : fields) {
+            field.textProperty().addListener((obs, oldValue, newValue) -> refresh.run());
+        }
+        questionBox.valueProperty().addListener((obs, oldValue, newValue) -> refresh.run());
+        refresh.run();
+    }
+
     private void styleSecondaryButton(Button button, boolean hovered) {
+        String bg = hovered ? "rgba(26,19,99,0.10)" : ModernDesignSystem.WHITE;
+        String border = hovered ? ModernDesignSystem.PRIMARY : "rgba(26,19,99,0.22)";
+        String text = hovered ? ModernDesignSystem.PRIMARY : ModernDesignSystem.DARK_GRAY;
         button.setStyle(
-            "-fx-background-color: " + (hovered ? FIELD_BORDER : FIELD_BG) + ";" +
-            "-fx-text-fill: " + TEXT_MUTED + ";" +
-            "-fx-border-color: " + FIELD_BORDER + ";" +
+            "-fx-background-color: " + bg + ";" +
+            "-fx-text-fill: " + text + ";" +
+            "-fx-border-color: " + border + ";" +
+            "-fx-border-width: 1.5;" +
             "-fx-border-radius: 16;" +
             "-fx-background-radius: 16;" +
             "-fx-font-family: Poppins;" +
             "-fx-font-weight: bold;" +
-            "-fx-cursor: hand;"
+            "-fx-font-size: 12;" +
+            "-fx-cursor: hand;" +
+            "-fx-effect: dropshadow(gaussian, rgba(26,19,99,0.08), 6, 0.0, 0, 2);"
         );
     }
 
@@ -648,8 +889,10 @@ public class LoginScreen extends Application {
         label.setTextFill(success ? Color.web("#4B4B4B") : Color.web(ACCENT));
         label.setStyle(
             "-fx-background-color: " + (success
-                ? "rgba(228,255,223,0.12)" : "rgba(26,19,99,0.12)") + ";" +
-            "-fx-background-radius: 7;"
+                ? "rgba(228,255,223,0.80)" : "rgba(230,57,70,0.12)") + ";" +
+            "-fx-background-radius: 10;" +
+            "-fx-border-color: " + (success ? ModernDesignSystem.SUCCESS : ACCENT) + ";" +
+            "-fx-border-radius: 10;"
         );
         label.setVisible(true);
     }

@@ -106,18 +106,6 @@ public class PlanDAO {
         }
     }
 
-    public boolean delete(int planId) {
-        String sql = "DELETE FROM plans WHERE plan_id=?";
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, planId);
-            return ps.executeUpdate() > 0;
-        } catch (SQLException e) {
-            System.err.println("[PlanDAO] delete error: " + e.getMessage());
-            return false;
-        }
-    }
-
     public boolean setActive(int planId, boolean active) {
         String sql = "UPDATE plans SET is_active=?, updated_at=NOW() WHERE plan_id=?";
         try (Connection conn = DatabaseConnection.getConnection();
